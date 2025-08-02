@@ -77,7 +77,7 @@ def show_info_form():
             st.session_state.name = name
             st.session_state.id_number = id_number
             st.session_state.step = "ingredients"
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("성함과 식별번호를 모두 입력해주세요.")
 
@@ -113,10 +113,10 @@ def show_ingredient_selection():
     if 3 <= count <= 9:
         if st.button("다음 단계로 →", type="primary"):
             st.session_state.step = "menus"
-            st.experimental_rerun()
+            st.rerun()
     if st.button("← 이전 단계"):
         st.session_state.step = "info"
-        st.experimental_rerun()
+        st.rerun()
 
 def show_menu_selection():
     st.markdown("""
@@ -147,10 +147,10 @@ def show_menu_selection():
     # 버튼
     if st.button("← 이전 단계"):
         st.session_state.step = "ingredients"
-        st.experimental_rerun()
+        st.rerun()
     if all_valid and st.button("설문 완료하기", type="primary"):
         st.session_state.step = "complete"
-        st.experimental_rerun()
+        st.rerun()
 
 def show_completion():
     st.success("🎉 설문이 완료되었습니다! 감사합니다.")
@@ -173,7 +173,7 @@ def show_completion():
     if st.button("🔄 새 설문 시작"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
-        st.experimental_rerun()
+        st.rerun()
 
 # ✅ 단계 실행
 if st.session_state.step == "info":
