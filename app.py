@@ -659,74 +659,66 @@ def show_ingredient_selection():
 
 def show_menu_selection():
     st.subheader("🍽️ 선호 메뉴 선택")
-    
-    # 안내 메시지
+
     st.info("**🔸 선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요**\n\n✓ 각 수산물마다 최소 1개 이상의 메뉴를 선택해주세요")
-    
-    # 선택된 수산물 표시
+
     with st.expander("선택하신 수산물", expanded=True):
         ingredients_text = " | ".join([f"**{ingredient}**" for ingredient in st.session_state.selected_ingredients])
         st.markdown(f"🏷️ {ingredients_text}")
-    
-    # 각 수산물별 메뉴 선택
+
     all_valid = True
-    
+
     for ingredient in st.session_state.selected_ingredients:
         st.markdown(f"### 🐟 {ingredient} 요리")
-        
+
         if ingredient in MENU_DATA:
-            menus = MENU_DATA[ingredient]
-            
-            for category, menu_list in menus.items():
-                if menu_list:
-                    st.markdown(f"**{category}**")
-            
-                    # ✅ 4개씩 나눠서 행(Row)별로 columns 생성
-                    for row_start in range(0, len(menu_list), 4):
-                        cols = st.columns(4)
-                        for col_idx, menu in enumerate(menu_list[row_start:row_start+4]):
-                            with cols[col_idx]:
-                                is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
-                                selected = display_menu_with_image(
-                                    menu,
-                                    ingredient,
-                                    is_selected,
-                                    f"menu_{ingredient}_{menu}"
-                                )
-            
-                                if selected:
-                                    if menu not in st.session_state.selected_menus[ingredient]:
-                                        st.session_state.selected_menus[ingredient].append(menu)
-                                        st.rerun()
-                                else:
-                                    if menu in st.session_state.selected_menus[ingredient]:
-                                        st.session_state.selected_menus[ingredient].remove(menu)
-                                        st.rerun()
+            # ✅ 카테고리 무시하고 메뉴만 리스트로 합치기
+            all_menus = []
+            for menu_list in MENU_DATA[ingredient].values():
+                all_menus.extend(menu_list)
 
+            # ✅ 4개씩 가로 배치
+            for row_start in range(0, len(all_menus), 4):
+                cols = st.columns(4)
+                for col_idx, menu in enumerate(all_menus[row_start:row_start+4]):
+                    with cols[col_idx]:
+                        is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
+                        selected = display_menu_with_image(
+                            menu,
+                            ingredient,
+                            is_selected,
+                            f"menu_{ingredient}_{menu}"
+                        )
 
-        
-        # 각 수산물별 선택 상태 표시
+                        if selected:
+                            if menu not in st.session_state.selected_menus[ingredient]:
+                                st.session_state.selected_menus[ingredient].append(menu)
+                                st.rerun()
+                        else:
+                            if menu in st.session_state.selected_menus[ingredient]:
+                                st.session_state.selected_menus[ingredient].remove(menu)
+                                st.rerun()
+
+        # ✅ 선택 여부 확인
         menu_count = len(st.session_state.selected_menus.get(ingredient, []))
         if menu_count == 0:
             all_valid = False
             st.warning(f"⚠️ {ingredient}에 대해 최소 1개 이상의 메뉴를 선택해주세요.")
         else:
             st.success(f"✅ {ingredient}: {menu_count}개 메뉴 선택됨")
-        
+
         st.markdown("---")
-    
-    # 버튼들
+
+    # ✅ 버튼
     col1, col2, col3 = st.columns([1, 1, 1])
-    
     with col1:
         if st.button("← 이전 단계", use_container_width=True):
             st.session_state.step = 'ingredients'
             st.rerun()
-    
+
     with col3:
         if all_valid:
             if st.button("설문 완료하기", type="primary", use_container_width=True):
-                # 엑셀 파일 저장
                 filename, df = save_to_excel(
                     st.session_state.name,
                     st.session_state.id_number,
@@ -739,6 +731,7 @@ def show_menu_selection():
                 st.rerun()
         else:
             st.button("설문 완료하기", disabled=True, use_container_width=True)
+
 
 def show_completion():
     # 축하 애니메이션
