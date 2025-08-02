@@ -606,57 +606,71 @@ def main():
     
     # ✅ 사이드바 설정 - 올바른 방법
     with st.sidebar:
+        # 🔹 연구 정보 카드
         st.markdown(
             """
-            <div style="background: rgba(255,255,255,0.15); padding:10px; border-radius:10px; margin-bottom:10px;">
-                <strong>🔹 연구명</strong><br>
-                요양원 거주 고령자 대상 건강 상태 및<br>블루푸드 식이 데이터베이스 구축
-            </div>
-    
-            <div style="background: rgba(255,255,255,0.15); padding:10px; border-radius:10px; margin-bottom:10px;">
-                <strong>🔹 정부과제명</strong><br>
-                글로벌 블루푸드 미래리더 양성 프로젝트
-            </div>
-    
-            <div style="background: rgba(255,255,255,0.15); padding:10px; border-radius:10px;">
-                <strong>🔹 연구 담당자</strong><br>
-                류혜리, 유정연<br>(서울대학교 농생명공학부 박사과정)
+            <div style="
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                padding: 20px;
+                border-radius: 15px;
+                margin-bottom: 20px;
+                color: white;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            ">
+                <h3 style="text-align:center; margin-bottom:10px;">📌 연구 정보</h3>
+                <div style="background: rgba(255,255,255,0.15); padding:10px; border-radius:10px; margin-bottom:10px;">
+                    <strong>🔹 연구명</strong><br>
+                    요양원 거주 고령자 대상 건강 상태 및<br>블루푸드 식이 데이터베이스 구축
+                </div>
+                <div style="background: rgba(255,255,255,0.15); padding:10px; border-radius:10px; margin-bottom:10px;">
+                    <strong>🔹 정부과제명</strong><br>
+                    글로벌 블루푸드 미래리더 양성 프로젝트
+                </div>
+                <div style="background: rgba(255,255,255,0.15); padding:10px; border-radius:10px;">
+                    <strong>🔹 연구 담당자</strong><br>
+                    류혜리, 유정연<br>(서울대학교 농생명공학부 박사과정)
+                </div>
             </div>
             """,
-            unsafe_allow_html=True   # ✅ 반드시 필요
+            unsafe_allow_html=True
+        )
+    
+        # 🔹 설문 안내 카드
+        st.markdown(
+            """
+            <div style="
+                background: #ffffff;
+                padding: 20px;
+                border-radius: 15px;
+                margin-bottom: 20px;
+                color: #333;
+                font-size: 17px;
+                line-height: 1.6;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                border: 1px solid #ddd;
+            ">
+                <h3 style="text-align:center; color:#0077b6; margin-bottom:10px;">📋 설문 안내</h3>
+                <p><strong>🎯 목적</strong><br>블루푸드 선호도 조사</p>
+                <p><strong>⏱️ 소요시간</strong><br>약 3-5분</p>
+                <p><strong>📝 설문 단계</strong><br>1️⃣ 참여자 정보 입력<br>2️⃣ 선호 수산물 선택 (3-9개)<br>3️⃣ 선호 블루푸드 메뉴 선택<br>4️⃣ 결과 다운로드</p>
+                <p><strong>🔒 개인정보 보호</strong><br>수집된 정보는 연구 목적으로만 사용되며,<br>개인정보는 안전하게 보호됩니다.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
+    # 🔹 진행 상황
+    st.markdown("### 📊 진행 상황")
+    if 'step' in st.session_state:
+        if st.session_state.step == 'info':
+            st.progress(0.25, "1단계: 정보 입력")
+        elif st.session_state.step == 'ingredients':
+            st.progress(0.5, "2단계: 수산물 선택")
+        elif st.session_state.step == 'menus':
+            st.progress(0.75, "3단계: 메뉴 선택")
+        elif st.session_state.step == 'complete':
+            st.progress(1.0, "✅ 설문 완료!")
 
-        st.markdown("### 📋 설문 안내")
-        st.markdown("""
-        **🎯 목적**  
-        블루푸드 선호도 조사
-        
-        **⏱️ 소요시간**  
-        약 3-5분
-        
-        **📝 설문 단계**  
-        1️⃣ 참여자 정보 입력  
-        2️⃣ 선호 수산물 선택 (3-9개)  
-        3️⃣ 선호 블루푸드 메뉴 선택  
-        4️⃣ 결과 다운로드
-        
-        **🔒 개인정보 보호**  
-        수집된 정보는 연구 목적으로만 사용되며,  
-        개인정보는 안전하게 보호됩니다.
-        """)
-
-        # 진행 상황 표시
-        if 'step' in st.session_state:
-            st.markdown("### 📊 진행 상황")
-            if st.session_state.step == 'info':
-                st.progress(0.25, "1단계: 정보 입력")
-            elif st.session_state.step == 'ingredients':
-                st.progress(0.5, "2단계: 수산물 선택")
-            elif st.session_state.step == 'menus':
-                st.progress(0.75, "3단계: 메뉴 선택")
-            elif st.session_state.step == 'complete':
-                st.progress(1.0, "✅ 설문 완료!")
     
     # 메인 타이틀을 더 간단하게
     st.title("🐟 블루푸드 선호도 조사")
