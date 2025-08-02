@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>블루푸드 선호도 조사</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e9ecef;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin: 0 10px;
+        }
+
+        .step-number.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .step-number.completed {
+            background: #27ae60;
+            color: white;
+        }
+
+        .step-line {
+            width: 80px;
+            height: 2px;
+            background: #e9ecef;
+        }
+
+        .step-line.completed {
+            background: #27ae60;
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #3498db;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            justify-content: center;
+        }
+
+        .section-title::before {
+            content: "🐟";
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+
+        .instruction {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border-left: 4px solid #3498db;
+            text-align: center;
+        }
+
+        .ingredient-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .ingredient-item {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 120px;
+        }
+
+        .ingredient-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .ingredient-item.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .ingredient-item input[type="checkbox"] {
+            display: none;
+        }
+
+        .ingredient-name {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .ingredient-image {
+            width: 200px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .selection-counter {
+            background: #e74c3c;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            margin: 25px auto;
+            text-align: center;
+            font-weight: 600;
+            max-width: 400px;
+            font-size: 1.1em;
+        }
+
+        .selection-counter.valid {
+            background: #27ae60;
+        }
+
+        .menu-category {
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .menu-category h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            text-align: center;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+        }
+
+        .menu-subcategory {
+            margin-bottom: 20px;
+        }
+
+        .menu-subcategory h4 {
+            color: #495057;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+
+        .menu-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .menu-item {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95em;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 160px;
+        }
+
+        .menu-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            border-color: #3498db;
+        }
+
+        .menu-item.selected {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+            color: white !important;
+            border-color: #e74c3c !important;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3) !important;
+            transform: translateY(-2px) !important;
+        }
+
+        .menu-item.selected .menu-text {
+            color: white !important;
+        }
+
+        .menu-item input[type="checkbox"] {
+            display: none;
+        }
+
+        .menu-image {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            background-color: #f8f9fa;
+        }
+
+        .menu-text {
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            color: #2c3e50;
+            line-height: 1.3;
+        }
+
+        .no-image {
+            width: 100%;
+            height: 80px;
+            background-color: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 11px;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 30px auto;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            margin-right: 15px;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #5a6268;
+            box-shadow: 0 10px 20px rgba(108, 117, 125, 0.3);
+        }
+
+        .results {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 20px;
+            border: 2px solid #27ae60;
+        }
+
+        .results h3 {
+            color: #27ae60;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .ingredient-category {
+            margin-bottom: 20px;
+        }
+
+        .category-header {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .selected-ingredients {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .ingredient-tag {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            margin: 3px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌊 블루푸드 선호도 조사</h1>
+            <p>수산물에 대한 여러분의 선호도를 알려주세요</p>
+        </div>
+
+        <div class="content">
+            <!-- 단계 표시기 -->
+            <div class="step-indicator">
+                <div class="step-number active" id="step1-indicator">1</div>
+                <div class="step-line" id="line1"></div>
+                <div class="step-number" id="step2-indicator">2</div>
+            </div>
+
+            <!-- 1단계: 수산물 원재료 선택 -->
+            <div class="step active" id="step1">
+                <h2 class="section-title">수산물 원재료 선호도</h2>
+                <div class="instruction">
+                    <strong>🔸 다음 수산물 중 선호하는 원재료를 선택해주세요</strong><br>
+                    ✓ 최소 3개 이상, 최대 9개까지 선택 가능합니다
+                </div>
+
+                <div class="selection-counter" id="counter">
+                    선택된 품목: 0개 (3~9개 선택 필요)
+                </div>
+
+                <!-- 가공수산물 -->
+                <div class="ingredient-category">
+                    <div class="category-header">🍤 가공수산물</div>
+                    <div class="ingredient-grid">
+                        <div class="ingredient-item" onclick="toggleIngredient('맛살')">
+                            <input type="checkbox" id="맛살" value="맛살">
+                            <img src="식재료/맛살.jpg" alt="맛살" class="ingredient-image">
+                            <div class="ingredient-name">맛살</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('어란')">
+                            <input type="checkbox" id="어란" value="어란">
+                            <img src="식재료/어란.jpg" alt="어란" class="ingredient-image">
+                            <div class="ingredient-name">어란</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('어묵')">
+                            <input type="checkbox" id="어묵" value="어묵">
+                            <img src="식재료/어묵.jpg" alt="어묵" class="ingredient-image">
+                            <div class="ingredient-name">어묵</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('쥐포')">
+                            <input type="checkbox" id="쥐포" value="쥐포">
+                            <img src="식재료/쥐포.jpg" alt="쥐포" class="ingredient-image">
+                            <div class="ingredient-name">쥐포</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 해조류 -->
+                <div class="ingredient-category">
+                    <div class="category-header">🌿 해조류</div>
+                    <div class="ingredient-grid">
+                        <div class="ingredient-item" onclick="toggleIngredient('김')">
+                            <input type="checkbox" id="김" value="김">
+                            <img src="식재료/김.jpg" alt="김" class="ingredient-image">
+                            <div class="ingredient-name">김</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('다시마')">
+                            <input type="checkbox" id="다시마" value="다시마">
+                            <img src="식재료/다시마.jpg" alt="다시마" class="ingredient-image">
+                            <div class="ingredient-name">다시마</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('매생이')">
+                            <input type="checkbox" id="매생이" value="매생이">
+                            <img src="식재료/매생이.jpg" alt="매생이" class="ingredient-image">
+                            <div class="ingredient-name">매생이</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('미역')">
+                            <input type="checkbox" id="미역" value="미역">
+                            <img src="식재료/미역.jpg" alt="미역" class="ingredient-image">
+                            <div class="ingredient-name">미역</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('파래')">
+                            <input type="checkbox" id="파래" value="파래">
+                            <img src="식재료/파래.jpg" alt="파래" class="ingredient-image">
+                            <div class="ingredient-name">파래</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('톳')">
+                            <input type="checkbox" id="톳" value="톳">
+                            <img src="식재료/톳.jpg" alt="톳" class="ingredient-image">
+                            <div class="ingredient-name">톳</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 연체류 -->
+                <div class="ingredient-category">
+                    <div class="category-header">🦑 연체류</div>
+                    <div class="ingredient-grid">
+                        <div class="ingredient-item" onclick="toggleIngredient('꼴뚜기')">
+                            <input type="checkbox" id="꼴뚜기" value="꼴뚜기">
+                            <img src="식재료/꼴뚜기.jpg" alt="꼴뚜기" class="ingredient-image">
+                            <div class="ingredient-name">꼴뚜기</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('낙지')">
+                            <input type="checkbox" id="낙지" value="낙지">
+                            <img src="식재료/낙지.jpg" alt="낙지" class="ingredient-image">
+                            <div class="ingredient-name">낙지</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('문어')">
+                            <input type="checkbox" id="문어" value="문어">
+                            <img src="식재료/문어.jpg" alt="문어" class="ingredient-image">
+                            <div class="ingredient-name">문어</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('오징어')">
+                            <input type="checkbox" id="오징어" value="오징어">
+                            <img src="식재료/오징어.jpg" alt="오징어" class="ingredient-image">
+                            <div class="ingredient-name">오징어</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('주꾸미')">
+                            <input type="checkbox" id="주꾸미" value="주꾸미">
+                            <img src="식재료/주꾸미.jpg" alt="주꾸미" class="ingredient-image">
+                            <div class="ingredient-name">주꾸미</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 갑각류 -->
+                <div class="ingredient-category">
+                    <div class="category-header">🦀 갑각류</div>
+                    <div class="ingredient-grid">
+                        <div class="ingredient-item" onclick="toggleIngredient('가재')">
+                            <input type="checkbox" id="가재" value="가재">
+                            <img src="식재료/가재.jpg" alt="가재" class="ingredient-image">
+                            <div class="ingredient-name">가재</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('게')">
+                            <input type="checkbox" id="게" value="게">
+                            <img src="식재료/게.jpg" alt="게" class="ingredient-image">
+                            <div class="ingredient-name">게</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('새우')">
+                            <input type="checkbox" id="새우" value="새우">
+                            <img src="식재료/새우.jpg" alt="새우" class="ingredient-image">
+                            <div class="ingredient-name">새우</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 패류 -->
+                <div class="ingredient-category">
+                    <div class="category-header">🐚 패류</div>
+                    <div class="ingredient-grid">
+                        <div class="ingredient-item" onclick="toggleIngredient('다슬기')">
+                            <input type="checkbox" id="다슬기" value="다슬기">
+                            <img src="식재료/다슬기.jpg" alt="다슬기" class="ingredient-image">
+                            <div class="ingredient-name">다슬기</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('꼬막')">
+                            <input type="checkbox" id="꼬막" value="꼬막">
+                            <img src="식재료/꼬막.jpg" alt="꼬막" class="ingredient-image">
+                            <div class="ingredient-name">꼬막</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('가리비')">
+                            <input type="checkbox" id="가리비" value="가리비">
+                            <img src="식재료/가리비.jpg" alt="가리비" class="ingredient-image">
+                            <div class="ingredient-name">가리비</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('골뱅이')">
+                            <input type="checkbox" id="골뱅이" value="골뱅이">
+                            <img src="식재료/골뱅이.jpg" alt="골뱅이" class="ingredient-image">
+                            <div class="ingredient-name">골뱅이</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('굴')">
+                            <input type="checkbox" id="굴" value="굴">
+                            <img src="식재료/굴.jpg" alt="굴" class="ingredient-image">
+                            <div class="ingredient-name">굴</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('미더덕')">
+                            <input type="checkbox" id="미더덕" value="미더덕">
+                            <img src="식재료/미더덕.jpg" alt="미더덕" class="ingredient-image">
+                            <div class="ingredient-name">미더덕</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('바지락')">
+                            <input type="checkbox" id="바지락" value="바지락">
+                            <img src="식재료/바지락.jpg" alt="바지락" class="ingredient-image">
+                            <div class="ingredient-name">바지락</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('백합')">
+                            <input type="checkbox" id="백합" value="백합">
+                            <img src="식재료/백합.jpg" alt="백합" class="ingredient-image">
+                            <div class="ingredient-name">백합</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('소라')">
+                            <input type="checkbox" id="소라" value="소라">
+                            <img src="식재료/소라.jpg" alt="소라" class="ingredient-image">
+                            <div class="ingredient-name">소라</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('재첩')">
+                            <input type="checkbox" id="재첩" value="재첩">
+                            <img src="식재료/재첩.jpg" alt="재첩" class="ingredient-image">
+                            <div class="ingredient-name">재첩</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('전복')">
+                            <input type="checkbox" id="전복" value="전복">
+                            <img src="식재료/전복.jpg" alt="전복" class="ingredient-image">
+                            <div class="ingredient-name">전복</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('홍합')">
+                            <input type="checkbox" id="홍합" value="홍합">
+                            <img src="식재료/홍합.jpg" alt="홍합" class="ingredient-image">
+                            <div class="ingredient-name">홍합</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 어류 -->
+                <div class="ingredient-category">
+                    <div class="category-header">🐟 어류</div>
+                    <div class="ingredient-grid">
+                        <div class="ingredient-item" onclick="toggleIngredient('가자미')">
+                            <input type="checkbox" id="가자미" value="가자미">
+                            <img src="식재료/가자미.jpg" alt="가자미" class="ingredient-image">
+                            <div class="ingredient-name">가자미</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('다랑어')">
+                            <input type="checkbox" id="다랑어" value="다랑어">
+                            <img src="식재료/다랑어.jpg" alt="다랑어" class="ingredient-image">
+                            <div class="ingredient-name">다랑어(참치)</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('고등어')">
+                            <input type="checkbox" id="고등어" value="고등어">
+                            <img src="식재료/고등어.jpg" alt="고등어" class="ingredient-image">
+                            <div class="ingredient-name">고등어</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('갈치')">
+                            <input type="checkbox" id="갈치" value="갈치">
+                            <img src="식재료/갈치.jpg" alt="갈치" class="ingredient-image">
+                            <div class="ingredient-name">갈치</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('꽁치')">
+                            <input type="checkbox" id="꽁치" value="꽁치">
+                            <img src="식재료/꽁치.jpg" alt="꽁치" class="ingredient-image">
+                            <div class="ingredient-name">꽁치</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('대구')">
+                            <input type="checkbox" id="대구" value="대구">
+                            <img src="식재료/대구.jpg" alt="대구" class="ingredient-image">
+                            <div class="ingredient-name">대구</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('멸치')">
+                            <input type="checkbox" id="멸치" value="멸치">
+                            <img src="식재료/멸치.jpg" alt="멸치" class="ingredient-image">
+                            <div class="ingredient-name">멸치</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('명태')">
+                            <input type="checkbox" id="명태" value="명태">
+                            <img src="식재료/명태.jpg" alt="명태" class="ingredient-image">
+                            <div class="ingredient-name">명태</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('박대')">
+                            <input type="checkbox" id="박대" value="박대">
+                            <img src="식재료/박대.jpg" alt="박대" class="ingredient-image">
+                            <div class="ingredient-name">박대</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('뱅어')">
+                            <input type="checkbox" id="뱅어" value="뱅어">
+                            <img src="식재료/뱅어.jpg" alt="뱅어" class="ingredient-image">
+                            <div class="ingredient-name">뱅어</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('병어')">
+                            <input type="checkbox" id="병어" value="병어">
+                            <img src="식재료/병어.jpg" alt="병어" class="ingredient-image">
+                            <div class="ingredient-name">병어</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('삼치')">
+                            <input type="checkbox" id="삼치" value="삼치">
+                            <img src="식재료/삼치.jpg" alt="삼치" class="ingredient-image">
+                            <div class="ingredient-name">삼치</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('아귀')">
+                            <input type="checkbox" id="아귀" value="아귀">
+                            <img src="식재료/아귀.jpg" alt="아귀" class="ingredient-image">
+                            <div class="ingredient-name">아귀</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('연어')">
+                            <input type="checkbox" id="연어" value="연어">
+                            <img src="식재료/연어.jpg" alt="연어" class="ingredient-image">
+                            <div class="ingredient-name">연어</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('임연수')">
+                            <input type="checkbox" id="임연수" value="임연수">
+                            <img src="식재료/임연수.jpg" alt="임연수" class="ingredient-image">
+                            <div class="ingredient-name">임연수</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('장어')">
+                            <input type="checkbox" id="장어" value="장어">
+                            <img src="식재료/장어.jpg" alt="장어" class="ingredient-image">
+                            <div class="ingredient-name">장어</div>
+                        </div>
+                        <div class="ingredient-item" onclick="toggleIngredient('조기')">
+                            <input type="checkbox" id="조기" value="조기">
+                            <img src="식재료/조기.jpg" alt="조기" class="ingredient-image">
+                            <div class="ingredient-name">조기</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn" id="nextBtn" onclick="goToStep2()" disabled>
+                    다음 단계로 →
+                </button>
+            </div>
+
+            <!-- 2단계: 선호 메뉴 선택 -->
+            <div class="step" id="step2">
+                <h2 class="section-title">선호 메뉴 선택</h2>
+                <div class="instruction">
+                    <strong>🔸 선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요</strong><br>
+                    ✓ 각 수산물마다 최소 1개 이상의 메뉴를 선택해주세요
+                </div>
+
+                <div class="selected-ingredients" id="selectedIngredients">
+                    <!-- 선택된 식재료 표시 -->
+                </div>
+
+                <div id="menuSection">
+                    <!-- 동적으로 생성될 메뉴 섹션 -->
+                </div>
+
+                <div style="text-align: center;">
+                    <button class="btn btn-secondary" onclick="goToStep1()">← 이전 단계</button>
+                    <button class="btn" id="submitBtn" onclick="submitSurvey()" disabled>설문 완료하기</button>
+                </div>
+            </div>
+
+            <div class="results" id="results" style="display: none;">
+                <!-- 결과가 여기에 표시됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 수산물별 메뉴 데이터
+        const menuData = {
+            '맛살': {
+                '밥/죽': ['게맛살볶음밥'],
+                '무침': ['게맛살콩나물무침'],
+                '볶음': ['맛살볶음'],
+                '부침': ['맛살전']
+            },
+            '어란': {
+                '밥/죽': ['날치알밥'],
+                '면류': ['명란파스타'],
+                '국/탕': ['알탕'],
+                '찜': ['날치알달걀찜'],
+                '무침': ['명란젓갈'],
+                '볶음': ['날치알스크램블에그'],
+                '부침': ['날치알계란말이'],
+                '구이': ['명란구이']
+            },
+            '어묵': {
+                '밥/죽': ['어묵볶음밥'],
+                '면류': ['어묵우동'],
+                '국/탕': ['어묵탕'],
+                '조림': ['어묵조림'],
+                '찜': ['콩나물어묵찜', '어묵찜'],
+                '볶음': ['매콤어묵볶음', '간장어묵볶음'],
+                '부침': ['어묵전'],
+                '튀김': ['어묵고로케']
+            },
+            '쥐포': {
+                '조림': ['쥐포조림'],
+                '무침': ['쥐포무침'],
+                '볶음': ['쥐포볶음'],
+                '부침': ['쥐포전'],
+                '튀김': ['쥐포튀김'],
+                '구이': ['쥐포구이']
+            },
+            '김': {
+                '밥/죽': ['김밥'],
+                '무침': ['김무침'],
+                '튀김': ['김부각'],
+                '구이': ['김자반']
+            },
+            '다시마': {
+                '무침': ['다시마채무침'],
+                '볶음': ['다시마채볶음'],
+                '튀김': ['다시마튀각']
+            },
+            '매생이': {
+                '면류': ['매생이칼국수'],
+                '국/탕': ['매생이굴국'],
+                '부침': ['매생이전']
+            },
+            '미역': {
+                '밥/죽': ['미역국밥'],
+                '국/탕': ['미역국'],
+                '무침': ['미역초무침'],
+                '볶음': ['미역줄기볶음']
+            },
+            '파래': {
+                '무침': ['파래무침'],
+                '볶음': ['파래볶음'],
+                '부침': ['물파래전']
+            },
+            '톳': {
+                '밥/죽': ['톳밥'],
+                '무침': ['톳무침']
+            },
+            '꼴뚜기': {
+                '조림': ['꼴뚜기조림'],
+                '찜': ['꼴뚜기찜'],
+                '무침': ['꼴뚜기젓무침'],
+                '볶음': ['꼴뚜기볶음']
+            },
+            '낙지': {
+                '밥/죽': ['낙지비빔밥'],
+                '면류': ['낙지수제비'],
+                '국/탕': ['낙지연포탕'],
+                '찜': ['낙지찜'],
+                '무침': ['낙지초무침'],
+                '볶음': ['낙지볶음'],
+                '구이': ['낙지호롱구이'],
+                '기타(생식)': ['낙지탕탕이']
+            },
+            '문어': {
+                '밥/죽': ['문어볶음밥'],
+                '면류': ['문어라면'],
+                '국/탕': ['문어탕'],
+                '조림': ['문어조림'],
+                '찜': ['문어콩나물찜'],
+                '무침': ['문어초무침'],
+                '볶음': ['문어볶음'],
+                '부침': ['문어전'],
+                '튀김': ['문어튀김'],
+                '기타(생식)': ['문어회']
+            },
+            '오징어': {
+                '밥/죽': ['오징어덮밥'],
+                '국/탕': ['오징어무국'],
+                '조림': ['오징어조림'],
+                '찜': ['오징어콩나물찜', '오징어숙회'],
+                '무침': ['오징어초무침'],
+                '볶음': ['오징어볶음'],
+                '부침': ['오징어해물전'],
+                '튀김': ['오징어튀김'],
+                '구이': ['오징어버터구이'],
+                '기타(생식)': ['오징어회']
+            },
+            '주꾸미': {
+                '밥/죽': ['주꾸미볶음덮밥'],
+                '면류': ['주꾸미감자수제비', '주꾸미짬뽕'],
+                '국/탕': ['주꾸미연포탕'],
+                '찜': ['주꾸미숙회', '주꾸미찜'],
+                '무침': ['주꾸미무침'],
+                '볶음': ['주꾸미볶음']
+            },
+            '가재': {
+                '찜': ['가재찜'],
+                '구이': ['가재구이']
+            },
+            '게': {
+                '밥/죽': ['게살볶음밥'],
+                '면류': ['게살파스타', '꽃게라면'],
+                '국/탕': ['꽃게탕'],
+                '조림': ['꽃게조림'],
+                '찜': ['꽃게찜'],
+                '무침': ['꽃게무침'],
+                '볶음': ['꽃게볶음'],
+                '튀김': ['꽃게강정'],
+                '기타(생식)': ['간장게장', '양념게장']
+            },
+            '새우': {
+                '밥/죽': ['새우볶음밥'],
+                '면류': ['새우크림파스타'],
+                '국/탕': ['새우달걀국', '얼큰새우매운탕'],
+                '조림': ['새우조림'],
+                '찜': ['새우달걀찜'],
+                '무침': ['새우젓'],
+                '볶음': ['건새우볶음'],
+                '부침': ['새우전'],
+                '튀김': ['새우튀김'],
+                '구이': ['새우버터구이'],
+                '기타(생식)': ['간장새우장', '양념새우장']
+            },
+            '다슬기': {
+                '면류': ['다슬기수제비'],
+                '국/탕': ['다슬기된장국'],
+                '무침': ['다슬기무침'],
+                '부침': ['다슬기파전']
+            },
+            '꼬막': {
+                '밥/죽': ['꼬막비빔밥'],
+                '면류': ['꼬막칼국수'],
+                '국/탕': ['꼬막된장찌개'],
+                '찜': ['꼬막찜'],
+                '무침': ['꼬막무침'],
+                '부침': ['꼬막전'],
+                '구이': ['꼬막떡꼬치구이']
+            },
+            '가리비': {
+                '밥/죽': ['가리비초밥'],
+                '면류': ['가리비칼국수'],
+                '국/탕': ['가리비탕'],
+                '찜': ['가리비찜'],
+                '무침': ['가리비초무침'],
+                '볶음': ['가리비볶음'],
+                '구이': ['가리비버터구이']
+            },
+            '골뱅이': {
+                '밥/죽': ['골뱅이죽'],
+                '면류': ['골뱅이비빔면'],
+                '국/탕': ['골뱅이탕'],
+                '무침': ['골뱅이무침'],
+                '볶음': ['골뱅이볶음'],
+                '튀김': ['골뱅이튀김'],
+                '구이': ['골뱅이꼬치구이'],
+                '기타(생식)': ['골뱅이물회']
+            },
+            '굴': {
+                '밥/죽': ['굴국밥'],
+                '면류': ['굴칼국수', '굴짬뽕'],
+                '국/탕': ['매생이굴국', '굴순두부찌개'],
+                '조림': ['굴조림'],
+                '찜': ['굴찜'],
+                '무침': ['굴무침'],
+                '볶음': ['굴볶음'],
+                '부침': ['굴전'],
+                '튀김': ['굴튀김'],
+                '구이': ['굴구이'],
+                '기타(생식)': ['생굴']
+            },
+            '미더덕': {
+                '밥/죽': ['미더덕밥'],
+                '국/탕': ['미더덕된장찌개', '미더덕순두부찌개'],
+                '찜': ['미더덕콩나물찜']
+            },
+            '바지락': {
+                '밥/죽': ['바지락비빔밥'],
+                '면류': ['바지락칼국수'],
+                '국/탕': ['바지락미역국', '바지락순두부찌개'],
+                '찜': ['바지락찜'],
+                '무침': ['바지락무침'],
+                '볶음': ['바지락볶음', '매콤바지락볶음'],
+                '부침': ['바지락부추전']
+            },
+            '백합': {
+                '밥/죽': ['백합볶음밥'],
+                '면류': ['백합칼국수'],
+                '국/탕': ['백합탕'],
+                '찜': ['백합찜'],
+                '무침': ['백합무침'],
+                '볶음': ['백합볶음'],
+                '구이': ['백합구이']
+            },
+            '소라': {
+                '밥/죽': ['참소라야채죽'],
+                '면류': ['소라비빔면'],
+                '국/탕': ['소라된장찌개'],
+                '조림': ['참소라장조림'],
+                '찜': ['소라숙회'],
+                '무침': ['소라무침'],
+                '볶음': ['소라버터볶음'],
+                '튀김': ['소라튀김'],
+                '구이': ['소라구이'],
+                '기타(생식)': ['소라회']
+            },
+            '재첩': {
+                '국/탕': ['재첩국'],
+                '무침': ['재첩무침'],
+                '부침': ['재첩부추전']
+            },
+            '전복': {
+                '밥/죽': ['전복죽'],
+                '면류': ['전복파스타'],
+                '국/탕': ['전복미역국'],
+                '조림': ['전복장조림'],
+                '찜': ['전복찜'],
+                '무침': ['전복무침'],
+                '볶음': ['전복볶음'],
+                '구이': ['전복구이'],
+                '기타(생식)': ['전복회']
+            },
+            '홍합': {
+                '밥/죽': ['홍합죽'],
+                '면류': ['홍합칼국수', '홍합짬뽕'],
+                '국/탕': ['홍합탕', '홍합된장찌개'],
+                '조림': ['홍합조림'],
+                '찜': ['홍합찜'],
+                '무침': ['홍합무침'],
+                '볶음': ['홍합볶음'],
+                '부침': ['홍합전'],
+                '구이': ['홍합구이']
+            },
+            '가자미': {
+                '국/탕': ['가자미미역국'],
+                '조림': ['가자미조림'],
+                '찜': ['가자미찜'],
+                '부침': ['가자미전'],
+                '튀김': ['가자미튀김'],
+                '구이': ['가자미구이']
+            },
+            '다랑어': {
+                '밥/죽': ['참치김밥'],
+                '국/탕': ['참치김치찌개'],
+                '볶음': ['참치양배추볶음'],
+                '부침': ['참치달걀말이'],
+                '구이': ['참치스테이크'],
+                '생식류/절임류/장류': ['참치회']
+            },
+            '고등어': {
+                '조림': ['고등어조림'],
+                '구이': ['고등어구이']
+            },
+            '갈치': {
+                '조림': ['갈치조림'],
+                '구이': ['갈치구이']
+            },
+            '꽁치': {
+                '국/탕': ['꽁치김치찌개'],
+                '조림': ['꽁치조림'],
+                '구이': ['꽁치구이']
+            },
+            '대구': {
+                '국/탕': ['맑은대구탕', '대구매운탕'],
+                '조림': ['대구조림'],
+                '부침': ['대구전']
+            },
+            '멸치': {
+                '밥/죽': ['멸치김밥'],
+                '볶음': ['멸치볶음']
+            },
+            '명태': {
+                '국/탕': ['황태미역국'],
+                '조림': ['코다리조림'],
+                '찜': ['명태찜'],
+                '무침': ['북어채무침'],
+                '구이': ['코다리구이']
+            },
+            '박대': {
+                '조림': ['박대조림'],
+                '구이': ['박대구이']
+            },
+            '뱅어': {
+                '무침': ['뱅어포무침'],
+                '튀김': ['뱅어포튀김']
+            },
+            '병어': {
+                '조림': ['병어조림'],
+                '구이': ['병어구이']
+            },
+            '삼치': {
+                '조림': ['삼치조림'],
+                '튀김': ['삼치튀김'],
+                '구이': ['삼치구이']
+            },
+            '아귀': {
+                '국/탕': ['아귀탕'],
+                '찜': ['아귀찜']
+            },
+            '연어': {
+                '밥/죽': ['연어덮밥'],
+                '구이': ['연어구이'],
+                '생식류/절임류/장류': ['연어회']
+            },
+            '임연수': {
+                '조림': ['임연수조림'],
+                '구이': ['임연수구이']
+            },
+            '장어': {
+                '밥/죽': ['장어덮밥'],
+                '조림': ['장어조림'],
+                '찜': ['장어찜'],
+                '튀김': ['장어튀김'],
+                '구이': ['장어구이']
+            },
+            '조기': {
+                '조림': ['조기조림'],
+                '찜': ['조기찜'],
+                '구이': ['조기구이']
+            }
+        };
+
+        let selectedIngredients = [];
+        let selectedMenus = {};
+        let currentStep = 1;
+
+        function getMenuImagePath(menuName) {
+            const pngPath = `메뉴_캡처/${menuName}.png`;
+            const jpgPath = `메뉴_캡처/${menuName}.jpg`;
+
+            // PNG 먼저 시도
+            const img = new Image();
+            img.src = pngPath;
+            img.onerror = function () {
+                // PNG 없으면 JPG로 시도
+                this.src = jpgPath;
+            };
+
+            return img.src;
+        }
+
+        function toggleIngredient(ingredient) {
+            const checkbox = document.getElementById(ingredient);
+            const item = checkbox.parentElement;
+            
+            if (checkbox.checked) {
+                checkbox.checked = false;
+                item.classList.remove('selected');
+                selectedIngredients = selectedIngredients.filter(i => i !== ingredient);
+            } else {
+                if (selectedIngredients.length < 9) {
+                    checkbox.checked = true;
+                    item.classList.add('selected');
+                    selectedIngredients.push(ingredient);
+                }
+            }
+            
+            updateCounter();
+            updateNextButton();
+        }
+
+        function updateCounter() {
+            const counter = document.getElementById('counter');
+            const count = selectedIngredients.length;
+            
+            if (count >= 3 && count <= 9) {
+                counter.className = 'selection-counter valid';
+                counter.textContent = `선택된 품목: ${count}개 ✓`;
+            } else if (count < 3) {
+                counter.className = 'selection-counter';
+                counter.textContent = `선택된 품목: ${count}개 (${3-count}개 더 선택 필요)`;
+            } else {
+                counter.className = 'selection-counter';
+                counter.textContent = `선택된 품목: ${count}개 (최대 9개)`;
+            }
+        }
+
+        function updateNextButton() {
+            const nextBtn = document.getElementById('nextBtn');
+            const count = selectedIngredients.length;
+            nextBtn.disabled = !(count >= 3 && count <= 9);
+        }
+
+        function goToStep2() {
+            if (selectedIngredients.length >= 3 && selectedIngredients.length <= 9) {
+                document.getElementById('step1-indicator').classList.remove('active');
+                document.getElementById('step1-indicator').classList.add('completed');
+                document.getElementById('line1').classList.add('completed');
+                document.getElementById('step2-indicator').classList.add('active');
+                
+                document.getElementById('step1').classList.remove('active');
+                document.getElementById('step2').classList.add('active');
+                
+                selectedMenus = {};
+                selectedIngredients.forEach(ingredient => {
+                    selectedMenus[ingredient] = [];
+                });
+                
+                updateSelectedIngredients();
+                updateMenuSection();
+                
+                currentStep = 2;
+                window.scrollTo(0, 0);
+            }
+        }
+
+        function goToStep1() {
+            document.getElementById('step2-indicator').classList.remove('active');
+            document.getElementById('step1-indicator').classList.remove('completed');
+            document.getElementById('step1-indicator').classList.add('active');
+            document.getElementById('line1').classList.remove('completed');
+            
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step1').classList.add('active');
+            
+            currentStep = 1;
+            window.scrollTo(0, 0);
+        }
+
+        function updateSelectedIngredients() {
+            const container = document.getElementById('selectedIngredients');
+            container.innerHTML = '<strong>선택하신 수산물:</strong><br>';
+            
+            selectedIngredients.forEach(ingredient => {
+                const tag = document.createElement('span');
+                tag.className = 'ingredient-tag';
+                tag.textContent = ingredient;
+                container.appendChild(tag);
+            });
+        }
+
+        function updateMenuSection() {
+            const menuSection = document.getElementById('menuSection');
+            menuSection.innerHTML = '';
+            
+            selectedIngredients.forEach(ingredient => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'menu-category';
+                
+                const title = document.createElement('h3');
+                title.textContent = `${ingredient} 요리`;
+                categoryDiv.appendChild(title);
+                
+                const menus = menuData[ingredient];
+                if (menus) {
+                    Object.keys(menus).forEach(category => {
+                        if (menus[category].length > 0) {
+                            const subcategoryDiv = document.createElement('div');
+                            subcategoryDiv.className = 'menu-subcategory';
+                            
+                            const categoryTitle = document.createElement('h4');
+                            categoryTitle.textContent = category;
+                            subcategoryDiv.appendChild(categoryTitle);
+                            
+                            const menuItems = document.createElement('div');
+                            menuItems.className = 'menu-items';
+                            
+                            menus[category].forEach(menu => {
+                                const menuItem = document.createElement('div');
+                                menuItem.className = 'menu-item';
+                                menuItem.onclick = () => toggleMenu(ingredient, menu, menuItem);
+                                
+                                const checkbox = document.createElement('input');
+                                checkbox.type = 'checkbox';
+                                checkbox.id = `${ingredient}_${menu}`;
+                                checkbox.value = menu;
+                                checkbox.style.display = 'none';
+                                
+                                // 메뉴 이미지 추가
+                                const menuImage = document.createElement('img');
+                                menuImage.src = getMenuImagePath(menu);
+                                menuImage.alt = menu;
+                                menuImage.className = 'menu-image';
+                                
+                                // 이미지 로드 에러 처리
+                                menuImage.onerror = function() {
+                                    this.style.display = 'none';
+                                    const placeholder = document.createElement('div');
+                                    placeholder.className = 'no-image';
+                                    placeholder.textContent = '이미지 준비중';
+                                    this.parentNode.insertBefore(placeholder, this);
+                                };
+                                
+                                // 메뉴명 텍스트
+                                const menuText = document.createElement('div');
+                                menuText.textContent = menu;
+                                menuText.className = 'menu-text';
+                                
+                                menuItem.appendChild(checkbox);
+                                menuItem.appendChild(menuImage);
+                                menuItem.appendChild(menuText);
+                                menuItems.appendChild(menuItem);
+                            });
+                            
+                            subcategoryDiv.appendChild(menuItems);
+                            categoryDiv.appendChild(subcategoryDiv);
+                        }
+                    });
+                }
+                
+                menuSection.appendChild(categoryDiv);
+            });
+        }
+
+        function toggleMenu(ingredient, menu, menuItem) {
+            const checkbox = menuItem.querySelector('input');
+            
+            if (checkbox.checked) {
+                checkbox.checked = false;
+                menuItem.classList.remove('selected');
+                selectedMenus[ingredient] = selectedMenus[ingredient].filter(m => m !== menu);
+            } else {
+                checkbox.checked = true;
+                menuItem.classList.add('selected');
+                selectedMenus[ingredient].push(menu);
+            }
+            
+            updateSubmitButton();
+        }
+
+        function updateSubmitButton() {
+            const submitBtn = document.getElementById('submitBtn');
+            const validMenus = selectedIngredients.every(ingredient => 
+                selectedMenus[ingredient] && selectedMenus[ingredient].length > 0
+            );
+            
+            submitBtn.disabled = !validMenus;
+        }
+
+        function submitSurvey() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h3>🎉 설문이 완료되었습니다! 감사합니다</h3>';
+            
+            results.innerHTML += '<h4><strong>선택하신 수산물:</strong></h4>';
+            results.innerHTML += `<p style="font-size: 1.1em; margin-bottom: 20px;">${selectedIngredients.join(', ')}</p>`;
+            
+            results.innerHTML += '<h4><strong>선호하시는 메뉴:</strong></h4>';
+            selectedIngredients.forEach(ingredient => {
+                if (selectedMenus[ingredient] && selectedMenus[ingredient].length > 0) {
+                    results.innerHTML += `<p><strong>${ingredient}:</strong> ${selectedMenus[ingredient].join(', ')}</p>`;
+                }
+            });
+            
+            results.style.display = 'block';
+            document.getElementById('step2').style.display = 'none';
+            
+            console.log('설문 결과:', {
+                selectedIngredients,
+                selectedMenus
+            });
+            
+            window.scrollTo(0, 0);
+        }
+
+        // 메뉴 이미지 미리 로드 함수 (개발용)
+        function preloadMenuImages() {
+            const allMenus = [];
+            
+            Object.keys(menuData).forEach(ingredient => {
+                Object.keys(menuData[ingredient]).forEach(category => {
+                    allMenus.push(...menuData[ingredient][category]);
+                });
+            });
+            
+            console.log(`총 ${allMenus.length}개의 메뉴 이미지가 필요합니다:`);
+            allMenus.forEach((menu, index) => {
+                console.log(`${index + 1}. 메뉴/${menu}.jpg`);
+            });
+            
+            return allMenus;
+        }
+    </script>
+</body>
+</html>
