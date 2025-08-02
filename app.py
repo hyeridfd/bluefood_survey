@@ -8,7 +8,7 @@ from PIL import Image
 # 페이지 설정
 st.set_page_config(
     page_title="블루푸드 선호도 조사",
-    page_icon="🐟",
+    page_icon="🌊",
     layout="wide"
 )
 
@@ -28,126 +28,220 @@ def load_image(image_path, default_text="이미지 준비중"):
         return None
 
 def display_ingredient_with_image(ingredient, is_selected, key):
-    """식재료를 이미지와 함께 수직 카드 형태로 표시 (HTML 문제 해결)"""
+    """식재료를 이미지와 함께 수직 카드 형태로 표시 (크기 통일)"""
     # 이미지 경로 시도 (jpg 우선, 없으면 png)
     jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
     png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
     
     image = load_image(jpg_path) or load_image(png_path)
     
-    # Streamlit 컨테이너 사용 (HTML 대신)
+    # 카드 전체를 감싸는 컨테이너
     with st.container():
-        # 선택 상태에 따른 스타일 적용
+        # 고정 크기 카드 스타일
         if is_selected:
-            st.markdown(
-                f"""
-                <div style="
-                    border: 3px solid #667eea;
-                    border-radius: 15px;
-                    padding: 15px;
-                    text-align: center;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-                    margin: 10px 0;
-                ">
-                    <h4 style="color: white; margin: 10px 0;">{ingredient}</h4>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
+            card_style = f"""
+            <div style="
+                border: 3px solid #667eea;
+                border-radius: 15px;
+                padding: 15px;
+                text-align: center;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+                margin: 10px 0;
+                height: 320px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            ">
+                <h4 style="color: white; margin: 10px 0; font-size: 1.2em; font-weight: 600;">{ingredient}</h4>
+            """
         else:
-            st.markdown(
-                f"""
-                <div style="
-                    border: 2px solid #e9ecef;
-                    border-radius: 15px;
-                    padding: 15px;
-                    text-align: center;
-                    background: white;
-                    color: #2c3e50;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                    margin: 10px 0;
-                ">
-                    <h4 style="color: #2c3e50; margin: 10px 0;">{ingredient}</h4>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
+            card_style = f"""
+            <div style="
+                border: 2px solid #e9ecef;
+                border-radius: 15px;
+                padding: 15px;
+                text-align: center;
+                background: white;
+                color: #2c3e50;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                margin: 10px 0;
+                height: 320px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            ">
+                <h4 style="color: #2c3e50; margin: 10px 0; font-size: 1.2em; font-weight: 600;">{ingredient}</h4>
+            """
         
-        # 이미지 표시
+        # 카드 시작
+        st.markdown(card_style, unsafe_allow_html=True)
+        
+        # 이미지 영역 (고정 크기)
         if image:
-            st.image(image, width=200, caption="")
+            # 이미지를 고정 크기로 표시 (CSS로 크기 제어)
+            st.markdown(
+                f"""
+                <div style="
+                    width: 100%;
+                    height: 180px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                    border-radius: 10px;
+                    margin: 10px 0;
+                ">
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
+            # Streamlit image with fixed size
+            st.image(image, width=180, use_column_width=False)
         else:
-            st.info(f"🐟 {ingredient}\n(이미지 준비중)")
+            # 플레이스홀더 (고정 크기)
+            st.markdown(
+                f"""
+                <div style="
+                    width: 180px;
+                    height: 180px;
+                    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+                    border: 2px dashed #dee2e6;
+                    border-radius: 10px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 10px auto;
+                    color: #6c757d;
+                ">
+                    <div style="font-size: 2em; margin-bottom: 5px;">🐟</div>
+                    <div style="font-size: 0.9em;">이미지 준비중</div>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
         
-        # 체크박스
-        return st.checkbox(
+        # 체크박스 영역
+        checkbox_result = st.checkbox(
             f"선택하기", 
             value=is_selected, 
             key=key
         )
+        
+        # 카드 끝
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        return checkbox_result
 
 def display_menu_with_image(menu, ingredient, is_selected, key):
-    """메뉴를 이미지와 함께 수직 카드 형태로 표시 (HTML 문제 해결)"""
+    """메뉴를 이미지와 함께 수직 카드 형태로 표시 (크기 통일)"""
     # 이미지 경로 시도 (png 우선, 없으면 jpg)
     png_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
     jpg_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
     
     image = load_image(png_path) or load_image(jpg_path)
     
-    # Streamlit 컨테이너 사용 (HTML 대신)
+    # 카드 전체를 감싸는 컨테이너
     with st.container():
-        # 선택 상태에 따른 스타일 적용
+        # 고정 크기 카드 스타일
         if is_selected:
-            st.markdown(
-                f"""
-                <div style="
-                    border: 3px solid #e74c3c;
-                    border-radius: 12px;
-                    padding: 12px;
-                    text-align: center;
-                    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-                    color: white;
-                    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
-                    margin: 8px 0;
-                ">
-                    <p style="color: white; margin: 5px 0; font-weight: 600;">{menu}</p>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
+            card_style = f"""
+            <div style="
+                border: 3px solid #e74c3c;
+                border-radius: 12px;
+                padding: 12px;
+                text-align: center;
+                background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+                color: white;
+                box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
+                margin: 8px 0;
+                height: 280px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            ">
+                <p style="color: white; margin: 5px 0; font-weight: 600; font-size: 1.0em; line-height: 1.3;">{menu}</p>
+            """
         else:
-            st.markdown(
-                f"""
-                <div style="
-                    border: 2px solid #e9ecef;
-                    border-radius: 12px;
-                    padding: 12px;
-                    text-align: center;
-                    background: white;
-                    color: #2c3e50;
-                    box-shadow: 0 3px 12px rgba(0,0,0,0.1);
-                    margin: 8px 0;
-                ">
-                    <p style="color: #2c3e50; margin: 5px 0; font-weight: 600;">{menu}</p>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
+            card_style = f"""
+            <div style="
+                border: 2px solid #e9ecef;
+                border-radius: 12px;
+                padding: 12px;
+                text-align: center;
+                background: white;
+                color: #2c3e50;
+                box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+                margin: 8px 0;
+                height: 280px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            ">
+                <p style="color: #2c3e50; margin: 5px 0; font-weight: 600; font-size: 1.0em; line-height: 1.3;">{menu}</p>
+            """
         
-        # 이미지 표시
+        # 카드 시작
+        st.markdown(card_style, unsafe_allow_html=True)
+        
+        # 이미지 영역 (고정 크기)
         if image:
-            st.image(image, width=180, caption="")
+            # 이미지를 고정 크기로 표시
+            st.markdown(
+                f"""
+                <div style="
+                    width: 100%;
+                    height: 150px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                    border-radius: 8px;
+                    margin: 8px 0;
+                ">
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
+            # Streamlit image with fixed size
+            st.image(image, width=150, use_column_width=False)
         else:
-            st.info(f"🍽️ {menu}\n(이미지 준비중)")
+            # 플레이스홀더 (고정 크기)
+            st.markdown(
+                f"""
+                <div style="
+                    width: 150px;
+                    height: 150px;
+                    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+                    border: 2px dashed #dee2e6;
+                    border-radius: 8px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 8px auto;
+                    color: #6c757d;
+                ">
+                    <div style="font-size: 1.5em; margin-bottom: 3px;">🍽️</div>
+                    <div style="font-size: 0.8em;">이미지 준비중</div>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
         
-        # 체크박스
-        return st.checkbox(
+        # 체크박스 영역
+        checkbox_result = st.checkbox(
             f"선택", 
             value=is_selected, 
             key=key
         )
+        
+        # 카드 끝
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        return checkbox_result
 
 # 엑셀 파일 저장 함수 (GitHub/Streamlit Cloud용)
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
@@ -536,7 +630,7 @@ if 'selected_menus' not in st.session_state:
 
 # 메인 앱
 def main():
-    st.title("🐟 블루푸드 선호도 조사")
+    st.title("🌊 블루푸드 선호도 조사")
     st.markdown("---")
     
     # 단계별 진행
@@ -559,7 +653,7 @@ def show_info_form():
             name = st.text_input("성함", placeholder="홍길동")
         
         with col2:
-            id_number = st.text_input("식별번호", placeholder="예: HG001")
+            id_number = st.text_input("식별번호", placeholder="예: 2024001")
         
         submitted = st.form_submit_button("설문 시작하기", type="primary")
         
