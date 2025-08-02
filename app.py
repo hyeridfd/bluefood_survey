@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from PIL import Image
+import base64
 
 # 페이지 설정
 st.set_page_config(
@@ -17,163 +18,86 @@ INGREDIENT_IMAGE_PATH = "images/ingredients"
 MENU_IMAGE_PATH = "images/menus"
 
 # 이미지 로드 함수
-def load_image(image_path, default_text="이미지 준비중"):
-    """이미지를 로드하고, 없으면 플레이스홀더 반환"""
-    try:
-        if os.path.exists(image_path):
-            return Image.open(image_path)
-        else:
-            return None
-    except Exception:
-        return None
+# ✅ 고정 크기 이미지 렌더링 함수
+def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟"):
+    """이미지를 고정 크기로 출력, 없으면 플레이스홀더"""
+    if os.path.exists(img_path):
+        with open(img_path, "rb") as f:
+            img_data = base64.b64encode(f.read()).decode()
+        return f"""
+        <div style="
+            width:{width}px; 
+            height:{height}px; 
+            overflow:hidden; 
+            border-radius:8px; 
+            border:1px solid #ddd; 
+            display:flex; 
+            align-items:center; 
+            justify-content:center; 
+            background:#fff;">
+            <img src="data:image/png;base64,{img_data}" 
+                 style="width:100%; height:100%; object-fit:cover;">
+        </div>
+        """
+    else:
+        return f"""
+        <div style="
+            width:{width}px; 
+            height:{height}px; 
+            background:#f8f9fa; 
+            border:2px dashed #dee2e6; 
+            border-radius:8px; 
+            display:flex; 
+            flex-direction:column;
+            align-items:center; 
+            justify-content:center; 
+            color:#6c757d;">
+            <div style="font-size:1.5em;">{placeholder}</div>
+            <div style="font-size:0.8em;">이미지 준비중</div>
+        </div>
+        """
 
+# ✅ 식재료 카드 렌더링 함수 (이미지 균일화 적용)
 def display_ingredient_with_image(ingredient, is_selected, key):
-    """식재료를 이미지와 함께 간단한 카드 형태로 표시"""
-    # 이미지 경로 시도 (jpg 우선, 없으면 png)
     jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
     png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
-    
-    image = load_image(jpg_path) or load_image(jpg_path)
-    
-    # 간단한 카드 컨테이너
+
+    # 이미지 HTML 생성
+    html_img = render_image_fixed_size(jpg_path) if os.path.exists(jpg_path) else render_image_fixed_size(png_path)
+
     with st.container():
-        # 카드 제목
         st.markdown(f"**{ingredient}**", unsafe_allow_html=True)
-        
-        # 이미지 표시 (통일된 크기)
-        if image:
-            st.markdown(
-                f"""
-                <div style="
-                    width:180px; 
-                    height:120px; 
-                    overflow:hidden; 
-                    border-radius:8px; 
-                    border:1px solid #ddd; 
-                    display:flex; 
-                    align-items:center; 
-                    justify-content:center; 
-                    background:#fff;">
-                    <img src="data:image/png;base64,{base64.b64encode(open(img_path,"rb").read()).decode()}" 
-                         style="width:100%; height:100%; object-fit:cover;">
-                </div>
-        """,
-        unsafe_allow_html=True
-    )
-        else:
-            # 플레이스홀더
-            st.markdown(
-                """
-                <div style="
-                    width: 180px;
-                    height: 120px;
-                    background: #f8f9fa;
-                    border: 2px dashed #dee2e6;
-                    border-radius: 8px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    margin: 0 auto;
-                    color: #6c757d;
-                ">
-                    <div style="font-size: 1.5em;">🐟</div>
-                    <div style="font-size: 0.8em;">이미지 준비중</div>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-        
-        # 선택 버튼
+        st.markdown(html_img, unsafe_allow_html=True)  # ✅ 이미지 HTML 표시
+
+        # 선택 버튼 스타일
         if is_selected:
-            button_style = "background-color: #007bff; color: white;"
             button_text = "✓ 선택됨"
         else:
-            button_style = "background-color: #6c757d; color: white;"
             button_text = "선택하기"
-        
-        # 커스텀 버튼 스타일
-        st.markdown(
-            f"""
-            <style>
-            .stCheckbox > label > div[data-testid="stCheckbox"] > div {{
-                {button_style}
-                padding: 8px 16px;
-                border-radius: 20px;
-                border: none;
-                font-weight: 600;
-                text-align: center;
-                cursor: pointer;
-                transition: all 0.3s ease;
-            }}
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        # 체크박스 (버튼처럼 스타일링)
-        checkbox_result = st.checkbox(
-            button_text,
-            value=is_selected,
-            key=key
-        )
-        
+
+        checkbox_result = st.checkbox(button_text, value=is_selected, key=key)
         return checkbox_result
 
+# ✅ 메뉴 카드 렌더링 함수 (이미지 균일화 적용)
 def display_menu_with_image(menu, ingredient, is_selected, key):
-    """메뉴를 이미지와 함께 간단한 카드 형태로 표시"""
-    # 이미지 경로 시도 (png 우선, 없으면 jpg)
     png_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
     jpg_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
-    
-    image = load_image(png_path) or load_image(jpg_path)
-    
-    # 간단한 카드 컨테이너
+
+    # 이미지 HTML 생성
+    html_img = render_image_fixed_size(png_path, width=150, height=100, placeholder="🍽️") if os.path.exists(png_path) else render_image_fixed_size(jpg_path, width=150, height=100, placeholder="🍽️")
+
     with st.container():
-        # 카드 제목
         st.markdown(f"**{menu}**", unsafe_allow_html=True)
-        
-        # 이미지 표시 (통일된 크기)
-        if image:
-            st.image(image, width=150)
-        else:
-            # 플레이스홀더
-            st.markdown(
-                """
-                <div style="
-                    width: 150px;
-                    height: 100px;
-                    background: #f8f9fa;
-                    border: 2px dashed #dee2e6;
-                    border-radius: 6px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    margin: 0 auto;
-                    color: #6c757d;
-                ">
-                    <div style="font-size: 1.2em;">🍽️</div>
-                    <div style="font-size: 0.7em;">이미지 준비중</div>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-        
-        # 선택 버튼
+        st.markdown(html_img, unsafe_allow_html=True)  # ✅ 이미지 HTML 표시
+
         if is_selected:
             button_text = "✓ 선택됨"
         else:
             button_text = "선택"
-        
-        # 체크박스 (버튼처럼 스타일링)
-        checkbox_result = st.checkbox(
-            button_text,
-            value=is_selected,
-            key=key
-        )
-        
+
+        checkbox_result = st.checkbox(button_text, value=is_selected, key=key)
         return checkbox_result
+
 
 # 엑셀 파일 저장 함수 (GitHub/Streamlit Cloud용)
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
