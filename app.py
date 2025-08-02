@@ -8,7 +8,7 @@ from PIL import Image
 # 페이지 설정
 st.set_page_config(
     page_title="블루푸드 선호도 조사",
-    page_icon="🌊",
+    page_icon="🐟",
     layout="wide"
 )
 
@@ -536,7 +536,7 @@ if 'selected_menus' not in st.session_state:
 
 # 메인 앱
 def main():
-    st.title("🌊 블루푸드 선호도 조사")
+    st.title("🐟 블루푸드 선호도 조사")
     st.markdown("---")
     
     # 단계별 진행
