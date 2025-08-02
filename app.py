@@ -57,58 +57,130 @@ def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟")
         </div>
         """
 
-# ✅ 식재료 카드 렌더링 함수 (이미지 균일화 적용)
 def display_ingredient_with_image(ingredient, is_selected, key):
     jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
     png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
 
-    # 이미지 HTML 생성
-    html_img = render_image_fixed_size(jpg_path, width=220, height=160) if os.path.exists(jpg_path) else render_image_fixed_size(png_path, width=220, height=160, placeholder="🍽️")
+    # ✅ 이미지 크기 확대
+    html_img = render_image_fixed_size(
+        jpg_path, width=240, height=180
+    ) if os.path.exists(jpg_path) else render_image_fixed_size(
+        png_path, width=240, height=180, placeholder="🍽️"
+    )
+
+    # ✅ CSS (버튼형 체크박스)
+    st.markdown("""
+    <style>
+    /* ✅ 체크박스 컨테이너를 버튼처럼 중앙 배치 */
+    div.stCheckbox {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 5px;
+    }
+    /* ✅ 버튼 스타일 */
+    div.stCheckbox > label {
+        background: #f8f9fa;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        padding: 8px 20px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    /* ✅ 체크된 상태 스타일 */
+    div.stCheckbox > label:has(input:checked) {
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        border-color: #0096c7;
+        color: white;
+    }
+    /* ✅ 체크박스 자체 확대 */
+    div.stCheckbox input[type="checkbox"] {
+        transform: scale(1.5);
+        margin-right: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     with st.container():
-        # ✅ 가운데 정렬된 스타일 적용
+        # ✅ 식재료 이름 (가운데)
         st.markdown(
-            f"""
-            <div style="text-align:center; margin-bottom:5px;">
-                <strong style="font-size:18px;">{ingredient}</strong>
-            </div>
-            """,
+            f"<div style='text-align:center; margin-bottom:5px;'><strong style='font-size:20px;'>{ingredient}</strong></div>",
             unsafe_allow_html=True
         )
 
+        # ✅ 이미지 가운데 정렬
         st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
 
-        # ✅ 체크박스도 중앙 (Streamlit 기능 유지)
-        col_left, col_center, col_right = st.columns([1,2,1])
+        # ✅ 체크박스도 중앙
+        col_left, col_center, col_right = st.columns([1, 2, 1])
         with col_center:
             checkbox_result = st.checkbox("선택", value=is_selected, key=key)
+
         return checkbox_result
+
         
-# ✅ 메뉴 카드 렌더링 함수 (이미지 균일화 적용)
 def display_menu_with_image(menu, ingredient, is_selected, key):
     png_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
     jpg_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
 
-    # 이미지 HTML 생성
-    html_img = render_image_fixed_size(png_path, width=220, height=160, placeholder="🍽️") if os.path.exists(png_path) else render_image_fixed_size(jpg_path, width=220, height=160, placeholder="🍽️")
+    # ✅ 이미지 크기 확대
+    html_img = render_image_fixed_size(
+        png_path, width=240, height=180, placeholder="🍽️"
+    ) if os.path.exists(png_path) else render_image_fixed_size(
+        jpg_path, width=240, height=180, placeholder="🍽️"
+    )
+
+    # ✅ 버튼형 체크박스 CSS 적용
+    st.markdown("""
+    <style>
+    /* ✅ 메뉴 체크박스 버튼 스타일 */
+    div.stCheckbox {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 6px;
+    }
+    div.stCheckbox > label {
+        background: #f8f9fa;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        padding: 8px 20px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    div.stCheckbox > label:has(input:checked) {
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        border-color: #0096c7;
+        color: white;
+    }
+    div.stCheckbox input[type="checkbox"] {
+        transform: scale(1.5);
+        margin-right: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     with st.container():
+        # ✅ 메뉴명 중앙 정렬
         st.markdown(
-            f"""
-            <div style="text-align:center; margin-bottom:5px;">
-                <strong style="font-size:16px;">{menu}</strong>
-            </div>
-            """,
+            f"<div style='text-align:center; margin-bottom:5px;'><strong style='font-size:18px;'>{menu}</strong></div>",
             unsafe_allow_html=True
         )
 
+        # ✅ 이미지 중앙
         st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
 
-        # ✅ 체크박스도 중앙 (Streamlit 기능 유지)
-        col_left, col_center, col_right = st.columns([1,2,1])
+        # ✅ 체크박스도 중앙
+        col_left, col_center, col_right = st.columns([1, 2, 1])
         with col_center:
             checkbox_result = st.checkbox("선택", value=is_selected, key=key)
+
         return checkbox_result
+
     
 
 
