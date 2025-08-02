@@ -613,21 +613,37 @@ def main():
             """
             <div style="
                 background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                padding: 20px;
+                padding: 25px;
                 border-radius: 15px;
                 margin-bottom: 20px;
                 color: white;
-                font-size:16px;
-                line-height:1.6;
+                font-size:17px;
+                line-height:1.8;
                 text-align:center;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             ">
-                <p style="margin: 5px 0;"><strong>연구명</strong><br>요양원 거주 고령자 대상 건강 상태 및 블루푸드 식이 데이터베이스 구축</p>
-                <p style="margin: 5px 0;"><strong>정부과제명</strong><br>글로벌 블루푸드 미래리더 양성 프로젝트</p>
-                <p style="margin: 5px 0;"><strong>연구 담당자</strong><br>류혜리, 유정연 (서울대학교 농생명공학부 박사과정)</p>
+                <h3 style="margin-bottom:10px;">📌 연구 정보</h3>
+                <hr style="border:1px solid rgba(255,255,255,0.4); width:80%;">
+                
+                <p style="margin: 10px 0;">
+                    <strong>🔹 연구명</strong><br>
+                    요양원 거주 고령자 대상 건강 상태 및<br>블루푸드 식이 데이터베이스 구축
+                </p>
+                
+                <p style="margin: 10px 0;">
+                    <strong>🔹 정부과제명</strong><br>
+                    글로벌 블루푸드 미래리더 양성 프로젝트
+                </p>
+                
+                <p style="margin: 10px 0;">
+                    <strong>🔹 연구 담당자</strong><br>
+                    류혜리, 유정연<br>(서울대학교 농생명공학부 박사과정)
+                </p>
             </div>
             """,
             unsafe_allow_html=True
         )
+
 
 
         st.markdown("### 📋 설문 안내")
