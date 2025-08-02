@@ -641,10 +641,6 @@ def main():
             unsafe_allow_html=True
         )
 
-# ✅ 메인 함수 실행
-if __name__ == "__main__":
-    main()
-
 
         st.markdown("### 📋 설문 안내")
         st.markdown("""
