@@ -559,7 +559,7 @@ def show_info_form():
             name = st.text_input("성함", placeholder="홍길동")
         
         with col2:
-            id_number = st.text_input("식별번호", placeholder="예: 2024001")
+            id_number = st.text_input("식별번호", placeholder="예: HG001")
         
         submitted = st.form_submit_button("설문 시작하기", type="primary")
         
