@@ -1018,7 +1018,8 @@ def show_ingredient_selection():
                 st.session_state.step = 'menus'
                 st.rerun()
         else:
-            st.button("다음 단계로 →", disabled=True, use_container_width=True) col3 = st.columns([1, 2, 1])
+            st.button("다음 단계로 →", disabled=True, use_container_width=True) 
+            col3 = st.columns([1, 2, 1])
     
     with col2:
         if 3 <= len(st.session_state.selected_ingredients) <= 9:
