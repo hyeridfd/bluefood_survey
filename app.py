@@ -42,7 +42,24 @@ def display_ingredient_with_image(ingredient, is_selected, key):
         
         # 이미지 표시 (통일된 크기)
         if image:
-            st.image(image, width=180)
+            st.markdown(
+                f"""
+                <div style="
+                    width:180px; 
+                    height:120px; 
+                    overflow:hidden; 
+                    border-radius:8px; 
+                    border:1px solid #ddd; 
+                    display:flex; 
+                    align-items:center; 
+                    justify-content:center; 
+                    background:#fff;">
+                    <img src="data:image/png;base64,{base64.b64encode(open(img_path,"rb").read()).decode()}" 
+                         style="width:100%; height:100%; object-fit:cover;">
+                </div>
+        """,
+        unsafe_allow_html=True
+    )
         else:
             # 플레이스홀더
             st.markdown(
