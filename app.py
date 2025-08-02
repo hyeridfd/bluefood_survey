@@ -95,7 +95,7 @@ def show_info():
             st.session_state.name = name
             st.session_state.idn = idn
             st.session_state.step = "ingredients"
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("⚠️ 성함과 식별번호를 입력해주세요.")
 
@@ -122,7 +122,7 @@ def show_ingredients():
                         st.session_state.selected_ingredients.append(ingredient)
                     else:
                         st.warning("❌ 최대 9개까지 선택 가능")
-                st.experimental_rerun()
+                st.rerun()
 
             st.markdown(render_card(ingredient, img, selected), unsafe_allow_html=True)
 
@@ -142,7 +142,7 @@ def show_ingredients():
         if st.button("다음 단계로 →", type="primary"):
             st.session_state.selected_menus = {i: [] for i in st.session_state.selected_ingredients}
             st.session_state.step = "menus"
-            st.experimental_rerun()
+            st.rerun()
     else:
         st.button("다음 단계로 →", disabled=True)
 
@@ -168,8 +168,8 @@ def show_menus():
                     st.session_state.selected_menus[ing].remove(menu)
                 else:
                     st.session_state.selected_menus[ing].append(menu)
-                st.experimental_rerun()
-
+                st.rerun()
+                
             st.markdown(render_card(menu, img, selected), unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
@@ -185,12 +185,12 @@ def show_menus():
     with col1:
         if st.button("← 이전 단계"):
             st.session_state.step = "ingredients"
-            st.experimental_rerun()
+            st.rerun()
     with col2:
         if all_valid:
             if st.button("설문 완료하기", type="primary"):
                 st.session_state.step = "complete"
-                st.experimental_rerun()
+                st.rerun()
         else:
             st.button("설문 완료하기", disabled=True)
 
@@ -210,7 +210,7 @@ def show_complete():
     if st.button("🔄 새 설문 시작하기"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
-        st.experimental_rerun()
+        st.rerun()
 
 # ✅ 페이지 라우팅
 if st.session_state.step == "info":
