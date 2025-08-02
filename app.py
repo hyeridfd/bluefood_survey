@@ -617,16 +617,18 @@ def main():
                 border-radius: 15px;
                 margin-bottom: 20px;
                 color: white;
+                font-size:16px;
+                line-height:1.6;
+                text-align:center;
             ">
-                <p style="margin: 0; line-height: 1.5; text-align: center;">
-                    연구명: 요양원 거주 고령자 대상 건강 상태 및 블루푸드 식이 데이터베이스 구축
-                    정부과제명: 글로벌 블루푸드 미래리더 양성 프로젝트
-                    연구 담당자명: 류혜리, 유정연(서울대학교 농생명공학부 박사과정)
-                </p>
+                <p style="margin: 5px 0;"><strong>연구명</strong><br>요양원 거주 고령자 대상 건강 상태 및 블루푸드 식이 데이터베이스 구축</p>
+                <p style="margin: 5px 0;"><strong>정부과제명</strong><br>글로벌 블루푸드 미래리더 양성 프로젝트</p>
+                <p style="margin: 5px 0;"><strong>연구 담당자</strong><br>류혜리, 유정연 (서울대학교 농생명공학부 박사과정)</p>
             </div>
             """,
             unsafe_allow_html=True
         )
+
 
         st.markdown("### 📋 설문 안내")
         st.markdown("""
