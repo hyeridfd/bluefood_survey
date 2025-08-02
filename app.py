@@ -213,7 +213,9 @@ def show_menu_selection():
                 st.session_state.step = 'complete'
                 st.rerun()
         else:
-            st.button("설문 완료하기", disabled=True, use_container_width=True)import streamlit as st
+            st.button("설문 완료하기", disabled=True, use_container_width=True)
+
+import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
