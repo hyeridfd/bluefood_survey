@@ -63,7 +63,7 @@ def display_ingredient_with_image(ingredient, is_selected, key):
     png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
 
     # 이미지 HTML 생성
-    html_img = render_image_fixed_size(jpg_path) if os.path.exists(jpg_path) else render_image_fixed_size(png_path)
+    html_img = render_image_fixed_size(jpg_path, width=220, height=160) if os.path.exists(jpg_path) else render_image_fixed_size(png_path, width=220, height=160, placeholder="🍽️")
 
     with st.container():
         st.markdown(f"**{ingredient}**", unsafe_allow_html=True)
@@ -84,7 +84,7 @@ def display_menu_with_image(menu, ingredient, is_selected, key):
     jpg_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
 
     # 이미지 HTML 생성
-    html_img = render_image_fixed_size(png_path, width=150, height=100, placeholder="🍽️") if os.path.exists(png_path) else render_image_fixed_size(jpg_path, width=150, height=100, placeholder="🍽️")
+    html_img = render_image_fixed_size(png_path, width=220, height=160, placeholder="🍽️") if os.path.exists(png_path) else render_image_fixed_size(jpg_path, width=220, height=160, placeholder="🍽️")
 
     with st.container():
         st.markdown(f"**{menu}**", unsafe_allow_html=True)
