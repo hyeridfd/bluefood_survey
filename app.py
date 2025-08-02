@@ -9,7 +9,7 @@ import base64
 # 페이지 설정
 st.set_page_config(
     page_title="블루푸드 선호도 조사",
-    page_icon="🌊",
+    page_icon="🐟",
     layout="wide"
 )
 
@@ -520,15 +520,15 @@ def main():
         st.markdown("### 📋 설문 안내")
         st.markdown("""
         **🎯 목적**  
-        수산물 소비 패턴 및 선호도 조사
+        블루푸드 선호도 조사
         
         **⏱️ 소요시간**  
-        약 5-10분
+        약 3-5분
         
         **📝 설문 단계**  
-        1️⃣ 개인정보 입력  
+        1️⃣ 참여자 정보 입력
         2️⃣ 선호 수산물 선택 (3-9개)  
-        3️⃣ 선호 메뉴 선택  
+        3️⃣ 선호 블루푸드 메뉴 선택  
         4️⃣ 결과 다운로드
         
         **🔒 개인정보 보호**  
@@ -549,7 +549,7 @@ def main():
                 st.progress(1.0, "✅ 설문 완료!")
     
     # 메인 타이틀을 더 간단하게
-    st.title("🌊 블루푸드 선호도 조사")
+    st.title("🐟 블루푸드 선호도 조사")
     
     # 단계별 진행
     if st.session_state.step == 'info':
@@ -563,37 +563,59 @@ def main():
 
 def show_info_form():
     st.subheader("📝 참여자 정보 입력")
-    
-    # 컴팩트한 폼 스타일
+
+    # ✅ 폼 스타일 (글씨 크게 + 여백 확대)
     st.markdown(
         """
         <style>
+        /* 입력창 텍스트 크기 및 높이 */
         .stTextInput > div > div > input {
-            height: 45px;
+            font-size: 18px !important;   /* ✅ 글씨 크기 */
+            height: 55px !important;      /* ✅ 높이 */
+            padding: 10px !important;     /* ✅ 내부 여백 */
         }
+
+        /* 레이블(성함, 식별번호) 글씨 크기 */
+        label[data-testid="stMarkdownContainer"] > p {
+            font-size: 20px !important;   /* ✅ 레이블 크기 */
+            font-weight: bold;
+        }
+
+        /* 폼 전체 여백 */
         .stForm {
-            padding: 15px 0;
+            padding: 30px 10px;
+            background: #f8f9fa;          /* ✅ 은은한 배경 */
+            border-radius: 10px;
+            border: 1px solid #ddd;
+        }
+
+        /* 버튼 스타일 */
+        div.stButton > button {
+            font-size: 20px !important;   /* ✅ 버튼 글씨 */
+            height: 55px !important;      /* ✅ 버튼 높이 */
+            border-radius: 8px;
         }
         </style>
         """,
         unsafe_allow_html=True
     )
-    
+
+    # ✅ 폼 UI
     with st.form("info_form"):
         col1, col2 = st.columns(2)
-        
+
         with col1:
             name = st.text_input("성함", placeholder="홍길동", max_chars=20)
-        
+
         with col2:
             id_number = st.text_input("식별번호", placeholder="예: 2024001", max_chars=20)
-        
-        # 간격 조정
+
+        # ✅ 간격 추가
         st.markdown("<br>", unsafe_allow_html=True)
-        
-        # 버튼을 더 작게
-        submitted = st.form_submit_button("설문 시작하기", type="primary", use_container_width=True)
-        
+
+        # ✅ 버튼을 크게
+        submitted = st.form_submit_button("🚀 설문 시작하기", type="primary", use_container_width=True)
+
         if submitted:
             if name and id_number:
                 st.session_state.name = name
@@ -601,7 +623,8 @@ def show_info_form():
                 st.session_state.step = 'ingredients'
                 st.rerun()
             else:
-                st.error("성함과 식별번호를 모두 입력해주세요.")
+                st.error("❗ 성함과 식별번호를 모두 입력해주세요.")
+
 
 def show_ingredient_selection():
     st.subheader("🐟 수산물 원재료 선호도")
