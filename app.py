@@ -66,18 +66,26 @@ def display_ingredient_with_image(ingredient, is_selected, key):
     html_img = render_image_fixed_size(jpg_path, width=220, height=160) if os.path.exists(jpg_path) else render_image_fixed_size(png_path, width=220, height=160, placeholder="🍽️")
 
     with st.container():
-        st.markdown(f"**{ingredient}**", unsafe_allow_html=True)
-        st.markdown(html_img, unsafe_allow_html=True)  # ✅ 이미지 HTML 표시
+        # ✅ 가운데 정렬된 스타일 적용
+        st.markdown(
+            f"""
+            <div style="text-align:center; margin-bottom:5px;">
+                <strong style="font-size:18px;">{ingredient}</strong>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        # 선택 버튼 스타일
-        if is_selected:
-            button_text = "✓ 선택됨"
-        else:
-            button_text = "선택하기"
+        st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
 
-        checkbox_result = st.checkbox(button_text, value=is_selected, key=key)
+        # ✅ 체크박스 가운데 정렬
+        checkbox_container = st.container()
+        with checkbox_container:
+            col_center = st.columns([1, 2, 1])[1]  # 가운데 열에 배치
+            with col_center:
+                checkbox_result = st.checkbox("선택", value=is_selected, key=key)
         return checkbox_result
-
+        
 # ✅ 메뉴 카드 렌더링 함수 (이미지 균일화 적용)
 def display_menu_with_image(menu, ingredient, is_selected, key):
     png_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
