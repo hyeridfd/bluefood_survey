@@ -28,220 +28,191 @@ def load_image(image_path, default_text="이미지 준비중"):
         return None
 
 def display_ingredient_with_image(ingredient, is_selected, key):
-    """식재료를 이미지와 함께 수직 카드 형태로 표시 (크기 통일)"""
+    """식재료를 이미지와 함께 수직 카드 형태로 표시"""
     # 이미지 경로 시도 (jpg 우선, 없으면 png)
     jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
     png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
     
     image = load_image(jpg_path) or load_image(png_path)
     
-    # 카드 전체를 감싸는 컨테이너
-    with st.container():
-        # 고정 크기 카드 스타일
-        if is_selected:
-            card_style = f"""
-            <div style="
-                border: 3px solid #667eea;
-                border-radius: 15px;
-                padding: 15px;
-                text-align: center;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-                margin: 10px 0;
-                height: 320px;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-            ">
-                <h4 style="color: white; margin: 10px 0; font-size: 1.2em; font-weight: 600;">{ingredient}</h4>
-            """
-        else:
-            card_style = f"""
-            <div style="
-                border: 2px solid #e9ecef;
-                border-radius: 15px;
-                padding: 15px;
-                text-align: center;
-                background: white;
-                color: #2c3e50;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                margin: 10px 0;
-                height: 320px;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-            ">
-                <h4 style="color: #2c3e50; margin: 10px 0; font-size: 1.2em; font-weight: 600;">{ingredient}</h4>
-            """
-        
-        # 카드 시작
-        st.markdown(card_style, unsafe_allow_html=True)
-        
-        # 이미지 영역 (고정 크기)
-        if image:
-            # 이미지를 고정 크기로 표시 (CSS로 크기 제어)
-            st.markdown(
-                f"""
-                <div style="
-                    width: 100%;
-                    height: 180px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    overflow: hidden;
-                    border-radius: 10px;
-                    margin: 10px 0;
-                ">
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-            # Streamlit image with fixed size
-            st.image(image, width=180, use_column_width=False)
-        else:
-            # 플레이스홀더 (고정 크기)
-            st.markdown(
-                f"""
-                <div style="
-                    width: 180px;
-                    height: 180px;
-                    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
-                    border: 2px dashed #dee2e6;
-                    border-radius: 10px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    margin: 10px auto;
-                    color: #6c757d;
-                ">
-                    <div style="font-size: 2em; margin-bottom: 5px;">🐟</div>
-                    <div style="font-size: 0.9em;">이미지 준비중</div>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-        
-        # 체크박스 영역
-        checkbox_result = st.checkbox(
-            f"선택하기", 
-            value=is_selected, 
-            key=key
-        )
-        
-        # 카드 끝
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        return checkbox_result
+    # 선택 상태에 따른 카드 스타일
+    if is_selected:
+        card_style = """
+        <div style="
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+            margin: 10px 0;
+        ">
+        """
+    else:
+        card_style = """
+        <div style="
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            background: white;
+            color: #2c3e50;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            margin: 10px 0;
+            cursor: pointer;
+        ">
+        """
+    
+    # 카드 컨테이너 시작
+    st.markdown(card_style, unsafe_allow_html=True)
+    
+    # 이미지 표시
+    if image:
+        st.image(image, width=200, caption="")
+    else:
+        # 플레이스홀더 스타일
+        placeholder_style = f"""
+        <div style="
+            width: 200px;
+            height: 150px;
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px auto;
+            color: #6c757d;
+        ">
+            <div style="font-size: 2em; margin-bottom: 5px;">🐟</div>
+            <div style="font-size: 0.9em;">이미지 준비중</div>
+        </div>
+        """
+        st.markdown(placeholder_style, unsafe_allow_html=True)
+    
+    # 식재료 이름
+    name_style = f"""
+    <h4 style="
+        text-align: center;
+        margin: 15px 0 10px 0;
+        font-size: 1.3em;
+        font-weight: 600;
+        color: {'white' if is_selected else '#2c3e50'};
+    ">{ingredient}</h4>
+    """
+    st.markdown(name_style, unsafe_allow_html=True)
+    
+    # 체크박스
+    checkbox_result = st.checkbox(
+        f"선택하기", 
+        value=is_selected, 
+        key=key,
+        label_visibility="collapsed"
+    )
+    
+    # 카드 컨테이너 종료
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    return checkbox_result
 
 def display_menu_with_image(menu, ingredient, is_selected, key):
-    """메뉴를 이미지와 함께 수직 카드 형태로 표시 (크기 통일)"""
+    """메뉴를 이미지와 함께 수직 카드 형태로 표시"""
     # 이미지 경로 시도 (png 우선, 없으면 jpg)
     png_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
     jpg_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
     
     image = load_image(png_path) or load_image(jpg_path)
     
-    # 카드 전체를 감싸는 컨테이너
-    with st.container():
-        # 고정 크기 카드 스타일
-        if is_selected:
-            card_style = f"""
-            <div style="
-                border: 3px solid #e74c3c;
-                border-radius: 12px;
-                padding: 12px;
-                text-align: center;
-                background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-                color: white;
-                box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
-                margin: 8px 0;
-                height: 280px;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-            ">
-                <p style="color: white; margin: 5px 0; font-weight: 600; font-size: 1.0em; line-height: 1.3;">{menu}</p>
-            """
-        else:
-            card_style = f"""
-            <div style="
-                border: 2px solid #e9ecef;
-                border-radius: 12px;
-                padding: 12px;
-                text-align: center;
-                background: white;
-                color: #2c3e50;
-                box-shadow: 0 3px 12px rgba(0,0,0,0.1);
-                margin: 8px 0;
-                height: 280px;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-            ">
-                <p style="color: #2c3e50; margin: 5px 0; font-weight: 600; font-size: 1.0em; line-height: 1.3;">{menu}</p>
-            """
-        
-        # 카드 시작
-        st.markdown(card_style, unsafe_allow_html=True)
-        
-        # 이미지 영역 (고정 크기)
-        if image:
-            # 이미지를 고정 크기로 표시
-            st.markdown(
-                f"""
-                <div style="
-                    width: 100%;
-                    height: 150px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    overflow: hidden;
-                    border-radius: 8px;
-                    margin: 8px 0;
-                ">
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-            # Streamlit image with fixed size
-            st.image(image, width=150, use_column_width=False)
-        else:
-            # 플레이스홀더 (고정 크기)
-            st.markdown(
-                f"""
-                <div style="
-                    width: 150px;
-                    height: 150px;
-                    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
-                    border: 2px dashed #dee2e6;
-                    border-radius: 8px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    margin: 8px auto;
-                    color: #6c757d;
-                ">
-                    <div style="font-size: 1.5em; margin-bottom: 3px;">🍽️</div>
-                    <div style="font-size: 0.8em;">이미지 준비중</div>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-        
-        # 체크박스 영역
-        checkbox_result = st.checkbox(
-            f"선택", 
-            value=is_selected, 
-            key=key
-        )
-        
-        # 카드 끝
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        return checkbox_result
+    # 선택 상태에 따른 카드 스타일
+    if is_selected:
+        card_style = """
+        <div style="
+            border: 3px solid #e74c3c;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+            margin: 8px 0;
+        ">
+        """
+    else:
+        card_style = """
+        <div style="
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            background: white;
+            color: #2c3e50;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            margin: 8px 0;
+            cursor: pointer;
+        ">
+        """
+    
+    # 카드 컨테이너 시작
+    st.markdown(card_style, unsafe_allow_html=True)
+    
+    # 이미지 표시
+    if image:
+        st.image(image, width=180, caption="")
+    else:
+        # 플레이스홀더 스타일
+        placeholder_style = f"""
+        <div style="
+            width: 180px;
+            height: 120px;
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px auto;
+            color: #6c757d;
+        ">
+            <div style="font-size: 1.5em; margin-bottom: 3px;">🍽️</div>
+            <div style="font-size: 0.8em;">이미지 준비중</div>
+        </div>
+        """
+        st.markdown(placeholder_style, unsafe_allow_html=True)
+    
+    # 메뉴 이름
+    name_style = f"""
+    <p style="
+        text-align: center;
+        margin: 10px 0 8px 0;
+        font-size: 1.1em;
+        font-weight: 600;
+        color: {'white' if is_selected else '#2c3e50'};
+        line-height: 1.3;
+    ">{menu}</p>
+    """
+    st.markdown(name_style, unsafe_allow_html=True)
+    
+    # 체크박스
+    checkbox_result = st.checkbox(
+        f"선택", 
+        value=is_selected, 
+        key=key,
+        label_visibility="collapsed"
+    )
+    
+    # 카드 컨테이너 종료
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    return checkbox_result
 
 # 엑셀 파일 저장 함수 (GitHub/Streamlit Cloud용)
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
@@ -669,188 +640,31 @@ def show_info_form():
 def show_ingredient_selection():
     st.subheader("🐟 수산물 원재료 선호도")
     
-    # 안내 메시지
-    st.info("**🔸 다음 수산물 중 선호하는 원재료를 선택해주세요**\n\n✓ 최소 3개 이상, 최대 9개까지 선택 가능합니다")
+    # 안내 메시지 스타일 개선
+    info_style = """
+    <div style="
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border-left: 5px solid #2196f3;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(33, 150, 243, 0.1);
+    ">
+        <h4 style="color: #1976d2; margin: 0 0 10px 0;">
+            🔸 다음 수산물 중 선호하는 원재료를 선택해주세요
+        </h4>
+        <p style="color: #1976d2; margin: 0; font-weight: 500;">
+            ✓ 최소 3개 이상, 최대 9개까지 선택 가능합니다
+        </p>
+    </div>
+    """
+    st.markdown(info_style, unsafe_allow_html=True)
     
-    # 선택 개수 표시
+    # 선택 개수 표시 스타일 개선
     selected_count = len(st.session_state.selected_ingredients)
     
     if 3 <= selected_count <= 9:
-        st.success(f"✅ 선택된 품목: {selected_count}개")
-    elif selected_count < 3:
-        st.warning(f"⚠️ 선택된 품목: {selected_count}개 ({3-selected_count}개 더 선택 필요)")
-    else:
-        st.error(f"❌ 선택된 품목: {selected_count}개 (최대 9개까지만 선택 가능)")
-    
-    # 카테고리별 수산물 선택
-    for category, ingredients in INGREDIENT_CATEGORIES.items():
-        st.markdown(f"### {category}")
-        
-        # 수산물을 4열 그리드로 배치
-        cols = st.columns(4)
-        for i, ingredient in enumerate(ingredients):
-            with cols[i % 4]:
-                is_selected = ingredient in st.session_state.selected_ingredients
-                
-                # 이미지와 함께 식재료 표시
-                selected = display_ingredient_with_image(
-                    ingredient, 
-                    is_selected, 
-                    f"ingredient_{ingredient}"
-                )
-                
-                if selected:
-                    if ingredient not in st.session_state.selected_ingredients:
-                        if len(st.session_state.selected_ingredients) < 9:
-                            st.session_state.selected_ingredients.append(ingredient)
-                            st.rerun()
-                        else:
-                            st.error("최대 9개까지만 선택할 수 있습니다.")
-                            st.rerun()
-                else:
-                    if ingredient in st.session_state.selected_ingredients:
-                        st.session_state.selected_ingredients.remove(ingredient)
-                        st.rerun()
-        
-        st.markdown("---")
-    
-    # 다음 단계 버튼
-    st.markdown("---")
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    with col2:
-        if 3 <= len(st.session_state.selected_ingredients) <= 9:
-            if st.button("다음 단계로 →", type="primary", use_container_width=True):
-                # 선택된 수산물에 대한 메뉴 딕셔너리 초기화
-                st.session_state.selected_menus = {ingredient: [] for ingredient in st.session_state.selected_ingredients}
-                st.session_state.step = 'menus'
-                st.rerun()
-        else:
-            st.button("다음 단계로 →", disabled=True, use_container_width=True)
-
-def show_menu_selection():
-    st.subheader("🍽️ 선호 메뉴 선택")
-    
-    # 안내 메시지
-    st.info("**🔸 선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요**\n\n✓ 각 수산물마다 최소 1개 이상의 메뉴를 선택해주세요")
-    
-    # 선택된 수산물 표시
-    with st.expander("선택하신 수산물", expanded=True):
-        ingredients_text = " | ".join([f"**{ingredient}**" for ingredient in st.session_state.selected_ingredients])
-        st.markdown(f"🏷️ {ingredients_text}")
-    
-    # 각 수산물별 메뉴 선택
-    all_valid = True
-    
-    for ingredient in st.session_state.selected_ingredients:
-        st.markdown(f"### 🐟 {ingredient} 요리")
-        
-        if ingredient in MENU_DATA:
-            menus = MENU_DATA[ingredient]
-            
-            for category, menu_list in menus.items():
-                if menu_list:
-                    st.markdown(f"**{category}**")
-                    
-                    # 메뉴를 4열로 배치
-                    cols = st.columns(4)
-                    for i, menu in enumerate(menu_list):
-                        with cols[i % 4]:
-                            is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
-                            
-                            # 이미지와 함께 메뉴 표시
-                            selected = display_menu_with_image(
-                                menu, 
-                                ingredient, 
-                                is_selected, 
-                                f"menu_{ingredient}_{menu}"
-                            )
-                            
-                            if selected:
-                                if menu not in st.session_state.selected_menus[ingredient]:
-                                    st.session_state.selected_menus[ingredient].append(menu)
-                                    st.rerun()
-                            else:
-                                if menu in st.session_state.selected_menus[ingredient]:
-                                    st.session_state.selected_menus[ingredient].remove(menu)
-                                    st.rerun()
-        
-        # 각 수산물별 선택 상태 표시
-        menu_count = len(st.session_state.selected_menus.get(ingredient, []))
-        if menu_count == 0:
-            all_valid = False
-            st.warning(f"⚠️ {ingredient}에 대해 최소 1개 이상의 메뉴를 선택해주세요.")
-        else:
-            st.success(f"✅ {ingredient}: {menu_count}개 메뉴 선택됨")
-        
-        st.markdown("---")
-    
-    # 버튼들
-    col1, col2, col3 = st.columns([1, 1, 1])
-    
-    with col1:
-        if st.button("← 이전 단계", use_container_width=True):
-            st.session_state.step = 'ingredients'
-            st.rerun()
-    
-    with col3:
-        if all_valid:
-            if st.button("설문 완료하기", type="primary", use_container_width=True):
-                # 엑셀 파일 저장
-                filename, df = save_to_excel(
-                    st.session_state.name,
-                    st.session_state.id_number,
-                    st.session_state.selected_ingredients,
-                    st.session_state.selected_menus
-                )
-                st.session_state.filename = filename
-                st.session_state.survey_data = df
-                st.session_state.step = 'complete'
-                st.rerun()
-        else:
-            st.button("설문 완료하기", disabled=True, use_container_width=True)
-
-def show_completion():
-    # 축하 애니메이션
-    st.balloons()
-    
-    # 완료 메시지
-    st.success("🎉 설문이 완료되었습니다! 소중한 의견을 주셔서 감사합니다")
-    
-    # 결과 요약 표시
-    with st.expander("📊 설문 결과 요약", expanded=True):
-        st.markdown(f"**참여자:** {st.session_state.name}")
-        st.markdown(f"**식별번호:** {st.session_state.id_number}")
-        st.markdown(f"**설문 완료 시간:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        
-        st.markdown("### 선택하신 수산물")
-        ingredients_text = " | ".join(st.session_state.selected_ingredients)
-        st.markdown(f"🏷️ {ingredients_text}")
-        
-        st.markdown("### 선호하시는 메뉴")
-        for ingredient, menus in st.session_state.selected_menus.items():
-            if menus:
-                menu_text = ", ".join(menus)
-                st.markdown(f"**{ingredient}:** {menu_text}")
-    
-    # 엑셀 파일 다운로드
-    if 'filename' in st.session_state and os.path.exists(st.session_state.filename):
-        with open(st.session_state.filename, 'rb') as file:
-            st.download_button(
-                label="📥 결과 엑셀 파일 다운로드",
-                data=file.read(),
-                file_name=st.session_state.filename,
-                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                type="primary",
-                use_container_width=True
-            )
-    
-    # 새 설문 시작 버튼
-    if st.button("🔄 새 설문 시작하기", use_container_width=True):
-        # 세션 상태 초기화
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
-
-if __name__ == "__main__":
-    main()
+        counter_style = f"""
+        <div style="
+            background:
