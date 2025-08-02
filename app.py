@@ -78,12 +78,10 @@ def display_ingredient_with_image(ingredient, is_selected, key):
 
         st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
 
-        # ✅ 체크박스 가운데 정렬
-        checkbox_container = st.container()
-        with checkbox_container:
-            col_center = st.columns([1, 2, 1])[1]  # 가운데 열에 배치
-            with col_center:
-                checkbox_result = st.checkbox("선택", value=is_selected, key=key)
+        # ✅ 체크박스도 중앙 (Streamlit 기능 유지)
+        col_left, col_center, col_right = st.columns([1,2,1])
+        with col_center:
+            checkbox_result = st.checkbox("선택", value=is_selected, key=key)
         return checkbox_result
         
 # ✅ 메뉴 카드 렌더링 함수 (이미지 균일화 적용)
@@ -106,13 +104,12 @@ def display_menu_with_image(menu, ingredient, is_selected, key):
 
         st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
 
-        checkbox_container = st.container()
-        with checkbox_container:
-            col_center = st.columns([1, 2, 1])[1]
-            with col_center:
-                checkbox_result = st.checkbox("선택", value=is_selected, key=key)
+        # ✅ 체크박스도 중앙 (Streamlit 기능 유지)
+        col_left, col_center, col_right = st.columns([1,2,1])
+        with col_center:
+            checkbox_result = st.checkbox("선택", value=is_selected, key=key)
         return checkbox_result
-
+    
 
 
 # 엑셀 파일 저장 함수 (GitHub/Streamlit Cloud용)
