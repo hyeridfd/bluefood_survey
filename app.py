@@ -1,26 +1,189 @@
 import streamlit as st
-import os
-from PIL import Image
-import base64
-from datetime import datetime
 import pandas as pd
+import os
+from datetime import datetime
+from pathlib import Path
+from PIL import Image
 
-st.set_page_config(page_title="블루푸드 선호도 조사", page_icon="🌊", layout="wide")
+# 페이지 설정
+st.set_page_config(
+    page_title="블루푸드 선호도 조사",
+    page_icon="🌊",
+    layout="wide"
+)
 
-# ✅ 카테고리별 수산물
-INGREDIENT_CATEGORIES = {
-    '🍤 가공수산물': ['맛살', '어란', '어묵', '쥐포'],
-    '🌿 해조류': ['김', '다시마', '매생이', '미역', '파래', '톳'],
-    '🦑 연체류': ['꼴뚜기', '낙지', '문어', '오징어', '주꾸미'],
-    '🦀 갑각류': ['가재', '게', '새우'],
-    '🐚 패류': ['다슬기', '꼬막', '가리비', '골뱅이', '굴', '미더덕', '바지락', '백합', '소라', '재첩', '전복', '홍합'],
-    '🐟 어류': ['가자미', '다랑어', '고등어', '갈치', '꽁치', '대구', '멸치', '명태', '박대', '뱅어', '병어', '삼치', '아귀', '연어', '임연수', '장어', '조기']
-}
-
-IMAGE_PATH = "images/ingredients"
+# 이미지 경로 설정 (GitHub 배포용)
+INGREDIENT_IMAGE_PATH = "images/ingredients"
 MENU_IMAGE_PATH = "images/menus"
 
-# ✅ 메뉴 데이터 예시 (간단)
+# 이미지 로드 함수
+def load_image(image_path, default_text="이미지 준비중"):
+    """이미지를 로드하고, 없으면 플레이스홀더 반환"""
+    try:
+        if os.path.exists(image_path):
+            return Image.open(image_path)
+        else:
+            return None
+    except Exception:
+        return None
+
+def display_ingredient_with_image(ingredient, is_selected, key):
+    """식재료를 이미지와 함께 간단한 카드 형태로 표시"""
+    # 이미지 경로 시도 (jpg 우선, 없으면 png)
+    jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
+    png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
+    
+    image = load_image(jpg_path) or load_image(jpg_path)
+    
+    # 간단한 카드 컨테이너
+    with st.container():
+        # 카드 제목
+        st.markdown(f"**{ingredient}**", unsafe_allow_html=True)
+        
+        # 이미지 표시 (통일된 크기)
+        if image:
+            st.image(image, width=180)
+        else:
+            # 플레이스홀더
+            st.markdown(
+                """
+                <div style="
+                    width: 180px;
+                    height: 120px;
+                    background: #f8f9fa;
+                    border: 2px dashed #dee2e6;
+                    border-radius: 8px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto;
+                    color: #6c757d;
+                ">
+                    <div style="font-size: 1.5em;">🐟</div>
+                    <div style="font-size: 0.8em;">이미지 준비중</div>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
+        
+        # 선택 버튼
+        if is_selected:
+            button_style = "background-color: #007bff; color: white;"
+            button_text = "✓ 선택됨"
+        else:
+            button_style = "background-color: #6c757d; color: white;"
+            button_text = "선택하기"
+        
+        # 커스텀 버튼 스타일
+        st.markdown(
+            f"""
+            <style>
+            .stCheckbox > label > div[data-testid="stCheckbox"] > div {{
+                {button_style}
+                padding: 8px 16px;
+                border-radius: 20px;
+                border: none;
+                font-weight: 600;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        # 체크박스 (버튼처럼 스타일링)
+        checkbox_result = st.checkbox(
+            button_text,
+            value=is_selected,
+            key=key
+        )
+        
+        return checkbox_result
+
+def display_menu_with_image(menu, ingredient, is_selected, key):
+    """메뉴를 이미지와 함께 간단한 카드 형태로 표시"""
+    # 이미지 경로 시도 (png 우선, 없으면 jpg)
+    png_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
+    jpg_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
+    
+    image = load_image(png_path) or load_image(jpg_path)
+    
+    # 간단한 카드 컨테이너
+    with st.container():
+        # 카드 제목
+        st.markdown(f"**{menu}**", unsafe_allow_html=True)
+        
+        # 이미지 표시 (통일된 크기)
+        if image:
+            st.image(image, width=150)
+        else:
+            # 플레이스홀더
+            st.markdown(
+                """
+                <div style="
+                    width: 150px;
+                    height: 100px;
+                    background: #f8f9fa;
+                    border: 2px dashed #dee2e6;
+                    border-radius: 6px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto;
+                    color: #6c757d;
+                ">
+                    <div style="font-size: 1.2em;">🍽️</div>
+                    <div style="font-size: 0.7em;">이미지 준비중</div>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
+        
+        # 선택 버튼
+        if is_selected:
+            button_text = "✓ 선택됨"
+        else:
+            button_text = "선택"
+        
+        # 체크박스 (버튼처럼 스타일링)
+        checkbox_result = st.checkbox(
+            button_text,
+            value=is_selected,
+            key=key
+        )
+        
+        return checkbox_result
+
+# 엑셀 파일 저장 함수 (GitHub/Streamlit Cloud용)
+def save_to_excel(name, id_number, selected_ingredients, selected_menus):
+    # 데이터 준비
+    data = {
+        '이름': [name],
+        '식별번호': [id_number],
+        '설문일시': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
+        '선택한_수산물': [', '.join(selected_ingredients)],
+        '선택한_메뉴': [', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])]
+    }
+    
+    # 각 수산물별로 별도 컬럼 생성
+    for ingredient in selected_ingredients:
+        data[f'{ingredient}_메뉴'] = [', '.join(selected_menus.get(ingredient, []))]
+    
+    df = pd.DataFrame(data)
+    
+    # Streamlit Cloud에서는 고유한 파일명으로 임시 저장
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'bluefood_survey_{timestamp}.xlsx'
+    
+    # 임시 파일로 저장
+    df.to_excel(filename, index=False)
+    
+    return filename, df
+
 # 수산물별 메뉴 데이터
 MENU_DATA = {
     '맛살': {
@@ -362,197 +525,320 @@ MENU_DATA = {
     }
 }
 
-# ✅ 세션 초기화
-if "step" not in st.session_state:
-    st.session_state.step = "info"
-if "selected_ingredients" not in st.session_state:
+# 수산물 카테고리별 분류
+INGREDIENT_CATEGORIES = {
+    '🍤 가공수산물': ['맛살', '어란', '어묵', '쥐포'],
+    '🌿 해조류': ['김', '다시마', '매생이', '미역', '파래', '톳'],
+    '🦑 연체류': ['꼴뚜기', '낙지', '문어', '오징어', '주꾸미'],
+    '🦀 갑각류': ['가재', '게', '새우'],
+    '🐚 패류': ['다슬기', '꼬막', '가리비', '골뱅이', '굴', '미더덕', '바지락', '백합', '소라', '재첩', '전복', '홍합'],
+    '🐟 어류': ['가자미', '다랑어', '고등어', '갈치', '꽁치', '대구', '멸치', '명태', '박대', '뱅어', '병어', '삼치', '아귀', '연어', '임연수', '장어', '조기']
+}
+
+# 세션 상태 초기화
+if 'step' not in st.session_state:
+    st.session_state.step = 'info'
+if 'selected_ingredients' not in st.session_state:
     st.session_state.selected_ingredients = []
-if "selected_menus" not in st.session_state:
+if 'selected_menus' not in st.session_state:
     st.session_state.selected_menus = {}
 
-# ✅ CSS 스타일 (HTML 디자인 참고)
-st.markdown("""
-<style>
-body { background: #fafafa; }
-.category-title {
-    background:linear-gradient(135deg,#667eea,#764ba2);
-    color:white; text-align:center; font-size:1.3em; font-weight:600;
-    padding:10px; border-radius:8px; margin:25px 0 10px;
-}
-.ingredient-grid, .menu-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-}
-.card {
-    background: #f8f9fa; border:2px solid #e9ecef; border-radius:10px;
-    padding:10px; text-align:center; cursor:pointer;
-    transition: all 0.3s ease; box-shadow:0 3px 8px rgba(0,0,0,0.05);
-}
-.card:hover { transform:translateY(-3px); box-shadow:0 6px 15px rgba(0,0,0,0.1); }
-.card img { width:200px; height:120px; object-fit:cover; border-radius:8px; }
-.card p { font-weight:600; font-size:1.1em; margin-top:5px; }
-.card.selected { background:linear-gradient(135deg,#667eea,#764ba2); color:white; border-color:#667eea; }
-</style>
-""", unsafe_allow_html=True)
-
-# ✅ 이미지 Base64 변환
-def image_to_base64(img):
-    if img is None:
-        return ""
-    from io import BytesIO
-    buf = BytesIO()
-    img.save(buf, format="PNG")
-    return base64.b64encode(buf.getvalue()).decode()
-
-# ✅ 이미지 로드
-def load_img(path):
-    return Image.open(path) if os.path.exists(path) else None
-
-# ✅ 재료 카드 렌더링
-def render_card(label, img, is_selected):
-    img64 = image_to_base64(img) if img else ""
-    cls = "card selected" if is_selected else "card"
-    return f"""
-    <div class="{cls}">
-        <img src="data:image/png;base64,{img64}">
-        <p>{label}</p>
-    </div>
-    """
-
-# ✅ 1단계: 참여자 정보 입력
-def show_info():
+# 메인 앱
+def main():
+    # 사이드바 설정
+    with st.sidebar:
+        st.markdown(
+            """
+            <div style="
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                padding: 20px;
+                border-radius: 15px;
+                margin-bottom: 20px;
+                color: white;
+            ">
+                <h2 style="color: white; margin: 0 0 15px 0; text-align: center;">
+                    🌊 블루푸드 설문조사
+                </h2>
+                <p style="margin: 0; line-height: 1.5; text-align: center;">
+                    수산물에 대한 여러분의<br>
+                    선호도를 알려주세요
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        st.markdown("### 📋 설문 안내")
+        st.markdown("""
+        **🎯 목적**  
+        수산물 소비 패턴 및 선호도 조사
+        
+        **⏱️ 소요시간**  
+        약 5-10분
+        
+        **📝 설문 단계**  
+        1️⃣ 개인정보 입력  
+        2️⃣ 선호 수산물 선택 (3-9개)  
+        3️⃣ 선호 메뉴 선택  
+        4️⃣ 결과 다운로드
+        
+        **🔒 개인정보 보호**  
+        수집된 정보는 연구 목적으로만 사용되며, 
+        개인정보는 안전하게 보호됩니다.
+        """)
+        
+        # 진행 상황 표시
+        if 'step' in st.session_state:
+            st.markdown("### 📊 진행 상황")
+            if st.session_state.step == 'info':
+                st.progress(0.25, "1단계: 정보 입력")
+            elif st.session_state.step == 'ingredients':
+                st.progress(0.5, "2단계: 수산물 선택")
+            elif st.session_state.step == 'menus':
+                st.progress(0.75, "3단계: 메뉴 선택")
+            elif st.session_state.step == 'complete':
+                st.progress(1.0, "✅ 설문 완료!")
+    
+    # 메인 타이틀을 더 간단하게
     st.title("🌊 블루푸드 선호도 조사")
-    name = st.text_input("성함", placeholder="홍길동")
-    idn = st.text_input("식별번호", placeholder="예: 2024001")
-    if st.button("설문 시작하기", type="primary"):
-        if name and idn:
-            st.session_state.name = name
-            st.session_state.idn = idn
-            st.session_state.step = "ingredients"
-            st.rerun()
-        else:
-            st.error("⚠️ 성함과 식별번호를 입력해주세요.")
+    
+    # 단계별 진행
+    if st.session_state.step == 'info':
+        show_info_form()
+    elif st.session_state.step == 'ingredients':
+        show_ingredient_selection()
+    elif st.session_state.step == 'menus':
+        show_menu_selection()
+    elif st.session_state.step == 'complete':
+        show_completion()
 
-# ✅ 2단계: 수산물 선택
-def show_ingredients():
-    st.subheader("🐟 수산물 원재료 선택")
-    st.info("최소 3개 이상, 최대 9개까지 선택해주세요.")
-
-    for category, items in INGREDIENT_CATEGORIES.items():
-        st.markdown(f"<div class='category-title'>{category}</div>", unsafe_allow_html=True)
-        st.markdown("<div class='ingredient-grid'>", unsafe_allow_html=True)
-
-        for ingredient in items:
-            jpg = os.path.join(IMAGE_PATH, f"{ingredient}.jpg")
-            png = os.path.join(IMAGE_PATH, f"{ingredient}.png")
-            img = load_img(jpg) or load_img(png)
-            selected = ingredient in st.session_state.selected_ingredients
-
-            if st.button(f"선택_{ingredient}", key=f"ing_btn_{ingredient}"):
-                if selected:
-                    st.session_state.selected_ingredients.remove(ingredient)
-                else:
-                    if len(st.session_state.selected_ingredients) < 9:
-                        st.session_state.selected_ingredients.append(ingredient)
-                    else:
-                        st.warning("❌ 최대 9개까지 선택 가능")
+def show_info_form():
+    st.subheader("📝 참여자 정보 입력")
+    
+    # 컴팩트한 폼 스타일
+    st.markdown(
+        """
+        <style>
+        .stTextInput > div > div > input {
+            height: 45px;
+        }
+        .stForm {
+            padding: 15px 0;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    with st.form("info_form"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            name = st.text_input("성함", placeholder="홍길동", max_chars=20)
+        
+        with col2:
+            id_number = st.text_input("식별번호", placeholder="예: 2024001", max_chars=20)
+        
+        # 간격 조정
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # 버튼을 더 작게
+        submitted = st.form_submit_button("설문 시작하기", type="primary", use_container_width=True)
+        
+        if submitted:
+            if name and id_number:
+                st.session_state.name = name
+                st.session_state.id_number = id_number
+                st.session_state.step = 'ingredients'
                 st.rerun()
+            else:
+                st.error("성함과 식별번호를 모두 입력해주세요.")
 
-            st.markdown(render_card(ingredient, img, selected), unsafe_allow_html=True)
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # ✅ 상태 표시
-    count = len(st.session_state.selected_ingredients)
-    if 3 <= count <= 9:
-        st.success(f"✅ 현재 {count}개 선택됨")
-    elif count < 3:
-        st.warning(f"⚠️ {count}개 선택됨 (3개 이상 필요)")
+def show_ingredient_selection():
+    st.subheader("🐟 수산물 원재료 선호도")
+    
+    # 안내 메시지
+    st.info("**🔸 다음 수산물 중 선호하는 원재료를 선택해주세요**\n\n✓ 최소 3개 이상, 최대 9개까지 선택 가능합니다")
+    
+    # 선택 개수 표시
+    selected_count = len(st.session_state.selected_ingredients)
+    
+    if 3 <= selected_count <= 9:
+        st.success(f"✅ 선택된 품목: {selected_count}개")
+    elif selected_count < 3:
+        st.warning(f"⚠️ 선택된 품목: {selected_count}개 ({3-selected_count}개 더 선택 필요)")
     else:
-        st.error(f"❌ {count}개 선택됨 (최대 9개)")
-
-    # ✅ 다음 버튼
-    if 3 <= count <= 9:
-        if st.button("다음 단계로 →", type="primary"):
-            st.session_state.selected_menus = {i: [] for i in st.session_state.selected_ingredients}
-            st.session_state.step = "menus"
-            st.rerun()
-    else:
-        st.button("다음 단계로 →", disabled=True)
-
-# ✅ 3단계: 메뉴 선택
-def show_menus():
-    st.subheader("🍽️ 메뉴 선택")
-    st.info("각 수산물마다 최소 1개 이상 선택해주세요.")
-
-    all_valid = True
-    for ing in st.session_state.selected_ingredients:
-        st.markdown(f"<div class='category-title'>🐟 {ing} 메뉴</div>", unsafe_allow_html=True)
-        menus = MENU_DATA.get(ing, [])
-        st.markdown("<div class='menu-grid'>", unsafe_allow_html=True)
-
-        for menu in menus:
-            jpg = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
-            png = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
-            img = load_img(jpg) or load_img(png)
-            selected = menu in st.session_state.selected_menus[ing]
-
-            if st.button(f"선택_{ing}_{menu}", key=f"menu_btn_{ing}_{menu}"):
-                if selected:
-                    st.session_state.selected_menus[ing].remove(menu)
-                else:
-                    st.session_state.selected_menus[ing].append(menu)
-                st.rerun()
+        st.error(f"❌ 선택된 품목: {selected_count}개 (최대 9개까지만 선택 가능)")
+    
+    # 카테고리별 수산물 선택
+    for category, ingredients in INGREDIENT_CATEGORIES.items():
+        st.markdown(f"### {category}")
+        
+        # 수산물을 4열 그리드로 배치
+        cols = st.columns(4)
+        for i, ingredient in enumerate(ingredients):
+            with cols[i % 4]:
+                is_selected = ingredient in st.session_state.selected_ingredients
                 
-            st.markdown(render_card(menu, img, selected), unsafe_allow_html=True)
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        if len(st.session_state.selected_menus[ing]) == 0:
-            all_valid = False
-            st.warning(f"⚠️ {ing} 메뉴 최소 1개 선택 필요")
-        else:
-            st.success(f"✅ {ing}: {len(st.session_state.selected_menus[ing])}개 선택됨")
-
-    # ✅ 버튼
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("← 이전 단계"):
-            st.session_state.step = "ingredients"
-            st.rerun()
+                # 이미지와 함께 식재료 표시
+                selected = display_ingredient_with_image(
+                    ingredient, 
+                    is_selected, 
+                    f"ingredient_{ingredient}"
+                )
+                
+                if selected:
+                    if ingredient not in st.session_state.selected_ingredients:
+                        if len(st.session_state.selected_ingredients) < 9:
+                            st.session_state.selected_ingredients.append(ingredient)
+                            st.rerun()
+                        else:
+                            st.error("최대 9개까지만 선택할 수 있습니다.")
+                            st.rerun()
+                else:
+                    if ingredient in st.session_state.selected_ingredients:
+                        st.session_state.selected_ingredients.remove(ingredient)
+                        st.rerun()
+        
+        st.markdown("---")
+    
+    # 다음 단계 버튼
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
     with col2:
-        if all_valid:
-            if st.button("설문 완료하기", type="primary"):
-                st.session_state.step = "complete"
+        if 3 <= len(st.session_state.selected_ingredients) <= 9:
+            if st.button("다음 단계로 →", type="primary", use_container_width=True):
+                # 선택된 수산물에 대한 메뉴 딕셔너리 초기화
+                st.session_state.selected_menus = {ingredient: [] for ingredient in st.session_state.selected_ingredients}
+                st.session_state.step = 'menus'
                 st.rerun()
         else:
-            st.button("설문 완료하기", disabled=True)
+            st.button("다음 단계로 →", disabled=True, use_container_width=True)
 
-# ✅ 4단계: 완료 페이지
-def show_complete():
+def show_menu_selection():
+    st.subheader("🍽️ 선호 메뉴 선택")
+    
+    # 안내 메시지
+    st.info("**🔸 선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요**\n\n✓ 각 수산물마다 최소 1개 이상의 메뉴를 선택해주세요")
+    
+    # 선택된 수산물 표시
+    with st.expander("선택하신 수산물", expanded=True):
+        ingredients_text = " | ".join([f"**{ingredient}**" for ingredient in st.session_state.selected_ingredients])
+        st.markdown(f"🏷️ {ingredients_text}")
+    
+    # 각 수산물별 메뉴 선택
+    all_valid = True
+    
+    for ingredient in st.session_state.selected_ingredients:
+        st.markdown(f"### 🐟 {ingredient} 요리")
+        
+        if ingredient in MENU_DATA:
+            menus = MENU_DATA[ingredient]
+            
+            for category, menu_list in menus.items():
+                if menu_list:
+                    st.markdown(f"**{category}**")
+                    
+                    # 메뉴를 4열로 배치 (가로 나열)
+                    cols = st.columns(4)
+                    for i, menu in enumerate(menu_list):
+                        with cols[i % 4]:
+                            is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
+                            
+                            # 이미지와 함께 메뉴 표시
+                            selected = display_menu_with_image(
+                                menu, 
+                                ingredient, 
+                                is_selected, 
+                                f"menu_{ingredient}_{menu}"
+                            )
+                            
+                            if selected:
+                                if menu not in st.session_state.selected_menus[ingredient]:
+                                    st.session_state.selected_menus[ingredient].append(menu)
+                                    st.rerun()
+                            else:
+                                if menu in st.session_state.selected_menus[ingredient]:
+                                    st.session_state.selected_menus[ingredient].remove(menu)
+                                    st.rerun()
+        
+        # 각 수산물별 선택 상태 표시
+        menu_count = len(st.session_state.selected_menus.get(ingredient, []))
+        if menu_count == 0:
+            all_valid = False
+            st.warning(f"⚠️ {ingredient}에 대해 최소 1개 이상의 메뉴를 선택해주세요.")
+        else:
+            st.success(f"✅ {ingredient}: {menu_count}개 메뉴 선택됨")
+        
+        st.markdown("---")
+    
+    # 버튼들
+    col1, col2, col3 = st.columns([1, 1, 1])
+    
+    with col1:
+        if st.button("← 이전 단계", use_container_width=True):
+            st.session_state.step = 'ingredients'
+            st.rerun()
+    
+    with col3:
+        if all_valid:
+            if st.button("설문 완료하기", type="primary", use_container_width=True):
+                # 엑셀 파일 저장
+                filename, df = save_to_excel(
+                    st.session_state.name,
+                    st.session_state.id_number,
+                    st.session_state.selected_ingredients,
+                    st.session_state.selected_menus
+                )
+                st.session_state.filename = filename
+                st.session_state.survey_data = df
+                st.session_state.step = 'complete'
+                st.rerun()
+        else:
+            st.button("설문 완료하기", disabled=True, use_container_width=True)
+
+def show_completion():
+    # 축하 애니메이션
     st.balloons()
-    st.success("🎉 설문이 완료되었습니다. 참여해주셔서 감사합니다!")
-
-    # 결과 요약
-    st.write("### ✅ 선택된 수산물")
-    st.write(", ".join(st.session_state.selected_ingredients))
-
-    st.write("### ✅ 선택된 메뉴")
-    for ing, menus in st.session_state.selected_menus.items():
-        st.write(f"- {ing}: {', '.join(menus)}")
-
-    if st.button("🔄 새 설문 시작하기"):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
+    
+    # 완료 메시지
+    st.success("🎉 설문이 완료되었습니다! 소중한 의견을 주셔서 감사합니다")
+    
+    # 결과 요약 표시
+    with st.expander("📊 설문 결과 요약", expanded=True):
+        st.markdown(f"**참여자:** {st.session_state.name}")
+        st.markdown(f"**식별번호:** {st.session_state.id_number}")
+        st.markdown(f"**설문 완료 시간:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        st.markdown("### 선택하신 수산물")
+        ingredients_text = " | ".join(st.session_state.selected_ingredients)
+        st.markdown(f"🏷️ {ingredients_text}")
+        
+        st.markdown("### 선호하시는 메뉴")
+        for ingredient, menus in st.session_state.selected_menus.items():
+            if menus:
+                menu_text = ", ".join(menus)
+                st.markdown(f"**{ingredient}:** {menu_text}")
+    
+    # 엑셀 파일 다운로드
+    if 'filename' in st.session_state and os.path.exists(st.session_state.filename):
+        with open(st.session_state.filename, 'rb') as file:
+            st.download_button(
+                label="📥 결과 엑셀 파일 다운로드",
+                data=file.read(),
+                file_name=st.session_state.filename,
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                type="primary",
+                use_container_width=True
+            )
+    
+    # 새 설문 시작 버튼
+    if st.button("🔄 새 설문 시작하기", use_container_width=True):
+        # 세션 상태 초기화
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
         st.rerun()
 
-# ✅ 페이지 라우팅
-if st.session_state.step == "info":
-    show_info()
-elif st.session_state.step == "ingredients":
-    show_ingredients()
-elif st.session_state.step == "menus":
-    show_menus()
-else:
-    show_complete()
+if __name__ == "__main__":
+    main()
