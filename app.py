@@ -561,16 +561,32 @@ def main():
 def show_info_form():
     st.subheader("📝 참여자 정보 입력")
     
+    # 컴팩트한 폼 스타일
+    st.markdown(
+        """
+        <style>
+        .stTextInput > div > div > input {
+            height: 40px;
+        }
+        .stForm {
+            padding: 20px 0;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
     with st.form("info_form"):
         col1, col2 = st.columns(2)
         
         with col1:
-            name = st.text_input("성함", placeholder="홍길동")
+            name = st.text_input("성함", placeholder="홍길동", max_chars=20)
         
         with col2:
-            id_number = st.text_input("식별번호", placeholder="예: HG001")
+            id_number = st.text_input("식별번호", placeholder="예: HG001", max_chars=20)
         
-        submitted = st.form_submit_button("설문 시작하기", type="primary")
+        # 버튼을 더 작게
+        submitted = st.form_submit_button("설문 시작하기", type="primary", use_container_width=True)
         
         if submitted:
             if name and id_number:
