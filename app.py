@@ -611,7 +611,7 @@ def main():
     with st.sidebar:
         st.markdown(
             
-            <div style="
+            <div style=
                 background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
                 padding: 25px;
                 border-radius: 15px;
