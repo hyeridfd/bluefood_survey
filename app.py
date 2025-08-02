@@ -545,8 +545,62 @@ if 'selected_menus' not in st.session_state:
 
 # 메인 앱
 def main():
+    # 사이드바 설정
+    with st.sidebar:
+        st.markdown(
+            """
+            <div style="
+                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                padding: 20px;
+                border-radius: 15px;
+                margin-bottom: 20px;
+                color: white;
+            ">
+                <h2 style="color: white; margin: 0 0 15px 0; text-align: center;">
+                    🌊 블루푸드 설문조사
+                </h2>
+                <p style="margin: 0; line-height: 1.5; text-align: center;">
+                    수산물에 대한 여러분의<br>
+                    선호도를 알려주세요
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        st.markdown("### 📋 설문 안내")
+        st.markdown("""
+        **🎯 목적**  
+        수산물 소비 패턴 및 선호도 조사
+        
+        **⏱️ 소요시간**  
+        약 5-10분
+        
+        **📝 설문 단계**  
+        1️⃣ 개인정보 입력  
+        2️⃣ 선호 수산물 선택 (3-9개)  
+        3️⃣ 선호 메뉴 선택  
+        4️⃣ 결과 다운로드
+        
+        **🔒 개인정보 보호**  
+        수집된 정보는 연구 목적으로만 사용되며, 
+        개인정보는 안전하게 보호됩니다.
+        """)
+        
+        # 진행 상황 표시
+        if 'step' in st.session_state:
+            st.markdown("### 📊 진행 상황")
+            if st.session_state.step == 'info':
+                st.progress(0.25, "1단계: 정보 입력")
+            elif st.session_state.step == 'ingredients':
+                st.progress(0.5, "2단계: 수산물 선택")
+            elif st.session_state.step == 'menus':
+                st.progress(0.75, "3단계: 메뉴 선택")
+            elif st.session_state.step == 'complete':
+                st.progress(1.0, "✅ 설문 완료!")
+    
+    # 메인 타이틀을 더 간단하게
     st.title("🌊 블루푸드 선호도 조사")
-    st.markdown("---")
     
     # 단계별 진행
     if st.session_state.step == 'info':
@@ -566,10 +620,10 @@ def show_info_form():
         """
         <style>
         .stTextInput > div > div > input {
-            height: 40px;
+            height: 45px;
         }
         .stForm {
-            padding: 20px 0;
+            padding: 15px 0;
         }
         </style>
         """,
@@ -583,7 +637,10 @@ def show_info_form():
             name = st.text_input("성함", placeholder="홍길동", max_chars=20)
         
         with col2:
-            id_number = st.text_input("식별번호", placeholder="예: HG001", max_chars=20)
+            id_number = st.text_input("식별번호", placeholder="예: 2024001", max_chars=20)
+        
+        # 간격 조정
+        st.markdown("<br>", unsafe_allow_html=True)
         
         # 버튼을 더 작게
         submitted = st.form_submit_button("설문 시작하기", type="primary", use_container_width=True)
