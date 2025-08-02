@@ -584,23 +584,23 @@ def main():
         <style>
         /* 사이드바 전체 폰트 크기 */
         section[data-testid="stSidebar"] * {
-            font-size: 18px !important;
+            font-size: 22px !important;
         }
 
         /* 사이드바 헤더(타이틀)만 조금 더 크게 */
         section[data-testid="stSidebar"] h2 {
-            font-size: 22px !important;
+            font-size: 28px !important;
         }
 
         /* 사이드바 소제목(###) */
         section[data-testid="stSidebar"] h3 {
-            font-size: 20px !important;
+            font-size: 22px !important;
         }
 
         /* 사이드바의 리스트 및 일반 텍스트 */
         section[data-testid="stSidebar"] p, 
         section[data-testid="stSidebar"] li {
-            font-size: 18px !important;
+            font-size: 22px !important;
         }
         </style>
         """,
