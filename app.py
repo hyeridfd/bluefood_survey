@@ -28,7 +28,7 @@ def load_image(image_path, default_text="이미지 준비중"):
         return None
 
 def display_ingredient_with_image(ingredient, is_selected, key):
-    """식재료를 이미지와 함께 수직 카드 형태로 표시 (크기 통일)"""
+    """식재료를 이미지와 함께 수직 카드 형태로 표시 (개선된 버전)"""
     # 이미지 경로 시도 (jpg 우선, 없으면 png)
     jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
     png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
@@ -37,106 +37,102 @@ def display_ingredient_with_image(ingredient, is_selected, key):
     
     # 카드 전체를 감싸는 컨테이너
     with st.container():
-        # 고정 크기 카드 스타일
-        if is_selected:
-            card_style = f"""
-            <div style="
-                border: 3px solid #667eea;
-                border-radius: 15px;
-                padding: 15px;
-                text-align: center;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-                margin: 10px 0;
-                height: 320px;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-            ">
-                <h4 style="color: white; margin: 10px 0; font-size: 1.2em; font-weight: 600;">{ingredient}</h4>
-            """
-        else:
-            card_style = f"""
-            <div style="
-                border: 2px solid #e9ecef;
-                border-radius: 15px;
-                padding: 15px;
-                text-align: center;
-                background: white;
-                color: #2c3e50;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                margin: 10px 0;
-                height: 320px;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-            ">
-                <h4 style="color: #2c3e50; margin: 10px 0; font-size: 1.2em; font-weight: 600;">{ingredient}</h4>
-            """
+        # 컴팩트한 카드 스타일
+        card_style = f"""
+        <div style="
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+            background: white;
+            color: #2c3e50;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin: 8px 0;
+            height: 240px;
+            position: relative;
+        ">
+            <h4 style="color: #2c3e50; margin: 8px 0; font-size: 1.1em; font-weight: 600;">{ingredient}</h4>
+        </div>
+        """
         
         # 카드 시작
         st.markdown(card_style, unsafe_allow_html=True)
         
-        # 이미지 영역 (고정 크기)
-        if image:
-            # 이미지를 고정 크기로 표시 (CSS로 크기 제어)
-            st.markdown(
-                f"""
-                <div style="
-                    width: 100%;
-                    height: 180px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    overflow: hidden;
-                    border-radius: 10px;
-                    margin: 10px 0;
-                ">
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-            # Streamlit image with fixed size
-            st.image(image, width=180, use_column_width=False)
-        else:
-            # 플레이스홀더 (고정 크기)
-            st.markdown(
-                f"""
-                <div style="
-                    width: 180px;
-                    height: 180px;
-                    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
-                    border: 2px dashed #dee2e6;
-                    border-radius: 10px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    margin: 10px auto;
-                    color: #6c757d;
-                ">
-                    <div style="font-size: 2em; margin-bottom: 5px;">🐟</div>
-                    <div style="font-size: 0.9em;">이미지 준비중</div>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
+        # 이미지와 버튼을 겹치는 영역
+        col1, col2, col3 = st.columns([0.5, 1, 0.5])
         
-        # 체크박스 영역
-        checkbox_result = st.checkbox(
-            f"선택하기", 
-            value=is_selected, 
-            key=key
-        )
-        
-        # 카드 끝
-        st.markdown("</div>", unsafe_allow_html=True)
+        with col2:
+            # 이미지 컨테이너 (고정 크기)
+            image_container = st.container()
+            
+            with image_container:
+                if image:
+                    st.image(image, width=150, use_column_width=False)
+                else:
+                    # 플레이스홀더 (고정 크기)
+                    st.markdown(
+                        f"""
+                        <div style="
+                            width: 150px;
+                            height: 150px;
+                            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+                            border: 2px dashed #dee2e6;
+                            border-radius: 8px;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            margin: 0 auto;
+                            color: #6c757d;
+                        ">
+                            <div style="font-size: 1.8em; margin-bottom: 5px;">🐟</div>
+                            <div style="font-size: 0.8em;">이미지 준비중</div>
+                        </div>
+                        """, 
+                        unsafe_allow_html=True
+                    )
+                
+                # 선택 버튼 (이미지 위에 오버레이)
+                button_color = "#007bff" if is_selected else "#6c757d"
+                button_text = "✓ 선택됨" if is_selected else "선택하기"
+                
+                # 버튼 스타일을 위한 CSS
+                st.markdown(
+                    f"""
+                    <style>
+                    .custom-button-{key} {{
+                        background-color: {button_color} !important;
+                        color: white !important;
+                        border: none !important;
+                        padding: 8px 16px !important;
+                        border-radius: 20px !important;
+                        font-size: 0.9em !important;
+                        font-weight: 600 !important;
+                        cursor: pointer !important;
+                        margin-top: 8px !important;
+                        transition: all 0.3s ease !important;
+                    }}
+                    .custom-button-{key}:hover {{
+                        transform: translateY(-1px) !important;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+                    }}
+                    </style>
+                    """, 
+                    unsafe_allow_html=True
+                )
+                
+                # 체크박스를 숨기고 버튼처럼 보이게 하기
+                checkbox_result = st.checkbox(
+                    button_text,
+                    value=is_selected, 
+                    key=key,
+                    help=f"{ingredient} 선택/해제"
+                )
         
         return checkbox_result
 
 def display_menu_with_image(menu, ingredient, is_selected, key):
-    """메뉴를 이미지와 함께 수직 카드 형태로 표시 (크기 통일)"""
+    """메뉴를 이미지와 함께 수직 카드 형태로 표시 (개선된 버전)"""
     # 이미지 경로 시도 (png 우선, 없으면 jpg)
     png_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
     jpg_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
@@ -145,101 +141,97 @@ def display_menu_with_image(menu, ingredient, is_selected, key):
     
     # 카드 전체를 감싸는 컨테이너
     with st.container():
-        # 고정 크기 카드 스타일
-        if is_selected:
-            card_style = f"""
-            <div style="
-                border: 3px solid #e74c3c;
-                border-radius: 12px;
-                padding: 12px;
-                text-align: center;
-                background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-                color: white;
-                box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
-                margin: 8px 0;
-                height: 280px;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-            ">
-                <p style="color: white; margin: 5px 0; font-weight: 600; font-size: 1.0em; line-height: 1.3;">{menu}</p>
-            """
-        else:
-            card_style = f"""
-            <div style="
-                border: 2px solid #e9ecef;
-                border-radius: 12px;
-                padding: 12px;
-                text-align: center;
-                background: white;
-                color: #2c3e50;
-                box-shadow: 0 3px 12px rgba(0,0,0,0.1);
-                margin: 8px 0;
-                height: 280px;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-            ">
-                <p style="color: #2c3e50; margin: 5px 0; font-weight: 600; font-size: 1.0em; line-height: 1.3;">{menu}</p>
-            """
+        # 컴팩트한 카드 스타일
+        card_style = f"""
+        <div style="
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 8px;
+            text-align: center;
+            background: white;
+            color: #2c3e50;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+            margin: 6px 0;
+            height: 220px;
+            position: relative;
+        ">
+            <p style="color: #2c3e50; margin: 6px 0; font-weight: 600; font-size: 0.9em; line-height: 1.2;">{menu}</p>
+        </div>
+        """
         
         # 카드 시작
         st.markdown(card_style, unsafe_allow_html=True)
         
-        # 이미지 영역 (고정 크기)
-        if image:
-            # 이미지를 고정 크기로 표시
-            st.markdown(
-                f"""
-                <div style="
-                    width: 100%;
-                    height: 150px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    overflow: hidden;
-                    border-radius: 8px;
-                    margin: 8px 0;
-                ">
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-            # Streamlit image with fixed size
-            st.image(image, width=150, use_column_width=False)
-        else:
-            # 플레이스홀더 (고정 크기)
-            st.markdown(
-                f"""
-                <div style="
-                    width: 150px;
-                    height: 150px;
-                    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
-                    border: 2px dashed #dee2e6;
-                    border-radius: 8px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    margin: 8px auto;
-                    color: #6c757d;
-                ">
-                    <div style="font-size: 1.5em; margin-bottom: 3px;">🍽️</div>
-                    <div style="font-size: 0.8em;">이미지 준비중</div>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
+        # 이미지와 버튼을 겹치는 영역
+        col1, col2, col3 = st.columns([0.5, 1, 0.5])
         
-        # 체크박스 영역
-        checkbox_result = st.checkbox(
-            f"선택", 
-            value=is_selected, 
-            key=key
-        )
-        
-        # 카드 끝
-        st.markdown("</div>", unsafe_allow_html=True)
+        with col2:
+            # 이미지 컨테이너 (고정 크기)
+            image_container = st.container()
+            
+            with image_container:
+                if image:
+                    st.image(image, width=120, use_column_width=False)
+                else:
+                    # 플레이스홀더 (고정 크기)
+                    st.markdown(
+                        f"""
+                        <div style="
+                            width: 120px;
+                            height: 120px;
+                            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+                            border: 2px dashed #dee2e6;
+                            border-radius: 6px;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            margin: 0 auto;
+                            color: #6c757d;
+                        ">
+                            <div style="font-size: 1.4em; margin-bottom: 3px;">🍽️</div>
+                            <div style="font-size: 0.7em;">이미지 준비중</div>
+                        </div>
+                        """, 
+                        unsafe_allow_html=True
+                    )
+                
+                # 선택 버튼 (이미지 위에 오버레이)
+                button_color = "#007bff" if is_selected else "#6c757d"
+                button_text = "✓ 선택됨" if is_selected else "선택"
+                
+                # 버튼 스타일을 위한 CSS
+                st.markdown(
+                    f"""
+                    <style>
+                    .menu-button-{key} {{
+                        background-color: {button_color} !important;
+                        color: white !important;
+                        border: none !important;
+                        padding: 6px 12px !important;
+                        border-radius: 15px !important;
+                        font-size: 0.8em !important;
+                        font-weight: 600 !important;
+                        cursor: pointer !important;
+                        margin-top: 6px !important;
+                        transition: all 0.3s ease !important;
+                    }}
+                    .menu-button-{key}:hover {{
+                        transform: translateY(-1px) !important;
+                        box-shadow: 0 3px 10px rgba(0,0,0,0.2) !important;
+                    }}
+                    </style>
+                    """, 
+                    unsafe_allow_html=True
+                )
+                
+                # 체크박스를 숨기고 버튼처럼 보이게 하기
+                checkbox_result = st.checkbox(
+                    button_text,
+                    value=is_selected, 
+                    key=key,
+                    help=f"{menu} 선택/해제"
+                )
         
         return checkbox_result
 
