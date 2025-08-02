@@ -610,8 +610,8 @@ def main():
     # 기존 사이드바 설정 유지
     with st.sidebar:
         st.markdown(
-            
-            <div style=
+            """
+            <div style="
                 background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
                 padding: 25px;
                 border-radius: 15px;
@@ -640,9 +640,10 @@ def main():
                     류혜리, 유정연<br>(서울대학교 농생명공학부 박사과정)
                 </div>
             </div>
-            ,
+            """,
             unsafe_allow_html=True   # ✅ 반드시 필요
         )
+
 
 
         st.markdown("### 📋 설문 안내")
