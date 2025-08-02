@@ -577,9 +577,37 @@ if 'selected_ingredients' not in st.session_state:
 if 'selected_menus' not in st.session_state:
     st.session_state.selected_menus = {}
 
-# 메인 앱
 def main():
-    # 사이드바 설정
+    # ✅ 사이드바 글씨 크기 18px 적용 CSS
+    st.markdown(
+        """
+        <style>
+        /* 사이드바 전체 폰트 크기 */
+        section[data-testid="stSidebar"] * {
+            font-size: 18px !important;
+        }
+
+        /* 사이드바 헤더(타이틀)만 조금 더 크게 */
+        section[data-testid="stSidebar"] h2 {
+            font-size: 22px !important;
+        }
+
+        /* 사이드바 소제목(###) */
+        section[data-testid="stSidebar"] h3 {
+            font-size: 20px !important;
+        }
+
+        /* 사이드바의 리스트 및 일반 텍스트 */
+        section[data-testid="stSidebar"] p, 
+        section[data-testid="stSidebar"] li {
+            font-size: 18px !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # 기존 사이드바 설정 유지
     with st.sidebar:
         st.markdown(
             """
@@ -600,7 +628,7 @@ def main():
             """,
             unsafe_allow_html=True
         )
-        
+
         st.markdown("### 📋 설문 안내")
         st.markdown("""
         **🎯 목적**  
@@ -610,16 +638,16 @@ def main():
         약 3-5분
         
         **📝 설문 단계**  
-        1️⃣ 참여자 정보 입력
+        1️⃣ 참여자 정보 입력  
         2️⃣ 선호 수산물 선택 (3-9개)  
         3️⃣ 선호 블루푸드 메뉴 선택  
         4️⃣ 결과 다운로드
         
         **🔒 개인정보 보호**  
-        수집된 정보는 연구 목적으로만 사용되며, 
+        수집된 정보는 연구 목적으로만 사용되며,  
         개인정보는 안전하게 보호됩니다.
         """)
-        
+
         # 진행 상황 표시
         if 'step' in st.session_state:
             st.markdown("### 📊 진행 상황")
