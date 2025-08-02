@@ -564,43 +564,45 @@ def main():
 def show_info_form():
     st.subheader("📝 참여자 정보 입력")
 
-    # ✅ 폼 스타일 (글씨 크게 + 여백 확대)
+    # ✅ Streamlit 전용 스타일 커스터마이징
     st.markdown(
         """
         <style>
-        /* 입력창 텍스트 크기 및 높이 */
-        .stTextInput > div > div > input {
-            font-size: 30px !important;   /* ✅ 글씨 크기 */
-            height:  40px !important;      /* ✅ 높이 */
-            padding: 10px !important;     /* ✅ 내부 여백 */
+        /* ✅ text_input 레이블 스타일 */
+        div[data-baseweb="input"] > div:first-child label {
+            font-size: 28px !important;
+            font-weight: bold !important;
+            color: #333333 !important;
         }
 
-        /* 레이블(성함, 식별번호) 글씨 크기 */
-        label[data-testid="stMarkdownContainer"] > p {
-            font-size: 40px !important;   /* ✅ 레이블 크기 */
-            font-weight: bold;
+        /* ✅ 입력창 텍스트 크기 및 높이 */
+        input[type="text"] {
+            font-size: 22px !important;
+            height: 50px !important;
+            padding: 6px 10px !important;
         }
 
-        /* 폼 전체 여백 */
-        .stForm {
-            padding: 30px 10px;
-            background: #f8f9fa;          /* ✅ 은은한 배경 */
-            border-radius: 10px;
-            border: 1px solid #ddd;
-        }
-
-        /* 버튼 스타일 */
+        /* ✅ 버튼 스타일 (form_submit_button 포함) */
         div.stButton > button {
-            font-size: 30px !important;   /* ✅ 버튼 글씨 */
-            height: 55px !important;      /* ✅ 버튼 높이 */
-            border-radius: 8px;
+            font-size: 24px !important;
+            font-weight: bold !important;
+            height: 55px !important;
+            border-radius: 10px !important;
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white !important;
+            border: none !important;
+        }
+
+        /* ✅ 버튼 hover 효과 */
+        div.stButton > button:hover {
+            background: linear-gradient(135deg, #00b4d8, #0096c7);
         }
         </style>
         """,
         unsafe_allow_html=True
     )
 
-    # ✅ 폼 UI
+    # ✅ 입력 폼
     with st.form("info_form"):
         col1, col2 = st.columns(2)
 
@@ -610,11 +612,11 @@ def show_info_form():
         with col2:
             id_number = st.text_input("식별번호", placeholder="예: 2024001", max_chars=20)
 
-        # ✅ 간격 추가
+        # 간격 추가
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # ✅ 버튼을 크게
-        submitted = st.form_submit_button("🚀 설문 시작하기", type="primary", use_container_width=True)
+        # ✅ 폰트 커스터마이징된 버튼
+        submitted = st.form_submit_button("설문 시작하기", use_container_width=True)
 
         if submitted:
             if name and id_number:
@@ -623,7 +625,8 @@ def show_info_form():
                 st.session_state.step = 'ingredients'
                 st.rerun()
             else:
-                st.error("❗ 성함과 식별번호를 모두 입력해주세요.")
+                st.error("성함과 식별번호를 모두 입력해주세요.")
+
 
 
 def show_ingredient_selection():
