@@ -634,10 +634,10 @@ def show_info_form():
         col1, col2 = st.columns(2)
         
         with col1:
-            name = st.text_input("성함", placeholder="홍길동", max_chars=40)
+            name = st.text_input("성함", placeholder="홍길동", max_chars=20)
         
         with col2:
-            id_number = st.text_input("식별번호", placeholder="예: HG001", max_chars=40)
+            id_number = st.text_input("식별번호", placeholder="예: 2024001", max_chars=20)
         
         # 간격 조정
         st.markdown("<br>", unsafe_allow_html=True)
@@ -740,7 +740,7 @@ def show_menu_selection():
                 if menu_list:
                     st.markdown(f"**{category}**")
                     
-                    # 메뉴를 4열로 배치
+                    # 메뉴를 4열로 배치 (가로 나열)
                     cols = st.columns(4)
                     for i, menu in enumerate(menu_list):
                         with cols[i % 4]:
