@@ -571,7 +571,7 @@ def show_info_form():
         /* 입력창 텍스트 크기 및 높이 */
         .stTextInput > div > div > input {
             font-size: 30px !important;   /* ✅ 글씨 크기 */
-            height: 55px !important;      /* ✅ 높이 */
+            height: 80px !important;      /* ✅ 높이 */
             padding: 10px !important;     /* ✅ 내부 여백 */
         }
 
