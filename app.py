@@ -608,6 +608,7 @@ def main():
     )
 
     # 기존 사이드바 설정 유지
+    # 기존 사이드바 설정 유지
     with st.sidebar:
         st.markdown(
             """
@@ -641,7 +642,7 @@ def main():
                 </div>
             </div>
             """,
-            unsafe_allow_html=True   # ✅ 반드시 필요
+            unsafe_allow_html=True  # ✅ HTML과 CSS를 렌더링하기 위해 반드시 필요
         )
 
 
