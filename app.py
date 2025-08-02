@@ -571,13 +571,13 @@ def show_info_form():
         /* 입력창 텍스트 크기 및 높이 */
         .stTextInput > div > div > input {
             font-size: 30px !important;   /* ✅ 글씨 크기 */
-            height: 80px !important;      /* ✅ 높이 */
+            height:  40px !important;      /* ✅ 높이 */
             padding: 10px !important;     /* ✅ 내부 여백 */
         }
 
         /* 레이블(성함, 식별번호) 글씨 크기 */
         label[data-testid="stMarkdownContainer"] > p {
-            font-size: 20px !important;   /* ✅ 레이블 크기 */
+            font-size: 35px !important;   /* ✅ 레이블 크기 */
             font-weight: bold;
         }
 
@@ -591,7 +591,7 @@ def show_info_form():
 
         /* 버튼 스타일 */
         div.stButton > button {
-            font-size: 20px !important;   /* ✅ 버튼 글씨 */
+            font-size: 30px !important;   /* ✅ 버튼 글씨 */
             height: 55px !important;      /* ✅ 버튼 높이 */
             border-radius: 8px;
         }
