@@ -680,29 +680,29 @@ def show_menu_selection():
             for category, menu_list in menus.items():
                 if menu_list:
                     st.markdown(f"**{category}**")
-                    
-                    # 메뉴를 4열로 배치 (가로 나열)
-                    # 메뉴를 4열 그리드로 배치
-                    cols = st.columns(4)
-                    for i, menu in enumerate(menu_list):
-                        col = cols[i % 4]  # 4개씩 가로 배치
-                        with col:
-                            is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
-                            selected = display_menu_with_image(
-                                menu,
-                                ingredient,
-                                is_selected,
-                                f"menu_{ingredient}_{menu}"
-                            )
-                    
-                            if selected:
-                                if menu not in st.session_state.selected_menus[ingredient]:
-                                    st.session_state.selected_menus[ingredient].append(menu)
-                                    st.rerun()
-                            else:
-                                if menu in st.session_state.selected_menus[ingredient]:
-                                    st.session_state.selected_menus[ingredient].remove(menu)
-                                    st.rerun()
+            
+                    # ✅ 4개씩 나눠서 행(Row)별로 columns 생성
+                    for row_start in range(0, len(menu_list), 4):
+                        cols = st.columns(4)
+                        for col_idx, menu in enumerate(menu_list[row_start:row_start+4]):
+                            with cols[col_idx]:
+                                is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
+                                selected = display_menu_with_image(
+                                    menu,
+                                    ingredient,
+                                    is_selected,
+                                    f"menu_{ingredient}_{menu}"
+                                )
+            
+                                if selected:
+                                    if menu not in st.session_state.selected_menus[ingredient]:
+                                        st.session_state.selected_menus[ingredient].append(menu)
+                                        st.rerun()
+                                else:
+                                    if menu in st.session_state.selected_menus[ingredient]:
+                                        st.session_state.selected_menus[ingredient].remove(menu)
+                                        st.rerun()
+
 
         
         # 각 수산물별 선택 상태 표시
