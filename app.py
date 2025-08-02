@@ -564,36 +564,32 @@ def main():
 def show_info_form():
     st.subheader("📝 참여자 정보 입력")
 
-    # ✅ Streamlit 전용 스타일 커스터마이징
+    # ✅ CSS 강제 적용
     st.markdown(
         """
         <style>
-        /* ✅ text_input 레이블 스타일 */
-        div[data-baseweb="input"] > div:first-child label {
-            font-size: 28px !important;
+        /* ✅ 레이블(성함, 식별번호) 스타일 */
+        div.row-widget.stTextInput label {
+            font-size: 26px !important;
             font-weight: bold !important;
-            color: #333333 !important;
+            color: #222 !important;
         }
 
-        /* ✅ 입력창 텍스트 크기 및 높이 */
-        input[type="text"] {
-            font-size: 22px !important;
-            height: 50px !important;
-            padding: 6px 10px !important;
-        }
-
-        /* ✅ 버튼 스타일 (form_submit_button 포함) */
-        div.stButton > button {
+        /* ✅ 입력창 폰트 크기 */
+        div.row-widget.stTextInput input {
             font-size: 24px !important;
+            height: 50px !important;
+        }
+
+        /* ✅ 버튼 스타일 */
+        div.stButton > button {
+            font-size: 26px !important;
             font-weight: bold !important;
             height: 55px !important;
             border-radius: 10px !important;
             background: linear-gradient(135deg, #4facfe, #00f2fe);
             color: white !important;
-            border: none !important;
         }
-
-        /* ✅ 버튼 hover 효과 */
         div.stButton > button:hover {
             background: linear-gradient(135deg, #00b4d8, #0096c7);
         }
@@ -612,10 +608,8 @@ def show_info_form():
         with col2:
             id_number = st.text_input("식별번호", placeholder="예: 2024001", max_chars=20)
 
-        # 간격 추가
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # ✅ 폰트 커스터마이징된 버튼
         submitted = st.form_submit_button("설문 시작하기", use_container_width=True)
 
         if submitted:
