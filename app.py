@@ -95,16 +95,24 @@ def display_menu_with_image(menu, ingredient, is_selected, key):
     html_img = render_image_fixed_size(png_path, width=220, height=160, placeholder="🍽️") if os.path.exists(png_path) else render_image_fixed_size(jpg_path, width=220, height=160, placeholder="🍽️")
 
     with st.container():
-        st.markdown(f"**{menu}**", unsafe_allow_html=True)
-        st.markdown(html_img, unsafe_allow_html=True)  # ✅ 이미지 HTML 표시
+        st.markdown(
+            f"""
+            <div style="text-align:center; margin-bottom:5px;">
+                <strong style="font-size:16px;">{menu}</strong>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        if is_selected:
-            button_text = "✓ 선택됨"
-        else:
-            button_text = "선택"
+        st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
 
-        checkbox_result = st.checkbox(button_text, value=is_selected, key=key)
+        checkbox_container = st.container()
+        with checkbox_container:
+            col_center = st.columns([1, 2, 1])[1]
+            with col_center:
+                checkbox_result = st.checkbox("선택", value=is_selected, key=key)
         return checkbox_result
+
 
 
 # 엑셀 파일 저장 함수 (GitHub/Streamlit Cloud용)
