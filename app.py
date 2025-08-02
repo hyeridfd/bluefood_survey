@@ -1,4 +1,219 @@
-import streamlit as st
+def show_menu_selection():
+    st.subheader("🍽️ 선호 메뉴 선택")
+    
+    # 안내 메시지 스타일 개선
+    info_style = """
+    <div style="
+        background: linear-gradient(135deg, #fff3e0 0%, #ffcc02 100%);
+        border-left: 5px solid #ff9800;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(255, 152, 0, 0.1);
+    ">
+        <h4 style="color: #f57c00; margin: 0 0 10px 0;">
+            🔸 선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요
+        </h4>
+        <p style="color: #f57c00; margin: 0; font-weight: 500;">
+            ✓ 각 수산물마다 최소 1개 이상의 메뉴를 선택해주세요
+        </p>
+    </div>
+    """
+    st.markdown(info_style, unsafe_allow_html=True)
+    
+    # 선택된 수산물 표시 스타일 개선
+    ingredient_tags = " | ".join([f"**{ingredient}**" for ingredient in st.session_state.selected_ingredients])
+    selected_style = f"""
+    <div style="
+        background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+        border: 2px solid #4caf50;
+        border-radius: 15px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(76, 175, 80, 0.1);
+    ">
+        <h4 style="color: #2e7d32; margin: 0 0 10px 0;">선택하신 수산물</h4>
+        <p style="color: #388e3c; margin: 0; font-weight: 500; font-size: 1.1em;">
+            🏷️ {ingredient_tags}
+        </p>
+    </div>
+    """
+    st.markdown(selected_style, unsafe_allow_html=True)
+    
+    # 각 수산물별 메뉴 선택
+    all_valid = True
+    
+    for ingredient in st.session_state.selected_ingredients:
+        # 수산물별 섹션 헤더 스타일 개선
+        ingredient_style = f"""
+        <div style="
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin: 30px 0 20px 0;
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
+        ">
+            🐟 {ingredient} 요리
+        </div>
+        """
+        st.markdown(ingredient_style, unsafe_allow_html=True)
+        
+        if ingredient in MENU_DATA:
+            menus = MENU_DATA[ingredient]
+            
+            for category, menu_list in menus.items():
+                if menu_list:
+                    # 카테고리 헤더 스타일
+                    category_header_style = f"""
+                    <div style="
+                        background: #f8f9fa;
+                        border-left: 4px solid #e74c3c;
+                        padding: 10px 15px;
+                        margin: 15px 0 10px 0;
+                        border-radius: 5px;
+                        font-weight: 600;
+                        color: #2c3e50;
+                        font-size: 1.1em;
+                    ">
+                        {category}
+                    </div>
+                    """
+                    st.markdown(category_header_style, unsafe_allow_html=True)
+                    
+                    # 메뉴를 4열로 배치
+                    cols = st.columns(4)
+                    for i, menu in enumerate(menu_list):
+                        with cols[i % 4]:
+                            is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
+                            
+                            # 이미지와 함께 메뉴 표시
+                            selected = display_menu_with_image(
+                                menu, 
+                                ingredient, 
+                                is_selected, 
+                                f"menu_{ingredient}_{menu}"
+                            )
+                            
+                            if selected:
+                                if menu not in st.session_state.selected_menus[ingredient]:
+                                    st.session_state.selected_menus[ingredient].append(menu)
+                                    st.rerun()
+                            else:
+                                if menu in st.session_state.selected_menus[ingredient]:
+                                    st.session_state.selected_menus[ingredient].remove(menu)
+                                    st.rerun()
+        
+        # 각 수산물별 선택 상태 표시
+        menu_count = len(st.session_state.selected_menus.get(ingredient, []))
+        if menu_count == 0:
+            all_valid = False
+            status_style = f"""
+            <div style="
+                background: linear-gradient(135deg, #ffebee 0%, #ef5350 100%);
+                color: #c62828;
+                padding: 10px 20px;
+                border-radius: 20px;
+                margin: 15px 0;
+                text-align: center;
+                font-weight: 600;
+                border: 2px solid #f44336;
+            ">
+                ⚠️ {ingredient}에 대해 최소 1개 이상의 메뉴를 선택해주세요.
+            </div>
+            """
+        else:
+            status_style = f"""
+            <div style="
+                background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+                color: #2e7d32;
+                padding: 10px 20px;
+                border-radius: 20px;
+                margin: 15px 0;
+                text-align: center;
+                font-weight: 600;
+                border: 2px solid #4caf50;
+            ">
+                ✅ {ingredient}: {menu_count}개 메뉴 선택됨
+            </div>
+            """
+        
+        st.markdown(status_style, unsafe_allow_html=True)
+        st.markdown("---")
+    
+    # 버튼들 스타일 개선
+    col1, col2, col3 = st.columns([1, 1, 1])
+    
+    with col1:
+        prev_button_style = """
+        <style>
+        .stButton > button {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.0em;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        .stButton > button:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(108, 117, 125, 0.3);
+        }
+        </style>
+        """
+        st.markdown(prev_button_style, unsafe_allow_html=True)
+        
+        if st.button("← 이전 단계", use_container_width=True):
+            st.session_state.step = 'ingredients'
+            st.rerun()
+    
+    with col3:
+        if all_valid:
+            complete_button_style = """
+            <style>
+            .stButton > button {
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                color: white;
+                border: none;
+                padding: 15px 30px;
+                border-radius: 25px;
+                font-size: 1.0em;
+                font-weight: 600;
+                width: 100%;
+                transition: all 0.3s ease;
+                box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+            }
+            .stButton > button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
+            }
+            </style>
+            """
+            st.markdown(complete_button_style, unsafe_allow_html=True)
+            
+            if st.button("설문 완료하기", type="primary", use_container_width=True):
+                # 엑셀 파일 저장
+                filename, df = save_to_excel(
+                    st.session_state.name,
+                    st.session_state.id_number,
+                    st.session_state.selected_ingredients,
+                    st.session_state.selected_menus
+                )
+                st.session_state.filename = filename
+                st.session_state.survey_data = df
+                st.session_state.step = 'complete'
+                st.rerun()
+        else:
+            st.button("설문 완료하기", disabled=True, use_container_width=True)import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
@@ -602,6 +817,21 @@ if 'selected_menus' not in st.session_state:
 # 메인 앱
 def main():
     st.title("🌊 블루푸드 선호도 조사")
+    
+    # 디버깅: 이미지 폴더 확인 (개발 중에만 사용)
+    if st.sidebar.checkbox("🔧 디버깅 모드"):
+        st.sidebar.write("**이미지 폴더 상태:**")
+        st.sidebar.write(f"ingredients 폴더 존재: {os.path.exists(INGREDIENT_IMAGE_PATH)}")
+        st.sidebar.write(f"menus 폴더 존재: {os.path.exists(MENU_IMAGE_PATH)}")
+        
+        if os.path.exists(INGREDIENT_IMAGE_PATH):
+            files = os.listdir(INGREDIENT_IMAGE_PATH)
+            st.sidebar.write(f"ingredients 파일 개수: {len(files)}")
+            if len(files) > 0:
+                st.sidebar.write("첫 5개 파일:")
+                for f in files[:5]:
+                    st.sidebar.write(f"- {f}")
+    
     st.markdown("---")
     
     # 단계별 진행
@@ -667,4 +897,407 @@ def show_ingredient_selection():
     if 3 <= selected_count <= 9:
         counter_style = f"""
         <div style="
-            background:
+            background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+            color: #2e7d32;
+            padding: 15px 25px;
+            border-radius: 25px;
+            margin: 20px auto;
+            text-align: center;
+            font-weight: 600;
+            max-width: 400px;
+            font-size: 1.1em;
+            border: 2px solid #4caf50;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+        ">
+            ✅ 선택된 품목: {selected_count}개
+        </div>
+        """
+    elif selected_count < 3:
+        counter_style = f"""
+        <div style="
+            background: linear-gradient(135deg, #fff3e0 0%, #ffcc02 100%);
+            color: #f57c00;
+            padding: 15px 25px;
+            border-radius: 25px;
+            margin: 20px auto;
+            text-align: center;
+            font-weight: 600;
+            max-width: 400px;
+            font-size: 1.1em;
+            border: 2px solid #ff9800;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.2);
+        ">
+            ⚠️ 선택된 품목: {selected_count}개 ({3-selected_count}개 더 선택 필요)
+        </div>
+        """
+    else:
+        counter_style = f"""
+        <div style="
+            background: linear-gradient(135deg, #ffebee 0%, #ef5350 100%);
+            color: #c62828;
+            padding: 15px 25px;
+            border-radius: 25px;
+            margin: 20px auto;
+            text-align: center;
+            font-weight: 600;
+            max-width: 400px;
+            font-size: 1.1em;
+            border: 2px solid #f44336;
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.2);
+        ">
+            ❌ 선택된 품목: {selected_count}개 (최대 9개까지만 선택 가능)
+        </div>
+        """
+    
+    st.markdown(counter_style, unsafe_allow_html=True)
+    
+    # 카테고리별 수산물 선택
+    for category, ingredients in INGREDIENT_CATEGORIES.items():
+        # 카테고리 헤더 스타일 개선
+        category_style = f"""
+        <div style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin: 30px 0 20px 0;
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        ">
+            {category}
+        </div>
+        """
+        st.markdown(category_style, unsafe_allow_html=True)
+        
+        # 수산물을 4열 그리드로 배치
+        cols = st.columns(4)
+        for i, ingredient in enumerate(ingredients):
+            with cols[i % 4]:
+                is_selected = ingredient in st.session_state.selected_ingredients
+                
+                # 이미지와 함께 식재료 표시
+                selected = display_ingredient_with_image(
+                    ingredient, 
+                    is_selected, 
+                    f"ingredient_{ingredient}"
+                )
+                
+                if selected:
+                    if ingredient not in st.session_state.selected_ingredients:
+                        if len(st.session_state.selected_ingredients) < 9:
+                            st.session_state.selected_ingredients.append(ingredient)
+                            st.rerun()
+                        else:
+                            st.error("최대 9개까지만 선택할 수 있습니다.")
+                            st.rerun()
+                else:
+                    if ingredient in st.session_state.selected_ingredients:
+                        st.session_state.selected_ingredients.remove(ingredient)
+                        st.rerun()
+    
+    # 다음 단계 버튼 스타일 개선
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        if 3 <= len(st.session_state.selected_ingredients) <= 9:
+            button_style = """
+            <style>
+            .stButton > button {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                padding: 15px 40px;
+                border-radius: 25px;
+                font-size: 1.1em;
+                font-weight: 600;
+                width: 100%;
+                transition: all 0.3s ease;
+                box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+            }
+            .stButton > button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            }
+            </style>
+            """
+            st.markdown(button_style, unsafe_allow_html=True)
+            
+            if st.button("다음 단계로 →", type="primary", use_container_width=True):
+                # 선택된 수산물에 대한 메뉴 딕셔너리 초기화
+                st.session_state.selected_menus = {ingredient: [] for ingredient in st.session_state.selected_ingredients}
+                st.session_state.step = 'menus'
+                st.rerun()
+        else:
+            st.button("다음 단계로 →", disabled=True, use_container_width=True)
+
+def show_menu_selection():
+    st.subheader("🍽️ 선호 메뉴 선택")
+    
+    st.info("**선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요** (각 수산물마다 최소 1개 이상)")
+    
+    # 선택된 수산물 표시
+    with st.expander("선택하신 수산물", expanded=True):
+        st.write("🏷️ " + " | ".join([f"**{ingredient}**" for ingredient in st.session_state.selected_ingredients]))
+    
+    # 각 수산물별 메뉴 선택
+    all_valid = True
+    
+    for ingredient in st.session_state.selected_ingredients:
+        st.markdown(f"### 🐟 {ingredient} 요리")
+        
+        if ingredient in MENU_DATA:
+            menus = MENU_DATA[ingredient]
+            
+            for category, menu_list in menus.items():
+                if menu_list:
+                    st.markdown(f"**{category}**")
+                    
+                    # 메뉴를 3열로 배치
+                    cols = st.columns(3)
+                    for i, menu in enumerate(menu_list):
+                        with cols[i % 3]:
+                            is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
+                            
+                            # 이미지와 함께 메뉴 표시
+                            selected = display_menu_with_image(
+                                menu, 
+                                ingredient, 
+                                is_selected, 
+                                f"menu_{ingredient}_{menu}"
+                            )
+                            
+                            if selected:
+                                if menu not in st.session_state.selected_menus[ingredient]:
+                                    st.session_state.selected_menus[ingredient].append(menu)
+                                    st.rerun()
+                            else:
+                                if menu in st.session_state.selected_menus[ingredient]:
+                                    st.session_state.selected_menus[ingredient].remove(menu)
+                                    st.rerun()
+        
+        # 각 수산물별 최소 1개 선택 확인
+        if len(st.session_state.selected_menus.get(ingredient, [])) == 0:
+            all_valid = False
+            st.warning(f"⚠️ {ingredient}에 대해 최소 1개 이상의 메뉴를 선택해주세요.")
+        else:
+            st.success(f"✅ {ingredient}: {len(st.session_state.selected_menus[ingredient])}개 메뉴 선택됨")
+        
+        st.markdown("---")
+    
+    # 버튼들
+    col1, col2, col3 = st.columns([1, 1, 1])
+    
+    with col1:
+        if st.button("← 이전 단계", use_container_width=True):
+            st.session_state.step = 'ingredients'
+            st.rerun()
+    
+    with col3:
+        if all_valid:
+            if st.button("설문 완료하기", type="primary", use_container_width=True):
+                # 엑셀 파일 저장
+                filename, df = save_to_excel(
+                    st.session_state.name,
+                    st.session_state.id_number,
+                    st.session_state.selected_ingredients,
+                    st.session_state.selected_menus
+                )
+                st.session_state.filename = filename
+                st.session_state.survey_data = df
+                st.session_state.step = 'complete'
+                st.rerun()
+        else:
+            st.button("설문 완료하기", disabled=True, use_container_width=True)
+
+def show_completion():
+    # 축하 애니메이션
+    st.balloons()
+    
+    # 완료 메시지 스타일
+    completion_style = """
+    <div style="
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 20px;
+        text-align: center;
+        margin: 20px 0;
+        box-shadow: 0 10px 30px rgba(40, 167, 69, 0.3);
+    ">
+        <h1 style="margin: 0 0 15px 0; font-size: 2.5em;">🎉</h1>
+        <h2 style="margin: 0 0 10px 0;">설문이 완료되었습니다!</h2>
+        <p style="margin: 0; font-size: 1.2em; opacity: 0.9;">소중한 의견을 주셔서 감사합니다</p>
+    </div>
+    """
+    st.markdown(completion_style, unsafe_allow_html=True)
+    
+    # 결과 요약 표시 스타일 개선
+    summary_style = """
+    <div style="
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 2px solid #dee2e6;
+        border-radius: 15px;
+        padding: 25px;
+        margin: 20px 0;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    ">
+    """
+    st.markdown(summary_style, unsafe_allow_html=True)
+    
+    # 참여자 정보
+    info_header_style = """
+    <h3 style="
+        color: #495057;
+        margin: 0 0 20px 0;
+        text-align: center;
+        font-size: 1.5em;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #dee2e6;
+    ">📊 설문 결과 요약</h3>
+    """
+    st.markdown(info_header_style, unsafe_allow_html=True)
+    
+    # 기본 정보 카드
+    basic_info_style = f"""
+    <div style="
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 15px 0;
+        border-left: 4px solid #007bff;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    ">
+        <p style="margin: 5px 0; color: #495057;"><strong>참여자:</strong> {st.session_state.name}</p>
+        <p style="margin: 5px 0; color: #495057;"><strong>식별번호:</strong> {st.session_state.id_number}</p>
+        <p style="margin: 5px 0; color: #495057;"><strong>설문 완료 시간:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+    </div>
+    """
+    st.markdown(basic_info_style, unsafe_allow_html=True)
+    
+    # 선택된 수산물 카드
+    ingredients_list = " | ".join(st.session_state.selected_ingredients)
+    ingredients_style = f"""
+    <div style="
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 15px 0;
+        border-left: 4px solid #28a745;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    ">
+        <h4 style="color: #28a745; margin: 0 0 15px 0;">선택하신 수산물</h4>
+        <p style="color: #495057; font-size: 1.1em; line-height: 1.5; margin: 0;">
+            🏷️ {ingredients_list}
+        </p>
+    </div>
+    """
+    st.markdown(ingredients_style, unsafe_allow_html=True)
+    
+    # 선택된 메뉴 카드
+    menu_cards = ""
+    for ingredient, menus in st.session_state.selected_menus.items():
+        if menus:
+            menu_list = ", ".join(menus)
+            menu_cards += f"""
+            <div style="
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 10px 0;
+                border-left: 4px solid #dc3545;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            ">
+                <p style="margin: 0; color: #495057;">
+                    <strong style="color: #dc3545;">{ingredient}:</strong> {menu_list}
+                </p>
+            </div>
+            """
+    
+    menus_style = f"""
+    <div style="
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 15px 0;
+        border-left: 4px solid #dc3545;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    ">
+        <h4 style="color: #dc3545; margin: 0 0 15px 0;">선호하시는 메뉴</h4>
+        {menu_cards}
+    </div>
+    """
+    st.markdown(menus_style, unsafe_allow_html=True)
+    
+    # 컨테이너 종료
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # 다운로드 버튼 스타일 개선
+    download_style = """
+    <style>
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 25px;
+        font-size: 1.1em;
+        font-weight: 600;
+        width: 100%;
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+        margin: 20px 0;
+    }
+    .stDownloadButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(0, 123, 255, 0.4);
+    }
+    </style>
+    """
+    st.markdown(download_style, unsafe_allow_html=True)
+    
+    # 엑셀 파일 다운로드
+    if 'filename' in st.session_state and os.path.exists(st.session_state.filename):
+        with open(st.session_state.filename, 'rb') as file:
+            st.download_button(
+                label="📥 결과 엑셀 파일 다운로드",
+                data=file.read(),
+                file_name=st.session_state.filename,
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                use_container_width=True
+            )
+    
+    # 새 설문 시작 버튼 스타일 개선
+    new_survey_style = """
+    <style>
+    .stButton > button {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 25px;
+        font-size: 1.1em;
+        font-weight: 600;
+        width: 100%;
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 20px rgba(108, 117, 125, 0.3);
+        margin: 10px 0;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(108, 117, 125, 0.4);
+    }
+    </style>
+    """
+    st.markdown(new_survey_style, unsafe_allow_html=True)
+    
+    if st.button("🔄 새 설문 시작하기", use_container_width=True):
+        # 세션 상태 초기화
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+
+if __name__ == "__main__":
+    main()
