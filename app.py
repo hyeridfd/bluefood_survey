@@ -620,7 +620,7 @@ def show_info_form():
         """
         <style>
         .stTextInput > div > div > input {
-            height: 45px;
+            height: 60px;
         }
         .stForm {
             padding: 15px 0;
