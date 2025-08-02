@@ -578,7 +578,7 @@ if 'selected_menus' not in st.session_state:
     st.session_state.selected_menus = {}
 
 def main():
-    # ✅ 사이드바 글씨 크기 18px 적용 CSS
+    # ✅ 사이드바 글씨 크기 CSS 적용
     st.markdown(
         """
         <style>
@@ -586,17 +586,14 @@ def main():
         section[data-testid="stSidebar"] * {
             font-size: 22px !important;
         }
-
         /* 사이드바 헤더(타이틀)만 조금 더 크게 */
         section[data-testid="stSidebar"] h2 {
             font-size: 28px !important;
         }
-
         /* 사이드바 소제목(###) */
         section[data-testid="stSidebar"] h3 {
             font-size: 22px !important;
         }
-
         /* 사이드바의 리스트 및 일반 텍스트 */
         section[data-testid="stSidebar"] p, 
         section[data-testid="stSidebar"] li {
@@ -606,9 +603,8 @@ def main():
         """,
         unsafe_allow_html=True
     )
-
-    # 기존 사이드바 설정 유지
-    # 기존 사이드바 설정 유지
+    
+    # ✅ 사이드바 설정 - 올바른 방법
     with st.sidebar:
         st.markdown(
             """
@@ -618,9 +614,9 @@ def main():
                 border-radius: 15px;
                 margin-bottom: 20px;
                 color: white;
-                font-size:17px;
-                line-height:1.8;
-                text-align:center;
+                font-size: 17px;
+                line-height: 1.8;
+                text-align: center;
                 box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             ">
                 <h3 style="margin-bottom:15px;">📌 연구 정보</h3>
@@ -642,9 +638,12 @@ def main():
                 </div>
             </div>
             """,
-            unsafe_allow_html=True  # ✅ HTML과 CSS를 렌더링하기 위해 반드시 필요
+            unsafe_allow_html=True
         )
 
+# ✅ 메인 함수 실행
+if __name__ == "__main__":
+    main()
 
 
         st.markdown("### 📋 설문 안내")
