@@ -577,7 +577,7 @@ def show_info_form():
 
         /* 레이블(성함, 식별번호) 글씨 크기 */
         label[data-testid="stMarkdownContainer"] > p {
-            font-size: 35px !important;   /* ✅ 레이블 크기 */
+            font-size: 40px !important;   /* ✅ 레이블 크기 */
             font-weight: bold;
         }
 
