@@ -682,19 +682,19 @@ def show_menu_selection():
                     st.markdown(f"**{category}**")
                     
                     # 메뉴를 4열로 배치 (가로 나열)
+                    # 메뉴를 4열 그리드로 배치
                     cols = st.columns(4)
                     for i, menu in enumerate(menu_list):
-                        with cols[i % 4]:
+                        col = cols[i % 4]  # 4개씩 가로 배치
+                        with col:
                             is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
-                            
-                            # 이미지와 함께 메뉴 표시
                             selected = display_menu_with_image(
-                                menu, 
-                                ingredient, 
-                                is_selected, 
+                                menu,
+                                ingredient,
+                                is_selected,
                                 f"menu_{ingredient}_{menu}"
                             )
-                            
+                    
                             if selected:
                                 if menu not in st.session_state.selected_menus[ingredient]:
                                     st.session_state.selected_menus[ingredient].append(menu)
@@ -703,6 +703,7 @@ def show_menu_selection():
                                 if menu in st.session_state.selected_menus[ingredient]:
                                     st.session_state.selected_menus[ingredient].remove(menu)
                                     st.rerun()
+
         
         # 각 수산물별 선택 상태 표시
         menu_count = len(st.session_state.selected_menus.get(ingredient, []))
