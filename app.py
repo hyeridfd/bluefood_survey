@@ -618,9 +618,6 @@ def main():
                 margin-bottom: 20px;
                 color: white;
             ">
-                <h2 style="color: white; margin: 0 0 20px 0; text-align: center;">
-                    🌊 블루푸드 설문조사
-                </h2>
                 <p style="margin: 0; line-height: 1.5; text-align: center;">
                     블루푸드에 대한 여러분의 선호도를 알려주세요
                 </p>
