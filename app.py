@@ -102,28 +102,36 @@ def display_menu_with_image(menu, ingredient, is_selected, key):
 # 엑셀 파일 저장 함수 (GitHub/Streamlit Cloud용)
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
     # 데이터 준비
-    data = {
-        '이름': [name],
-        '식별번호': [id_number],
-        '설문일시': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
-        '선택한_수산물': [', '.join(selected_ingredients)],
-        '선택한_메뉴': [', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])]
+    new_data = {
+        '이름': name,
+        '식별번호': id_number,
+        '설문일시': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        '선택한_수산물': ', '.join(selected_ingredients),
+        '선택한_메뉴': ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
     }
-    
+
     # 각 수산물별로 별도 컬럼 생성
     for ingredient in selected_ingredients:
-        data[f'{ingredient}_메뉴'] = [', '.join(selected_menus.get(ingredient, []))]
-    
-    df = pd.DataFrame(data)
-    
-    # Streamlit Cloud에서는 고유한 파일명으로 임시 저장
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f'bluefood_survey_{timestamp}.xlsx'
-    
-    # 임시 파일로 저장
-    df.to_excel(filename, index=False)
-    
-    return filename, df
+        new_data[f'{ingredient}_메뉴'] = ', '.join(selected_menus.get(ingredient, []))
+
+    # ✅ DataFrame 변환
+    new_df = pd.DataFrame([new_data])
+
+    # ✅ 파일명 고정
+    filename = "bluefood_survey.xlsx"
+
+    # ✅ 기존 데이터가 있으면 불러오기 → 이어붙이기
+    if os.path.exists(filename):
+        old_df = pd.read_excel(filename)
+        final_df = pd.concat([old_df, new_df], ignore_index=True)
+    else:
+        final_df = new_df
+
+    # ✅ 덮어쓰기 (하지만 기존 데이터 포함)
+    final_df.to_excel(filename, index=False)
+
+    return filename, final_df
+
 
 # 수산물별 메뉴 데이터
 MENU_DATA = {
