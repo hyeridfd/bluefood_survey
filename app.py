@@ -30,44 +30,35 @@ def format_korean_time():
 # ✅ Google Sheets 연결 함수 (안전한 에러 핸들링)
 @st.cache_resource
 def get_google_sheet_cached():
-    """Google Sheets 연결 - 캐싱하여 중복 호출 방지"""
+    """Google Sheets 연결 - Rate Limit 최소화 (캐싱)"""
+    st.write("🔍 [DEBUG] Google Sheets 연결 시도")
     try:
-        st.write("🔍 [DEBUG] Google Sheets 연결 시작")
-        
         if st.secrets.get("gcp_service_account", None):
             creds_dict = dict(st.secrets["gcp_service_account"])
             sheet_id = st.secrets["google_sheets"]["google_sheet_id"]
-            st.write("🔍 [DEBUG] Streamlit Cloud secrets 사용")
         else:
             secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
             creds_dict = secrets["gcp_service_account"]
             sheet_id = secrets["google_sheets"]["google_sheet_id"]
-            st.write("🔍 [DEBUG] 로컬 secrets.toml 사용")
-
-        st.write(f"🔍 [DEBUG] 시트 ID: {sheet_id}")
-        st.write(f"🔍 [DEBUG] 서비스 계정: {creds_dict.get('client_email', 'N/A')}")
 
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
-        
-        st.write("🔍 [DEBUG] 인증 완료, 시트 열기 시도")
-        sheet = client.open_by_key(sheet_id).sheet1
-        
-        st.write("✅ [DEBUG] Google Sheet 연결 성공!")
-        return sheet
+
+        # ✅ 시트 오픈은 한 번만
+        return client.open_by_key(sheet_id).sheet1
 
     except Exception as e:
         st.error(f"❌ Google Sheets 연결 실패: {e}")
-        st.write(f"🔍 [DEBUG] 연결 오류 세부사항: {type(e).__name__}: {str(e)}")
         return None
+
 
 # ✅ 설문 완료 후 중복 저장 방지
 if 'already_saved' not in st.session_state:
     st.session_state.already_saved = False
 
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets 저장 (강화된 디버깅)"""
+    """Google Sheets 저장 (429 Rate Limit 대응)"""
     st.write("🟢 [DEBUG] Google Sheets 저장 시도 중...")
 
     if st.session_state.get("already_saved", False):
@@ -75,65 +66,67 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         return True
 
     try:
-        sheet = get_google_sheet_cached()
+        sheet = safe_open_sheet()
         if sheet is None:
-            st.error("❌ Google Sheets 연결 실패 (sheet=None)")
             return False
 
         import json
         menus_text = json.dumps(selected_menus, ensure_ascii=False)
         ingredients_text = ', '.join(selected_ingredients)
 
-        # 저장할 데이터 구성
-        timestamp = format_korean_time()
-        row_data = [name, id_number, timestamp, ingredients_text, menus_text]
+        row_data = [name, id_number, format_korean_time(), ingredients_text, menus_text]
 
-        # 디버깅: 저장할 데이터 확인
-        st.write("🔍 [DEBUG] 저장할 데이터:")
-        st.write(f"- 이름: {name}")
-        st.write(f"- 식별번호: {id_number}")
-        st.write(f"- 시간: {timestamp}")
-        st.write(f"- 수산물: {ingredients_text}")
-        st.write(f"- 메뉴 길이: {len(menus_text)} 문자")
-
-        # Google Sheets에 행 추가
-        st.write("🔍 [DEBUG] Google Sheets에 데이터 추가 중...")
+        # ✅ Rate Limit 대비 딜레이 추가
+        time.sleep(1.2)  
         sheet.append_row(row_data, value_input_option="RAW")
-        
-        st.write("✅ [DEBUG] 데이터 추가 완료!")
-        st.success("✅ Google Sheets에 데이터 저장 성공")
+
+        st.success("✅ Google Sheets 저장 성공!")
         st.session_state.already_saved = True
         return True
 
+    except gspread.exceptions.APIError as e:
+        st.error(f"❌ Google Sheets 저장 실패(APIError): {e}")
+        return False
     except Exception as e:
-        error_msg = f"❌ Google Sheets 저장 실패: {e}"
-        st.error(error_msg)
-        st.write(f"🔍 [DEBUG] 저장 오류 세부사항: {type(e).__name__}: {str(e)}")
+        st.error(f"❌ Google Sheets 저장 실패: {e}")
         return False
 
 
 # setup_google_sheets 함수도 수정
 @st.cache_resource
-def setup_google_sheets():
-    """Google Sheets API 설정 (로컬/Cloud 호환)"""
-    try:
-        if st.secrets.get("gcp_service_account", None):
-            creds_dict = dict(st.secrets["gcp_service_account"])
-            google_sheets = st.secrets["google_sheets"]
-        else:
-            secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
-            creds_dict = secrets["gcp_service_account"]
-            google_sheets = secrets["google_sheets"]
+# def setup_google_sheets():
+#     """Google Sheets API 설정 (로컬/Cloud 호환)"""
+#     try:
+#         if st.secrets.get("gcp_service_account", None):
+#             creds_dict = dict(st.secrets["gcp_service_account"])
+#             google_sheets = st.secrets["google_sheets"]
+#         else:
+#             secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
+#             creds_dict = secrets["gcp_service_account"]
+#             google_sheets = secrets["google_sheets"]
 
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-        client = gspread.authorize(creds)
-        sheet = client.open(google_sheets["google_sheet_name"]).sheet1
-        return sheet
+#         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+#         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+#         client = gspread.authorize(creds)
+#         sheet = client.open(google_sheets["google_sheet_name"]).sheet1
+#         return sheet
 
-    except Exception as e:
-        st.error(f"❌ Google Sheets 연결 실패: {e}")
-        return None
+#     except Exception as e:
+#         st.error(f"❌ Google Sheets 연결 실패: {e}")
+#         return None
+
+def safe_open_sheet(retries=3):
+    """Google Sheets API 호출 시 Rate Limit 대비 재시도"""
+    for attempt in range(retries):
+        try:
+            sheet = get_google_sheet_cached()
+            if sheet:
+                return sheet
+        except gspread.exceptions.APIError as e:
+            st.warning(f"⚠️ API 호출 실패({attempt+1}/{retries}) → 5초 후 재시도")
+            time.sleep(5 + random.uniform(1,3))
+    st.error("❌ Google Sheets 연결 최종 실패")
+    return None
 
 
 # 페이지 설정
