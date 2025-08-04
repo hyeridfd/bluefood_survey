@@ -27,7 +27,7 @@ client = gspread.authorize(creds)
 
 # ✅ Google Sheet 열기
 sheet = client.open(google_sheets["google_sheet_name"]).sheet1
-st.success(f"✅ Google Sheets 연결 성공 → {google_sheets['google_sheet_name']}")
+#st.success(f"✅ Google Sheets 연결 성공 → {google_sheets['google_sheet_name']}")
 
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
