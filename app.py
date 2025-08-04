@@ -6,36 +6,63 @@ from pathlib import Path
 from PIL import Image
 import base64
 import gspread
+import toml
 from google.oauth2.service_account import Credentials
+
+
+# ✅ 현재 실행 경로 확인
+current_dir = os.path.dirname(__file__)
+st.write("현재 app.py 경로:", current_dir)
+
+# ✅ secrets.toml 예상 경로 확인
+secret_file = os.path.join(current_dir, ".streamlit", "secrets.toml")
+st.write("찾는 secrets.toml 경로:", secret_file)
+st.write("파일 존재 여부:", os.path.exists(secret_file))
+
+# ✅ 파일 존재 시 로드 시도
+if os.path.exists(secret_file):
+    with open(secret_file, "r", encoding="utf-8") as f:
+        st.text(f.read())  # ✅ 파일 내용 확인 출력
+    secrets = toml.load(secret_file)
+    google_sheet_name = secrets["google_sheets"]["google_sheet_name"]
+
+else:
+    google_sheet_name = "❌ secrets.toml 파일을 찾을 수 없음"
+
+st.write(f"google_sheet_name: {google_sheet_name}")
 
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
 
-# ✅ Google Sheets 연동 함수들
-def setup_google_sheets():
-    """Google Sheets API 설정"""
-    try:
-        creds_dict = dict(st.secrets["gcp_service_account"])
-        scope = [
-            'https://spreadsheets.google.com/feeds',
-            'https://www.googleapis.com/auth/drive'
-        ]
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-        client = gspread.authorize(creds)
-        return client
-    except Exception as e:
-        st.error(f"Google Sheets 연동 오류: {e}")
-        return None
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets에 데이터 저장"""
+    """Google Sheets에 데이터 저장 - 상세 오류 정보 포함"""
+    error_details = []  # 오류 정보를 저장할 리스트
+    
     try:
+        # 1단계: Google Sheets 클라이언트 설정
         client = setup_google_sheets()
         if not client:
+            error_details.append("❌ Google Sheets 클라이언트 생성 실패")
+            st.session_state.google_sheets_error = error_details
             return False
         
-        sheet_name = st.secrets["google_sheet_name"]
-        sheet = client.open(sheet_name).sheet1
+        error_details.append("✅ Google Sheets 클라이언트 생성 성공")
         
+        # 2단계: 시트 이름 확인
+        sheet_name = secrets["google_sheets"]["google_sheet_name"]
+        error_details.append(f"🔍 찾고 있는 시트 이름: '{sheet_name}'")
+        
+        # 3단계: 시트 열기 시도
+        try:
+            sheet = client.open(sheet_name).sheet1
+            error_details.append("✅ 구글 시트 열기 성공")
+        except Exception as sheet_error:
+            error_details.append(f"❌ 시트 열기 실패: {str(sheet_error)}")
+            error_details.append(f"오류 타입: {type(sheet_error).__name__}")
+            st.session_state.google_sheets_error = error_details
+            return False
+        
+        # 4단계: 데이터 준비
         new_row = [
             name,
             id_number,
@@ -43,28 +70,56 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
             ', '.join(selected_ingredients),
             ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
         ]
+        error_details.append(f"✅ 데이터 준비 완료: {len(new_row)}개 컬럼")
         
-        # 각 수산물별 메뉴 컬럼 추가
-        all_ingredients = [
-            '맛살', '어란', '어묵', '쥐포', '김', '다시마', '매생이', '미역', '파래', '톳',
-            '꼴뚜기', '낙지', '문어', '오징어', '주꾸미', '가재', '게', '새우',
-            '다슬기', '꼬막', '가리비', '골뱅이', '굴', '미더덕', '바지락', '백합', '소라', '재첩', '전복', '홍합',
-            '가자미', '다랑어', '고등어', '갈치', '꽁치', '대구', '멸치', '명태', '박대', '뱅어', '병어', '삼치', '아귀', '연어', '임연수', '장어', '조기'
-        ]
-        
-        for ingredient in all_ingredients:
-            if ingredient in selected_menus:
-                new_row.append(', '.join(selected_menus[ingredient]))
-            else:
-                new_row.append('')
-        
-        sheet.append_row(new_row)
-        st.success("✅ 데이터가 구글 시트에 저장되었습니다!")
-        return True
+        # 5단계: 구글 시트에 데이터 추가
+        try:
+            sheet.append_row(new_row)
+            error_details.append("✅ 구글 시트에 데이터 추가 성공!")
+            st.session_state.google_sheets_success = True
+            st.session_state.google_sheets_error = error_details  # 성공 시에도 로그 저장
+            return True
+            
+        except Exception as append_error:
+            error_details.append(f"❌ 데이터 추가 실패: {str(append_error)}")
+            error_details.append(f"오류 타입: {type(append_error).__name__}")
+            st.session_state.google_sheets_error = error_details
+            return False
         
     except Exception as e:
-        st.error(f"구글 시트 저장 오류: {e}")
+        error_details.append(f"❌ 전체 프로세스 오류: {str(e)}")
+        error_details.append(f"오류 타입: {type(e).__name__}")
+        st.session_state.google_sheets_error = error_details
         return False
+
+# setup_google_sheets 함수도 수정
+def setup_google_sheets():
+    """Google Sheets API 설정 - 상세 오류 정보 포함"""
+    try:
+        # secrets 확인
+        if "gcp_service_account" not in st.secrets:
+            return None
+            
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        
+        # 필수 키 확인
+        required_keys = ['type', 'project_id', 'private_key', 'client_email']
+        for key in required_keys:
+            if key not in creds_dict:
+                return None
+        
+        scope = [
+            'https://spreadsheets.google.com/feeds',
+            'https://www.googleapis.com/auth/drive'
+        ]
+        
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+        client = gspread.authorize(creds)
+        
+        return client
+        
+    except Exception as e:
+        return None
 
 def get_korean_time():
     """한국 시간(KST)을 반환하는 함수"""
@@ -296,9 +351,9 @@ def main():
         show_completion()
 
 
-# 4. show_completion() 함수 수정 - 다운로드 버튼 제거
+# show_completion 함수 수정 (오류 정보 표시 추가)
 def show_completion():
-    # 축하 애니메이션
+    # 스크롤 상단 이동
     st.markdown(
         """
         <script>
@@ -315,11 +370,46 @@ def show_completion():
     # 완료 메시지
     st.success("🎉 설문이 완료되었습니다! 소중한 의견을 주셔서 감사합니다")
     
+    # ✅ 구글 시트 연동 결과 표시
+    if hasattr(st.session_state, 'google_sheets_success') and st.session_state.google_sheets_success:
+        st.success("✅ 데이터가 구글 시트에 성공적으로 저장되었습니다!")
+    elif hasattr(st.session_state, 'google_sheets_error') and st.session_state.google_sheets_error:
+        st.error("❌ 구글 시트 저장 중 문제가 발생했습니다")
+        
+        # 상세 오류 정보 표시
+        with st.expander("🔍 상세 오류 정보 (디버깅용)", expanded=True):
+            for i, error in enumerate(st.session_state.google_sheets_error, 1):
+                st.write(f"{i}. {error}")
+        
+        st.warning("⚠️ 데이터는 임시 백업 파일에 저장되었습니다")
+    
+    # ✅ secrets.toml 설정 정보 표시 (디버깅용)
+    with st.expander("⚙️ 현재 설정 정보", expanded=False):
+        try:
+            if "gcp_service_account" in st.secrets:
+                st.write("✅ secrets.toml 파일 로드됨")
+                if "google_sheet_name" in st.secrets:
+                    st.write(f"📋 시트 이름: '{secrets["google_sheets"]["google_sheet_name"]}'")
+                if "google_sheet_id" in st.secrets:
+                    st.write(f"🆔 시트 ID: {secrets["google_sheets"]['google_sheet_id'][:20]}...")
+                
+                # 서비스 계정 정보
+                gcp_account = st.secrets["gcp_service_account"]
+                if "client_email" in gcp_account:
+                    st.write(f"📧 서비스 계정: {gcp_account['client_email']}")
+                if "project_id" in gcp_account:
+                    st.write(f"🏗️ 프로젝트 ID: {gcp_account['project_id']}")
+            else:
+                st.error("❌ secrets.toml 파일을 찾을 수 없습니다")
+        except Exception as e:
+            st.error(f"설정 정보 표시 오류: {str(e)}")
+    
     # 결과 요약 표시
     with st.expander("📊 설문 결과 요약", expanded=True):
         st.markdown(f"**참여자:** {st.session_state.name}")
         st.markdown(f"**식별번호:** {st.session_state.id_number}")
         st.markdown(f"**설문 완료 시간:** {format_korean_time()}")
+        
         st.markdown("### 선택하신 수산물")
         ingredients_text = " | ".join(st.session_state.selected_ingredients)
         st.markdown(f"🏷️ {ingredients_text}")
@@ -330,16 +420,15 @@ def show_completion():
                 menu_text = ", ".join(menus)
                 st.markdown(f"**{ingredient}:** {menu_text}")
     
-    # ✅ 관리자만 다운로드 버튼 표시
+    # 관리자만 다운로드 버튼 표시
     if st.session_state.is_admin:
         st.markdown("---")
         st.markdown("### 🔐 관리자 전용")
         
-        # 개별 응답 엑셀 파일 다운로드
-        if 'filename' in st.session_state and os.path.exists(st.session_state.filename):
+        if 'filename' in st.session_state and st.session_state.filename and os.path.exists(st.session_state.filename):
             with open(st.session_state.filename, 'rb') as file:
                 st.download_button(
-                    label="📥 전체 설문 결과 엑셀 파일 다운로드",
+                    label="📥 백업 파일 다운로드",
                     data=file.read(),
                     file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                     mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -587,40 +676,49 @@ def display_menu_with_image(menu, ingredient, is_selected, key):
     
 
 
-# 엑셀 파일 저장 함수 (GitHub/Streamlit Cloud용)
+# save_to_excel 함수 수정 (구글 시트 우선, 실패 시 백업)
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
     """데이터 저장 - Google Sheets 우선, 실패 시 로컬 엑셀 백업"""
+    
+    # 세션 상태 초기화
+    st.session_state.google_sheets_success = False
+    st.session_state.google_sheets_error = []
     
     # 1순위: Google Sheets에 저장 시도
     if save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
         return "google_sheets", None
     
     # 2순위: 로컬 엑셀 파일에 백업 저장
-    st.warning("구글 시트 저장에 실패했습니다. 임시 파일에 백업 저장합니다.")
-    
-    # 기존 엑셀 저장 로직
-    new_data = {
-        '이름': name,
-        '식별번호': id_number,
-        '설문일시': format_korean_time(),
-        '선택한_수산물': ', '.join(selected_ingredients),
-        '선택한_메뉴': ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
-    }
+    try:
+        new_data = {
+            '이름': name,
+            '식별번호': id_number,
+            '설문일시': format_korean_time(),
+            '선택한_수산물': ', '.join(selected_ingredients),
+            '선택한_메뉴': ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
+        }
 
-    for ingredient in selected_ingredients:
-        new_data[f'{ingredient}_메뉴'] = ', '.join(selected_menus.get(ingredient, []))
+        for ingredient in selected_ingredients:
+            new_data[f'{ingredient}_메뉴'] = ', '.join(selected_menus.get(ingredient, []))
 
-    new_df = pd.DataFrame([new_data])
-    filename = "bluefood_survey_backup.xlsx"
+        new_df = pd.DataFrame([new_data])
+        filename = "bluefood_survey_backup.xlsx"
 
-    if os.path.exists(filename):
-        old_df = pd.read_excel(filename)
-        final_df = pd.concat([old_df, new_df], ignore_index=True)
-    else:
-        final_df = new_df
+        if os.path.exists(filename):
+            old_df = pd.read_excel(filename)
+            final_df = pd.concat([old_df, new_df], ignore_index=True)
+        else:
+            final_df = new_df
 
-    final_df.to_excel(filename, index=False)
-    return filename, final_df
+        final_df.to_excel(filename, index=False)
+        return filename, final_df
+        
+    except Exception as e:
+        # 백업 저장도 실패한 경우
+        if 'google_sheets_error' not in st.session_state:
+            st.session_state.google_sheets_error = []
+        st.session_state.google_sheets_error.append(f"❌ 백업 파일 저장도 실패: {str(e)}")
+        return None, None
 
 
 # 수산물별 메뉴 데이터
