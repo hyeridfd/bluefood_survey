@@ -26,8 +26,8 @@ creds = Credentials.from_service_account_info(gcp_service_account, scopes=scope)
 client = gspread.authorize(creds)
 
 # ✅ Google Sheet 열기
-sheet = client.open(google_sheets["google_sheets"]["google_sheet_name"]).sheet1
-#st.success(f"✅ Google Sheets 연결 성공 → {google_sheets["google_sheets"]['google_sheet_name']}")
+sheet = client.open(google_sheets["google_sheet_name"]).sheet1
+#st.success(f"✅ Google Sheets 연결 성공 → {google_sheets['google_sheet_name']}")
 
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
@@ -47,7 +47,7 @@ def get_google_sheet():
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
-        sheet = client.open(google_sheets["google_sheets"]["google_sheet_name"]).sheet1
+        sheet = client.open(google_sheets["google_sheet_name"]).sheet1
         return sheet
     except Exception as e:
         st.error(f"❌ Google Sheets 연결 실패: {e}")
@@ -114,7 +114,7 @@ def setup_google_sheets():
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
-        sheet = client.open(google_sheets["google_sheets"]["google_sheet_name"]).sheet1
+        sheet = client.open(google_sheets["google_sheet_name"]).sheet1
         return sheet
 
     except Exception as e:
