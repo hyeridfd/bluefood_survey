@@ -67,6 +67,7 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         sheet = safe_open_sheet()
         if sheet is None:
             st.error("❌ [DEBUG] 시트 객체 없음 (safe_open_sheet 실패)")
+            st.session_state.google_sheets_error.append("❌ 시트 객체 없음")
             return False
 
         import json
@@ -74,15 +75,24 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         ingredients_text = ', '.join(selected_ingredients)
         row_data = [name, id_number, format_korean_time(), ingredients_text, menus_text]
 
-        st.write(f"📤 [DEBUG] 추가할 데이터: {row_data}")
+        st.write(f"📤 [DEBUG] Google Sheets에 추가할 데이터: {row_data}")
+
+        # ✅ 실제 시트에 데이터 추가
         sheet.append_row(row_data, value_input_option="RAW")
+        
+        # ✅ 상태 저장
+        st.session_state.google_sheets_success = True
         st.success("✅ Google Sheets 저장 성공!")
         st.session_state.already_saved = True
         return True
 
     except Exception as e:
-        st.error(f"❌ [DEBUG] Google Sheets 저장 실패: {e}")
+        error_msg = f"❌ Google Sheets 저장 실패: {e}"
+        st.error(error_msg)
+        st.session_state.google_sheets_error.append(error_msg)
+        st.session_state.google_sheets_success = False
         return False
+
 
 
 
@@ -111,15 +121,16 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
 #         return None
 
 def safe_open_sheet(retries=3):
-    """Google Sheets API 호출 시 Rate Limit 대비 재시도"""
+    """Google Sheets API 호출 시 재시도"""
     for attempt in range(retries):
         try:
             sheet = get_google_sheet_cached()
             if sheet:
+                st.write("✅ [DEBUG] safe_open_sheet: 시트 객체 가져오기 성공")
                 return sheet
         except gspread.exceptions.APIError as e:
-            st.warning(f"⚠️ API 호출 실패({attempt+1}/{retries}) → 5초 후 재시도")
-            time.sleep(5 + random.uniform(1,3))
+            st.warning(f"⚠️ API 호출 실패({attempt+1}/{retries}): {e} → 5초 후 재시도")
+            time.sleep(5)
     st.error("❌ Google Sheets 연결 최종 실패")
     return None
 
