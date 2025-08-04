@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import os
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from PIL import Image
@@ -10,26 +9,17 @@ import toml
 from google.oauth2.service_account import Credentials
 
 
-# ✅ 현재 실행 경로 확인
-current_dir = os.path.dirname(__file__)
-st.write("현재 app.py 경로:", current_dir)
+# ✅ 인증 정보 가져오기
+gcp_service_account = st.secrets["gcp_service_account"]
 
-# ✅ secrets.toml 예상 경로 확인
-secret_file = os.path.join(current_dir, ".streamlit", "secrets.toml")
-st.write("찾는 secrets.toml 경로:", secret_file)
-st.write("파일 존재 여부:", os.path.exists(secret_file))
+# ✅ gspread 인증
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_dict(gcp_service_account, scope)
+client = gspread.authorize(creds)
 
-# ✅ 파일 존재 시 로드 시도
-if os.path.exists(secret_file):
-    with open(secret_file, "r", encoding="utf-8") as f:
-        st.text(f.read())  # ✅ 파일 내용 확인 출력
-    secrets = toml.load(secret_file)
-    google_sheet_name = secrets["google_sheets"]["google_sheet_name"]
-
-else:
-    google_sheet_name = "❌ secrets.toml 파일을 찾을 수 없음"
-
-st.write(f"google_sheet_name: {google_sheet_name}")
+# ✅ 구글 시트 열기
+sheet = client.open(st.secrets["google_sheets"]["google_sheet_name"]).sheet1
+st.success("✅ Google Sheets 연결 성공")
 
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
@@ -49,7 +39,7 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         error_details.append("✅ Google Sheets 클라이언트 생성 성공")
         
         # 2단계: 시트 이름 확인
-        sheet_name = secrets["google_sheets"]["google_sheet_name"]
+        sheet_name = st.secrets["google_sheets"]["google_sheet_name"]
         error_details.append(f"🔍 찾고 있는 시트 이름: '{sheet_name}'")
         
         # 3단계: 시트 열기 시도
