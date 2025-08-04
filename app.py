@@ -58,6 +58,7 @@ if 'already_saved' not in st.session_state:
 
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
     st.write("🟢 [DEBUG] save_to_google_sheets 호출됨")
+    print("🟢 [DEBUG] save_to_google_sheets 호출됨")
 
     if st.session_state.get("already_saved", False):
         st.warning("⚠️ 이미 저장된 설문입니다.")
@@ -67,7 +68,8 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         sheet = safe_open_sheet()
         if sheet is None:
             st.error("❌ [DEBUG] 시트 객체 없음 (safe_open_sheet 실패)")
-            st.session_state.google_sheets_error.append("❌ 시트 객체 없음")
+            print("❌ [DEBUG] 시트 객체 없음 (safe_open_sheet 실패)")
+            st.session_state.google_sheets_success = False
             return False
 
         import json
@@ -75,11 +77,14 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         ingredients_text = ', '.join(selected_ingredients)
         row_data = [name, id_number, format_korean_time(), ingredients_text, menus_text]
 
+        # ✅ 로그 출력
         st.write(f"📤 [DEBUG] Google Sheets에 추가할 데이터: {row_data}")
+        print(f"📤 [DEBUG] Google Sheets에 추가할 데이터: {row_data}")
 
         # ✅ 실제 시트에 데이터 추가
-        sheet.append_row(row_data, value_input_option="RAW")
-        
+        response = sheet.append_row(row_data, value_input_option="RAW")
+        print(f"✅ [DEBUG] append_row 응답: {response}")
+
         # ✅ 상태 저장
         st.session_state.google_sheets_success = True
         st.success("✅ Google Sheets 저장 성공!")
@@ -89,12 +94,9 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
     except Exception as e:
         error_msg = f"❌ Google Sheets 저장 실패: {e}"
         st.error(error_msg)
-        st.session_state.google_sheets_error.append(error_msg)
+        print(error_msg)
         st.session_state.google_sheets_success = False
         return False
-
-
-
 
 
 # setup_google_sheets 함수도 수정
