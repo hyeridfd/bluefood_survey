@@ -7,6 +7,8 @@ import base64
 import gspread
 import toml
 import os
+import time
+import random
 from google.oauth2.service_account import Credentials
 
 
@@ -63,11 +65,16 @@ if 'already_saved' not in st.session_state:
     st.session_state.already_saved = False
 
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets 저장 (Rate Limit 보호 적용)"""
+    st.write("🟢 [DEBUG] Google Sheets 저장 시도 중...")
+
+    if st.session_state.get("already_saved", False):
+        st.warning("⚠️ 이미 저장된 설문입니다. (중복 방지)")
+        return True
+
     try:
         sheet = get_google_sheet_cached()
         if sheet is None:
-            st.error("❌ Google Sheets 연결 실패")
+            st.error("❌ Google Sheets 연결 실패 (sheet=None)")
             return False
 
         import json, time
@@ -75,19 +82,34 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         menus_chunks = [menus_text[i:i+48000] for i in range(0, len(menus_text), 48000)]
         ingredients_text = ', '.join(selected_ingredients)
 
-        # ✅ API 호출 최소화 (append_row는 1~2번만)
-        sheet.append_row([name, id_number, format_korean_time(), ingredients_text, menus_chunks[0]])
-        time.sleep(1)  # ✅ 안전 대기 (1초)
-        for idx, chunk in enumerate(menus_chunks[1:], start=2):
-            sheet.append_row([name, id_number, f"{format_korean_time()}(추가{idx})", "-", chunk])
-            time.sleep(1)  # ✅ Rate Limit 보호
+        # ✅ 로그
+        st.write("✅ [DEBUG] 첫 행 추가:", [name, id_number, format_korean_time(), ingredients_text, menus_chunks[0]])
 
-        st.success("✅ Google Sheets에 데이터 저장 완료")
+        sheet.append_row([name, id_number, format_korean_time(), ingredients_text, menus_chunks[0]])
+        time.sleep(1)
+
+        for idx, chunk in enumerate(menus_chunks[1:], start=2):
+            st.write(f"✅ [DEBUG] 추가 데이터({idx}) 저장:", chunk[:50] + "...")
+            sheet.append_row([name, id_number, f"{format_korean_time()}(추가{idx})", "-", chunk])
+            time.sleep(1)
+
+        st.success("✅ Google Sheets에 데이터 저장 성공")
+        st.session_state.already_saved = True
         return True
 
     except Exception as e:
         st.error(f"❌ Google Sheets 저장 실패: {e}")
         return False
+
+def safe_append_row(sheet, row_data, retries=3):
+    for attempt in range(retries):
+        try:
+            sheet.append_row(row_data)
+            return True
+        except Exception as e:
+            st.warning(f"⚠️ append_row 실패({attempt+1}/{retries}): {e}")
+            time.sleep(2 + random.uniform(0, 1))
+    return False
 
 
 # setup_google_sheets 함수도 수정
