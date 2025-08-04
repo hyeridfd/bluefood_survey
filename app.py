@@ -59,44 +59,43 @@ if 'already_saved' not in st.session_state:
     st.session_state.already_saved = False
 
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets 저장 (JSON + 분할 저장 + Rate Limit 보호)"""
+    """Google Sheets 저장 (디버깅 로그 포함)"""
+    st.write("🔍 Google Sheets 저장 시도...")
+
     if st.session_state.get("already_saved", False):
-        return True  # ✅ 이미 저장되었으면 다시 실행하지 않음
+        st.warning("⚠️ 이미 저장된 설문입니다. 저장을 건너뜁니다.")
+        return True  
 
-    error_logs = []
-    sheet = get_google_sheet()
-    if sheet is None:
-        error_logs.append("❌ Google Sheets 연결 실패")
-        st.session_state.google_sheets_error = error_logs
-        return False
-
-    import json, time
     try:
-        # ✅ 메뉴를 JSON 문자열로 변환 (50KB 이하만 저장)
+        sheet = get_google_sheet()
+        if sheet is None:
+            st.error("❌ Google Sheets 연결 실패")
+            return False
+
+        import json, time
         menus_text = json.dumps(selected_menus, ensure_ascii=False)
         menus_chunks = [menus_text[i:i+48000] for i in range(0, len(menus_text), 48000)]
         ingredients_text = ', '.join(selected_ingredients)
 
         # ✅ 첫 행 저장
-        sheet.append_row([name, id_number, format_korean_time(), ingredients_text, menus_chunks[0]], value_input_option="RAW")
-        error_logs.append("✅ 기본 데이터 저장 성공")
+        sheet.append_row([name, id_number, format_korean_time(), ingredients_text, menus_chunks[0]])
+        st.success("✅ 기본 데이터 저장 성공")
 
-        # ✅ 나머지 분할 데이터 저장
+        # ✅ 나머지 분할 저장
         for idx, chunk in enumerate(menus_chunks[1:], start=2):
-            sheet.append_row([name, id_number, f"{format_korean_time()} (추가{idx})", "-", chunk], value_input_option="RAW")
-            time.sleep(1)  # ✅ Rate Limit 보호
-            error_logs.append(f"✅ 추가 데이터({idx}) 저장 성공")
+            sheet.append_row([name, id_number, f"{format_korean_time()} (추가{idx})", "-", chunk])
+            time.sleep(1)
+            st.info(f"✅ 추가 데이터({idx}) 저장 완료")
 
-        # ✅ 저장 완료 표시
-        st.session_state.google_sheets_success = True
-        st.session_state.google_sheets_error = error_logs
         st.session_state.already_saved = True
         return True
 
     except Exception as e:
-        error_logs.append(f"❌ Google Sheets 저장 실패: {str(e)}")
-        st.session_state.google_sheets_error = error_logs
+        import traceback
+        st.error(f"❌ Google Sheets 저장 중 오류: {e}")
+        st.text(traceback.format_exc())
         return False
+
 
 # setup_google_sheets 함수도 수정
 @st.cache_resource
