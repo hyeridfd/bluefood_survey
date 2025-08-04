@@ -6,7 +6,7 @@ from PIL import Image
 import base64
 import gspread
 import toml
-from google.oauth2.service_account import Credentials
+from oauth2client.service_account import ServiceAccountCredentials
 
 
 # ✅ 인증 정보 가져오기
