@@ -6,6 +6,7 @@ from PIL import Image
 import base64
 import gspread
 import toml
+import os
 from google.oauth2.service_account import Credentials
 
 
