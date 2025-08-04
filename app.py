@@ -32,40 +32,66 @@ sheet = client.open(google_sheets["google_sheet_name"]).sheet1
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
 
-# ✅ Google Sheets 저장 (최적화 버전)
+# ✅ 전역에서 한 번만 Google Sheets 연결
+@st.cache_resource
+def get_google_sheet():
+    try:
+        if st.secrets.get("gcp_service_account", None):
+            creds_dict = dict(st.secrets["gcp_service_account"])
+            google_sheets = st.secrets["google_sheets"]
+        else:
+            secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
+            creds_dict = secrets["gcp_service_account"]
+            google_sheets = secrets["google_sheets"]
+
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+        client = gspread.authorize(creds)
+        sheet = client.open(google_sheets["google_sheet_name"]).sheet1
+        return sheet
+    except Exception as e:
+        st.error(f"❌ Google Sheets 연결 실패: {e}")
+        return None
+        
+
+# ✅ Google Sheets 저장 최적화 + 재시도 로직 추가
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
     error_logs = []
-    try:
-        sheet = setup_google_sheets()
-        if sheet is None:
-            error_logs.append("❌ Google Sheets 연결 실패")
+    sheet = get_google_sheet()
+
+    if sheet is None:
+        error_logs.append("❌ Google Sheets 연결 실패")
+        st.session_state.google_sheets_error = error_logs
+        return False
+
+    error_logs.append("✅ Google Sheets 연결 성공")
+
+    # ✅ 데이터 문자열 변환
+    menus_text = ', '.join([f"{ing}: {', '.join(menus)}" for ing, menus in selected_menus.items()])
+    ingredients_text = ', '.join(selected_ingredients)
+    new_row = [name, id_number, format_korean_time(), ingredients_text, menus_text]
+
+    # ✅ API 호출 최소화 + 지수적 재시도
+    import time
+    for attempt in range(3):  # 최대 3번 재시도
+        try:
+            sheet.append_row(new_row, value_input_option="RAW")
+            error_logs.append("✅ Google Sheets 데이터 저장 성공")
+            st.session_state.google_sheets_success = True
+            st.session_state.google_sheets_error = error_logs
+            return True
+        except gspread.exceptions.APIError as api_err:
+            wait_time = (2 ** attempt)  # 1, 2, 4초 지연
+            error_logs.append(f"⚠️ Google API 오류 발생: {api_err} → {wait_time}초 후 재시도")
+            time.sleep(wait_time)
+        except Exception as e:
+            error_logs.append(f"❌ 저장 실패: {str(e)}")
             st.session_state.google_sheets_error = error_logs
             return False
 
-        error_logs.append("✅ Google Sheets 연결 성공")
-
-        # ✅ 메뉴 데이터를 한 번에 문자열로 변환
-        menus_text = ', '.join([f"{ing}: {', '.join(menus)}" for ing, menus in selected_menus.items()])
-        ingredients_text = ', '.join(selected_ingredients)
-
-        # ✅ Google API 한 번만 호출 (batch_update)
-        new_row = [[name, id_number, format_korean_time(), ingredients_text, menus_text]]
-        sheet.append_rows(new_row, value_input_option="RAW")
-        error_logs.append("✅ Google Sheets 데이터 저장 성공")
-
-        st.session_state.google_sheets_success = True
-        st.session_state.google_sheets_error = error_logs
-        return True
-
-    except gspread.exceptions.APIError as api_err:
-        error_logs.append(f"❌ Google API 호출 오류: {api_err}")
-        st.session_state.google_sheets_error = error_logs
-        return False
-
-    except Exception as e:
-        error_logs.append(f"❌ 저장 실패: {str(e)}")
-        st.session_state.google_sheets_error = error_logs
-        return False
+    error_logs.append("❌ Google Sheets 저장 최종 실패 (모든 재시도 실패)")
+    st.session_state.google_sheets_error = error_logs
+    return False
 
 # setup_google_sheets 함수도 수정
 @st.cache_resource
