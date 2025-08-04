@@ -28,7 +28,7 @@ creds = Credentials.from_service_account_info(gcp_service_account, scopes=scope)
 client = gspread.authorize(creds)
 
 # ✅ Google Sheet 열기
-sheet = client.open(google_sheets["google_sheet_name"]).sheet1
+#sheet = client.open(google_sheets["google_sheet_name"]).sheet1
 #st.success(f"✅ Google Sheets 연결 성공 → {google_sheets['google_sheet_name']}")
 
 # ✅ 한국 시간대 설정
