@@ -54,8 +54,8 @@ def get_google_sheet():
         return None
         
 
-# ✅ Google Sheets 저장 최적화 + 재시도 로직 추가
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
+    """Google Sheets 저장 (대용량 데이터 대비 버전)"""
     error_logs = []
     sheet = get_google_sheet()
 
@@ -66,32 +66,37 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
 
     error_logs.append("✅ Google Sheets 연결 성공")
 
-    # ✅ 데이터 문자열 변환
-    menus_text = ', '.join([f"{ing}: {', '.join(menus)}" for ing, menus in selected_menus.items()])
+    # ✅ 메뉴 데이터를 500자 이하로 분할 (Google API 요청 제한 방지)
     ingredients_text = ', '.join(selected_ingredients)
-    new_row = [name, id_number, format_korean_time(), ingredients_text, menus_text]
+    menus_text = ', '.join([f"{ing}: {', '.join(menus)}" for ing, menus in selected_menus.items()])
 
-    # ✅ API 호출 최소화 + 지수적 재시도
+    # 문자열이 너무 길면 500자 단위로 잘라 여러 행으로 저장
+    menu_chunks = [menus_text[i:i+500] for i in range(0, len(menus_text), 500)]
+
     import time
-    for attempt in range(3):  # 최대 3번 재시도
-        try:
-            sheet.append_row(new_row, value_input_option="RAW")
-            error_logs.append("✅ Google Sheets 데이터 저장 성공")
-            st.session_state.google_sheets_success = True
-            st.session_state.google_sheets_error = error_logs
-            return True
-        except gspread.exceptions.APIError as api_err:
-            wait_time = (2 ** attempt)  # 1, 2, 4초 지연
-            error_logs.append(f"⚠️ Google API 오류 발생: {api_err} → {wait_time}초 후 재시도")
-            time.sleep(wait_time)
-        except Exception as e:
-            error_logs.append(f"❌ 저장 실패: {str(e)}")
-            st.session_state.google_sheets_error = error_logs
-            return False
+    try:
+        # ✅ 첫 행 (기본 데이터)
+        sheet.append_row([name, id_number, format_korean_time(), ingredients_text, menu_chunks[0]], value_input_option="RAW")
+        error_logs.append("✅ 기본 행 저장 성공")
 
-    error_logs.append("❌ Google Sheets 저장 최종 실패 (모든 재시도 실패)")
-    st.session_state.google_sheets_error = error_logs
-    return False
+        # ✅ 추가 행 (메뉴가 너무 길 경우 나머지 메뉴를 별도 행으로 저장)
+        for idx, chunk in enumerate(menu_chunks[1:], start=2):
+            sheet.append_row([name, id_number, f"{format_korean_time()} (추가{idx})", "-", chunk], value_input_option="RAW")
+            time.sleep(1)  # API Rate Limit 방지 지연
+            error_logs.append(f"✅ 추가 메뉴 데이터({idx}) 저장 성공")
+
+        st.session_state.google_sheets_success = True
+        st.session_state.google_sheets_error = error_logs
+        return True
+
+    except gspread.exceptions.APIError as api_err:
+        error_logs.append(f"❌ Google API 오류: {api_err}")
+        st.session_state.google_sheets_error = error_logs
+        return False
+    except Exception as e:
+        error_logs.append(f"❌ 저장 실패: {e}")
+        st.session_state.google_sheets_error = error_logs
+        return False
 
 # setup_google_sheets 함수도 수정
 @st.cache_resource
