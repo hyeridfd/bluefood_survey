@@ -54,47 +54,47 @@ def get_google_sheet():
         return None
         
 
+# ✅ 설문 완료 후 중복 저장 방지
+if 'already_saved' not in st.session_state:
+    st.session_state.already_saved = False
+
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets 저장 (대용량 데이터 대비 버전)"""
+    """Google Sheets 저장 (JSON + 분할 저장 + Rate Limit 보호)"""
+    if st.session_state.get("already_saved", False):
+        return True  # ✅ 이미 저장되었으면 다시 실행하지 않음
+
     error_logs = []
     sheet = get_google_sheet()
-
     if sheet is None:
         error_logs.append("❌ Google Sheets 연결 실패")
         st.session_state.google_sheets_error = error_logs
         return False
 
-    error_logs.append("✅ Google Sheets 연결 성공")
-
-    # ✅ 메뉴 데이터를 500자 이하로 분할 (Google API 요청 제한 방지)
-    ingredients_text = ', '.join(selected_ingredients)
-    menus_text = ', '.join([f"{ing}: {', '.join(menus)}" for ing, menus in selected_menus.items()])
-
-    # 문자열이 너무 길면 500자 단위로 잘라 여러 행으로 저장
-    menu_chunks = [menus_text[i:i+500] for i in range(0, len(menus_text), 500)]
-
-    import time
+    import json, time
     try:
-        # ✅ 첫 행 (기본 데이터)
-        sheet.append_row([name, id_number, format_korean_time(), ingredients_text, menu_chunks[0]], value_input_option="RAW")
-        error_logs.append("✅ 기본 행 저장 성공")
+        # ✅ 메뉴를 JSON 문자열로 변환 (50KB 이하만 저장)
+        menus_text = json.dumps(selected_menus, ensure_ascii=False)
+        menus_chunks = [menus_text[i:i+48000] for i in range(0, len(menus_text), 48000)]
+        ingredients_text = ', '.join(selected_ingredients)
 
-        # ✅ 추가 행 (메뉴가 너무 길 경우 나머지 메뉴를 별도 행으로 저장)
-        for idx, chunk in enumerate(menu_chunks[1:], start=2):
+        # ✅ 첫 행 저장
+        sheet.append_row([name, id_number, format_korean_time(), ingredients_text, menus_chunks[0]], value_input_option="RAW")
+        error_logs.append("✅ 기본 데이터 저장 성공")
+
+        # ✅ 나머지 분할 데이터 저장
+        for idx, chunk in enumerate(menus_chunks[1:], start=2):
             sheet.append_row([name, id_number, f"{format_korean_time()} (추가{idx})", "-", chunk], value_input_option="RAW")
-            time.sleep(1)  # API Rate Limit 방지 지연
-            error_logs.append(f"✅ 추가 메뉴 데이터({idx}) 저장 성공")
+            time.sleep(1)  # ✅ Rate Limit 보호
+            error_logs.append(f"✅ 추가 데이터({idx}) 저장 성공")
 
+        # ✅ 저장 완료 표시
         st.session_state.google_sheets_success = True
         st.session_state.google_sheets_error = error_logs
+        st.session_state.already_saved = True
         return True
 
-    except gspread.exceptions.APIError as api_err:
-        error_logs.append(f"❌ Google API 오류: {api_err}")
-        st.session_state.google_sheets_error = error_logs
-        return False
     except Exception as e:
-        error_logs.append(f"❌ 저장 실패: {e}")
+        error_logs.append(f"❌ Google Sheets 저장 실패: {str(e)}")
         st.session_state.google_sheets_error = error_logs
         return False
 
@@ -1415,28 +1415,20 @@ def show_menu_selection():
     with col3:
         if all_valid:
             if st.button("설문 완료하기", type="primary", use_container_width=True):
-                filename, df = save_to_excel(
-                    st.session_state.name,
-                    st.session_state.id_number,
-                    st.session_state.selected_ingredients,
-                    st.session_state.selected_menus
-                )
-                st.session_state.filename = filename
-                st.session_state.survey_data = df
-                st.session_state.step = 'complete'
-                st.markdown(
-                    """
-                    <script>
-                    setTimeout(function() {
-                        window.scrollTo({top: 0, behavior: 'smooth'});
-                    }, 200);
-                    </script>
-                    """,
-                    unsafe_allow_html=True
-                )
-                st.rerun()
+                if not st.session_state.get("already_saved", False):
+                    filename, df = save_to_excel(
+                        st.session_state.name,
+                        st.session_state.id_number,
+                        st.session_state.selected_ingredients,
+                        st.session_state.selected_menus
+                    )
+                    st.session_state.filename = filename
+                    st.session_state.survey_data = df
+                    st.session_state.step = 'complete'
+                    st.rerun()
         else:
             st.button("설문 완료하기", disabled=True, use_container_width=True)
+
 
 @st.cache_data
 def get_menu_image_html(menu):
