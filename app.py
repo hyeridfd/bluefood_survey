@@ -1415,7 +1415,9 @@ def show_menu_selection():
     with col3:
         if all_valid:
             if st.button("설문 완료하기", type="primary", use_container_width=True):
+                # ✅ 버튼 클릭 시 바로 중복 저장 방지
                 if not st.session_state.get("already_saved", False):
+                    st.session_state.already_saved = True   # 🔹 버튼 클릭 직후 True로 설정
                     filename, df = save_to_excel(
                         st.session_state.name,
                         st.session_state.id_number,
