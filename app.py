@@ -1,135 +1,14 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timezone, timedelta
+import os
+from datetime import datetime
 from pathlib import Path
 from PIL import Image
-import base64
-import gspread
-import toml
-import os
-from google.oauth2.service_account import Credentials
 
-
-# ✅ 로컬/Cloud 환경에 따라 secrets 불러오기
-if st.secrets.get("gcp_service_account", None):
-    gcp_service_account = dict(st.secrets["gcp_service_account"])
-    google_sheets = st.secrets["google_sheets"]
-else:
-    import toml, os
-    secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
-    gcp_service_account = secrets["gcp_service_account"]
-    google_sheets = secrets["google_sheets"]
-
-# ✅ Google 인증
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_info(gcp_service_account, scopes=scope)
-client = gspread.authorize(creds)
-
-# ✅ Google Sheet 열기
-sheet = client.open(google_sheets["google_sheet_name"]).sheet1
-#st.success(f"✅ Google Sheets 연결 성공 → {google_sheets['google_sheet_name']}")
-
-# ✅ 한국 시간대 설정
-KST = timezone(timedelta(hours=9))
-
-def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets에 데이터 저장 - 상세 오류 정보 포함"""
-    error_details = []  # 오류 정보를 저장할 리스트
-    
-    try:
-        # 1단계: Google Sheets 클라이언트 설정
-        client = setup_google_sheets()
-        if not client:
-            error_details.append("❌ Google Sheets 클라이언트 생성 실패")
-            st.session_state.google_sheets_error = error_details
-            return False
-        
-        error_details.append("✅ Google Sheets 클라이언트 생성 성공")
-        
-        # 2단계: 시트 이름 확인
-        sheet_name = st.secrets["google_sheets"]["google_sheet_name"]
-        error_details.append(f"🔍 찾고 있는 시트 이름: '{sheet_name}'")
-        
-        # 3단계: 시트 열기 시도
-        try:
-            sheet = client.open(sheet_name).sheet1
-            error_details.append("✅ 구글 시트 열기 성공")
-        except Exception as sheet_error:
-            error_details.append(f"❌ 시트 열기 실패: {str(sheet_error)}")
-            error_details.append(f"오류 타입: {type(sheet_error).__name__}")
-            st.session_state.google_sheets_error = error_details
-            return False
-        
-        # 4단계: 데이터 준비
-        new_row = [
-            name,
-            id_number,
-            format_korean_time(),
-            ', '.join(selected_ingredients),
-            ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
-        ]
-        error_details.append(f"✅ 데이터 준비 완료: {len(new_row)}개 컬럼")
-        
-        # 5단계: 구글 시트에 데이터 추가
-        try:
-            sheet.append_row(new_row)
-            error_details.append("✅ 구글 시트에 데이터 추가 성공!")
-            st.session_state.google_sheets_success = True
-            st.session_state.google_sheets_error = error_details  # 성공 시에도 로그 저장
-            return True
-            
-        except Exception as append_error:
-            error_details.append(f"❌ 데이터 추가 실패: {str(append_error)}")
-            error_details.append(f"오류 타입: {type(append_error).__name__}")
-            st.session_state.google_sheets_error = error_details
-            return False
-        
-    except Exception as e:
-        error_details.append(f"❌ 전체 프로세스 오류: {str(e)}")
-        error_details.append(f"오류 타입: {type(e).__name__}")
-        st.session_state.google_sheets_error = error_details
-        return False
-
-# setup_google_sheets 함수도 수정
-def setup_google_sheets():
-    """Google Sheets API 설정 - 상세 오류 정보 포함"""
-    try:
-        # secrets 확인
-        if "gcp_service_account" not in st.secrets:
-            return None
-            
-        creds_dict = dict(st.secrets["gcp_service_account"])
-        
-        # 필수 키 확인
-        required_keys = ['type', 'project_id', 'private_key', 'client_email']
-        for key in required_keys:
-            if key not in creds_dict:
-                return None
-        
-        scope = [
-            'https://spreadsheets.google.com/feeds',
-            'https://www.googleapis.com/auth/drive'
-        ]
-        
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-        client = gspread.authorize(creds)
-        
-        return client
-        
-    except Exception as e:
-        return None
-
-def get_korean_time():
-    """한국 시간(KST)을 반환하는 함수"""
-    return datetime.now(KST)
-
-def format_korean_time():
-    """한국 시간을 문자열로 포맷팅"""
-    return get_korean_time().strftime('%Y-%m-%d %H:%M:%S')
 # 페이지 설정
 st.set_page_config(
     page_title="블루푸드 선호도 조사",
-    page_icon="🐟",
+    page_icon="🌊",
     layout="wide"
 )
 
@@ -137,587 +16,85 @@ st.set_page_config(
 INGREDIENT_IMAGE_PATH = "images/ingredients"
 MENU_IMAGE_PATH = "images/menus"
 
-# 기존 코드에서 수정할 부분들
-
-# 1. 관리자 패스워드 설정 (상단에 추가)
-ADMIN_PASSWORD = "bluefood2025"  # 원하는 패스워드로 변경하세요
-
-# 2. 세션 상태 초기화 부분에 추가
-if 'step' not in st.session_state:
-    st.session_state.step = 'info'
-if 'selected_ingredients' not in st.session_state:
-    st.session_state.selected_ingredients = []
-if 'selected_menus' not in st.session_state:
-    st.session_state.selected_menus = {}
-# ✅ 관리자 인증 상태 추가
-if 'is_admin' not in st.session_state:
-    st.session_state.is_admin = False
-if 'show_admin_login' not in st.session_state:
-    st.session_state.show_admin_login = False
-def main():
-    # ✅ 사이드바 글씨 크기 CSS 적용
-    st.markdown(
-        """
-        <script>
-        // 페이지 로드 시 스크롤을 상단으로 이동
-        window.onload = function() {
-            window.scrollTo(0, 0);
-        };
-        
-        // Streamlit의 페이지 업데이트 감지하여 스크롤 이동
-        setTimeout(function() {
-            window.scrollTo(0, 0);
-        }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.markdown(
-        """
-        <script>
-        // 페이지 로드 시 스크롤을 상단으로 이동
-        window.onload = function() {
-            window.scrollTo(0, 0);
-        };
-        
-        // Streamlit의 페이지 업데이트 감지하여 스크롤 이동
-        setTimeout(function() {
-            window.scrollTo(0, 0);
-        }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.markdown(
-        """
-        <style>
-        /* 사이드바 전체 폰트 크기 */
-        section[data-testid="stSidebar"] * {
-            font-size: 22px !important;
-        }
-        /* 사이드바 헤더(타이틀)만 조금 더 크게 */
-        section[data-testid="stSidebar"] h2 {
-            font-size: 28px !important;
-        }
-        /* 사이드바 소제목(###) */
-        section[data-testid="stSidebar"] h3 {
-            font-size: 22px !important;
-        }
-        /* 사이드바의 리스트 및 일반 텍스트 */
-        section[data-testid="stSidebar"] p, 
-        section[data-testid="stSidebar"] li {
-            font-size: 22px !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-    
-    # ✅ 사이드바 설정 - 관리자 로그인 추가
-    with st.sidebar:
-        # 🔹 연구 정보 카드
-        st.markdown(
-            """
-            <div style="
-                background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                padding: 20px;
-                border-radius: 15px;
-                margin-bottom: 20px;
-                color: white;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-            ">
-                <h3 style="text-align:center; margin-bottom:10px;">📌 연구 정보</h3>
-                <div style="background: rgba(255,255,255,0.15); padding:10px; border-radius:10px; margin-bottom:10px;">
-                    <strong>🔹 연구명</strong><br>
-                    요양원 거주 고령자 대상 건강 상태 및<br>블루푸드 식이 데이터베이스 구축
-                </div>
-                <div style="background: rgba(255,255,255,0.15); padding:10px; border-radius:10px; margin-bottom:10px;">
-                    <strong>🔹 정부과제명</strong><br>
-                    글로벌 블루푸드 미래리더 양성 프로젝트
-                </div>
-                <div style="background: rgba(255,255,255,0.15); padding:10px; border-radius:10px;">
-                    <strong>🔹 연구 담당자</strong><br>
-                    류혜리, 유정연<br>(서울대학교 농생명공학부 박사과정)
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        # 🔹 관리자 로그인 섹션 추가
-        st.markdown("---")
-        
-        if not st.session_state.is_admin:
-            if st.button("🔐 관리자 로그인", use_container_width=True):
-                st.session_state.show_admin_login = True
-                st.rerun()
-            
-            if st.session_state.show_admin_login:
-                with st.form("admin_login"):
-                    password = st.text_input("관리자 패스워드", type="password")
-                    login_btn = st.form_submit_button("로그인")
-                    
-                    if login_btn:
-                        if password == ADMIN_PASSWORD:
-                            st.session_state.is_admin = True
-                            st.session_state.show_admin_login = False
-                            st.success("관리자로 로그인되었습니다!")
-                            st.rerun()
-                        else:
-                            st.error("잘못된 패스워드입니다.")
-        else:
-            # ✅ 관리자 로그인 상태
-            st.success("🔐 관리자 모드")
-            
-            # 전체 데이터 다운로드 버튼
-            if os.path.exists("bluefood_survey.xlsx"):
-                with open("bluefood_survey.xlsx", 'rb') as file:
-                    st.download_button(
-                        label="📥 전체 설문 데이터 다운로드",
-                        data=file.read(),
-                        file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        use_container_width=True
-                    )
-                
-                # 데이터 현황 표시
-                try:
-                    df = pd.read_excel("bluefood_survey.xlsx")
-                    st.markdown(f"**📊 총 응답자: {len(df)}명**")
-                    st.markdown(f"**📅 최근 응답: {df['설문일시'].max() if '설문일시' in df.columns else 'N/A'}**")
-                except:
-                    st.markdown("**📊 데이터 로드 오류**")
-            else:
-                st.info("아직 설문 데이터가 없습니다.")
-            
-            # 로그아웃 버튼
-            if st.button("🚪 로그아웃", use_container_width=True):
-                st.session_state.is_admin = False
-                st.session_state.show_admin_login = False
-                st.rerun()
-        
-        # 🔹 설문 안내 카드
-        st.markdown(
-            """
-            <div style="
-                background: #ffffff;
-                padding: 20px;
-                border-radius: 15px;
-                margin-bottom: 20px;
-                color: #333;
-                font-size: 17px;
-                line-height: 1.6;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-                border: 1px solid #ddd;
-            ">
-                <h3 style="text-align:center; color:#0077b6; margin-bottom:10px;">📋 설문 안내</h3>
-                <p><strong>🎯 목적</strong><br>블루푸드 선호도 조사</p>
-                <p><strong>⏱️ 소요시간</strong><br>약 3-5분</p>
-                <p><strong>📝 설문 단계</strong><br>1️⃣ 참여자 정보 입력<br>2️⃣ 선호 수산물 선택 (3-9개)<br>3️⃣ 선호 블루푸드 메뉴 선택<br>4️⃣ 결과 다운로드</p>
-                <p><strong>🔒 개인정보 보호</strong><br>수집된 정보는 연구 목적으로만 사용되며,<br>개인정보는 안전하게 보호됩니다.</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        # 🔹 진행 상황
-        st.markdown("### 📊 진행 상황")
-        if 'step' in st.session_state:
-            if st.session_state.step == 'info':
-                st.progress(0.25, "1단계: 정보 입력")
-            elif st.session_state.step == 'ingredients':
-                st.progress(0.5, "2단계: 수산물 선택")
-            elif st.session_state.step == 'menus':
-                st.progress(0.75, "3단계: 메뉴 선택")
-            elif st.session_state.step == 'complete':
-                st.progress(1.0, "✅ 설문 완료!")
-
-    # ✅ 메인 콘텐츠 영역 - 이 부분이 누락되어 있었습니다!
-    # 메인 타이틀
-    st.title("🐟 블루푸드 선호도 조사")
-    
-    # 단계별 진행
-    if st.session_state.step == 'info':
-        show_info_form()
-    elif st.session_state.step == 'ingredients':
-        show_ingredient_selection()
-    elif st.session_state.step == 'menus':
-        show_menu_selection()
-    elif st.session_state.step == 'complete':
-        show_completion()
-
-
-# show_completion 함수 수정 (오류 정보 표시 추가)
-def show_completion():
-    # 스크롤 상단 이동
-    st.markdown(
-        """
-        <script>
-        setTimeout(function() {
-            window.scrollTo({top: 0, behavior: 'smooth'});
-        }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.balloons()
-    
-    # 완료 메시지
-    st.success("🎉 설문이 완료되었습니다! 소중한 의견을 주셔서 감사합니다")
-    
-    # ✅ 구글 시트 연동 결과 표시
-    if hasattr(st.session_state, 'google_sheets_success') and st.session_state.google_sheets_success:
-        st.success("✅ 데이터가 구글 시트에 성공적으로 저장되었습니다!")
-    elif hasattr(st.session_state, 'google_sheets_error') and st.session_state.google_sheets_error:
-        st.error("❌ 구글 시트 저장 중 문제가 발생했습니다")
-        
-        # 상세 오류 정보 표시
-        with st.expander("🔍 상세 오류 정보 (디버깅용)", expanded=True):
-            for i, error in enumerate(st.session_state.google_sheets_error, 1):
-                st.write(f"{i}. {error}")
-        
-        st.warning("⚠️ 데이터는 임시 백업 파일에 저장되었습니다")
-    
-    # ✅ secrets.toml 설정 정보 표시 (디버깅용)
-    with st.expander("⚙️ 현재 설정 정보", expanded=False):
-        try:
-            if "gcp_service_account" in st.secrets:
-                st.write("✅ secrets.toml 파일 로드됨")
-                if "google_sheet_name" in st.secrets:
-                    st.write(f"📋 시트 이름: '{secrets["google_sheets"]["google_sheet_name"]}'")
-                if "google_sheet_id" in st.secrets:
-                    st.write(f"🆔 시트 ID: {secrets["google_sheets"]['google_sheet_id'][:20]}...")
-                
-                # 서비스 계정 정보
-                gcp_account = st.secrets["gcp_service_account"]
-                if "client_email" in gcp_account:
-                    st.write(f"📧 서비스 계정: {gcp_account['client_email']}")
-                if "project_id" in gcp_account:
-                    st.write(f"🏗️ 프로젝트 ID: {gcp_account['project_id']}")
-            else:
-                st.error("❌ secrets.toml 파일을 찾을 수 없습니다")
-        except Exception as e:
-            st.error(f"설정 정보 표시 오류: {str(e)}")
-    
-    # 결과 요약 표시
-    with st.expander("📊 설문 결과 요약", expanded=True):
-        st.markdown(f"**참여자:** {st.session_state.name}")
-        st.markdown(f"**식별번호:** {st.session_state.id_number}")
-        st.markdown(f"**설문 완료 시간:** {format_korean_time()}")
-        
-        st.markdown("### 선택하신 수산물")
-        ingredients_text = " | ".join(st.session_state.selected_ingredients)
-        st.markdown(f"🏷️ {ingredients_text}")
-        
-        st.markdown("### 선호하시는 메뉴")
-        for ingredient, menus in st.session_state.selected_menus.items():
-            if menus:
-                menu_text = ", ".join(menus)
-                st.markdown(f"**{ingredient}:** {menu_text}")
-    
-    # 관리자만 다운로드 버튼 표시
-    if st.session_state.is_admin:
-        st.markdown("---")
-        st.markdown("### 🔐 관리자 전용")
-        
-        if 'filename' in st.session_state and st.session_state.filename and os.path.exists(st.session_state.filename):
-            with open(st.session_state.filename, 'rb') as file:
-                st.download_button(
-                    label="📥 백업 파일 다운로드",
-                    data=file.read(),
-                    file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    type="primary",
-                    use_container_width=True
-                )
-    
-    # 새 설문 시작 버튼
-    if st.button("🔄 새 설문 시작하기", use_container_width=True):
-        # 세션 상태 초기화 (관리자 상태는 유지)
-        admin_status = st.session_state.is_admin
-        for key in list(st.session_state.keys()):
-            if key not in ['is_admin', 'show_admin_login']:
-                del st.session_state[key]
-        st.session_state.is_admin = admin_status
-        st.markdown(
-            """
-            <script>
-            setTimeout(function() {
-                window.scrollTo({top: 0, behavior: 'smooth'});
-            }, 200);
-            </script>
-            """,
-            unsafe_allow_html=True
-        )
-        st.rerun()
-
-# 5. 추가 보안을 위한 관리자 전용 페이지 함수 (선택사항)
-def show_admin_dashboard():
-    """관리자 전용 대시보드"""
-    if not st.session_state.is_admin:
-        st.error("관리자 권한이 필요합니다.")
-        return
-    
-    st.title("🔐 관리자 대시보드")
-    
-    if os.path.exists("bluefood_survey.xlsx"):
-        try:
-            df = pd.read_excel("bluefood_survey.xlsx")
-            
-            # 기본 통계
-            st.subheader("📊 설문 통계")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("총 응답자 수", len(df))
-            
-            with col2:
-                if '설문일시' in df.columns:
-                    today_str = get_korean_time().strftime('%Y-%m-%d')
-                    today_responses = len(df[df['설문일시'].str.contains(today_str, na=False)])
-                    st.metric("오늘 응답자", today_responses)
-                else:
-                    st.metric("오늘 응답자", "N/A")
-            
-            with col3:
-                if '선택한_수산물' in df.columns:
-                    avg_ingredients = df['선택한_수산물'].str.split(', ').str.len().mean()
-                    st.metric("평균 선택 수산물", f"{avg_ingredients:.1f}개")
-            
-            # 데이터 미리보기
-            st.subheader("📋 최근 응답 데이터")
-            st.dataframe(df.tail(10), use_container_width=True)
-            
-            # 전체 데이터 다운로드
-            st.subheader("📥 데이터 다운로드")
-            with open("bluefood_survey.xlsx", 'rb') as file:
-                st.download_button(
-                    label="전체 설문 데이터 다운로드",
-                    data=file.read(),
-                    file_name=f"bluefood_survey_complete_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    type="primary"
-                )
-        
-        except Exception as e:
-            st.error(f"데이터 로드 중 오류가 발생했습니다: {e}")
-    else:
-        st.info("아직 설문 데이터가 없습니다.")
-        
 # 이미지 로드 함수
-# ✅ 고정 크기 이미지 렌더링 함수
-def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟"):
-    """이미지를 고정 크기로 출력, 없으면 플레이스홀더"""
-    if os.path.exists(img_path):
-        with open(img_path, "rb") as f:
-            img_data = base64.b64encode(f.read()).decode()
-        return f"""
-        <div style="
-            width:{width}px; 
-            height:{height}px; 
-            overflow:hidden; 
-            border-radius:8px; 
-            border:1px solid #ddd; 
-            display:flex; 
-            align-items:center; 
-            justify-content:center; 
-            background:#fff;">
-            <img src="data:image/png;base64,{img_data}" 
-                 style="width:100%; height:100%; object-fit:cover;">
-        </div>
-        """
-    else:
-        return f"""
-        <div style="
-            width:{width}px; 
-            height:{height}px; 
-            background:#f8f9fa; 
-            border:2px dashed #dee2e6; 
-            border-radius:8px; 
-            display:flex; 
-            flex-direction:column;
-            align-items:center; 
-            justify-content:center; 
-            color:#6c757d;">
-            <div style="font-size:1.5em;">{placeholder}</div>
-            <div style="font-size:0.8em;">이미지 준비중</div>
-        </div>
-        """
+def load_image(image_path, default_text="이미지 준비중"):
+    """이미지를 로드하고, 없으면 플레이스홀더 반환"""
+    try:
+        if os.path.exists(image_path):
+            return Image.open(image_path)
+        else:
+            return None
+    except Exception:
+        return None
 
 def display_ingredient_with_image(ingredient, is_selected, key):
+    """식재료를 이미지와 함께 표시"""
+    # 이미지 경로 시도 (jpg 우선, 없으면 png)
     jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
     png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
-
-    # ✅ 이미지 크기 확대
-    html_img = render_image_fixed_size(
-        jpg_path, width=240, height=180
-    ) if os.path.exists(jpg_path) else render_image_fixed_size(
-        png_path, width=240, height=180, placeholder="🍽️"
-    )
-
-    # ✅ CSS (버튼형 체크박스)
-    st.markdown("""
-    <style>
-    /* ✅ 체크박스 컨테이너를 버튼처럼 중앙 배치 */
-    div.stCheckbox {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-top: 5px;
-    }
-    /* ✅ 버튼 스타일 */
-    div.stCheckbox > label {
-        background: #f8f9fa;
-        border: 2px solid #ccc;
-        border-radius: 10px;
-        padding: 8px 20px;
-        cursor: pointer;
-        font-size: 18px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-    }
-    /* ✅ 체크된 상태 스타일 */
-    div.stCheckbox > label:has(input:checked) {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-        border-color: #0096c7;
-        color: white;
-    }
-    /* ✅ 체크박스 자체 확대 */
-    div.stCheckbox input[type="checkbox"] {
-        transform: scale(1.5);
-        margin-right: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    with st.container():
-        # ✅ 식재료 이름 (가운데)
-        st.markdown(
-            f"<div style='text-align:center; margin-bottom:5px;'><strong style='font-size:20px;'>{ingredient}</strong></div>",
-            unsafe_allow_html=True
+    
+    image = load_image(jpg_path) or load_image(png_path)
+    
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        if image:
+            st.image(image, width=120, caption=ingredient)
+        else:
+            st.info(f"🐟\n{ingredient}\n(이미지 준비중)")
+    
+    with col2:
+        return st.checkbox(
+            f"**{ingredient}** 선택", 
+            value=is_selected, 
+            key=key
         )
 
-        # ✅ 이미지 가운데 정렬
-        st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
-
-        # ✅ 체크박스도 중앙
-        col_left, col_center, col_right = st.columns([1, 2, 1])
-        with col_center:
-            checkbox_result = st.checkbox("선택", value=is_selected, key=key)
-
-        return checkbox_result
-
-        
 def display_menu_with_image(menu, ingredient, is_selected, key):
+    """메뉴를 이미지와 함께 표시"""
+    # 이미지 경로 시도 (png 우선, 없으면 jpg)
     png_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
     jpg_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
-
-    # ✅ 이미지 크기 확대
-    html_img = render_image_fixed_size(
-        png_path, width=240, height=180, placeholder="🍽️"
-    ) if os.path.exists(png_path) else render_image_fixed_size(
-        jpg_path, width=240, height=180, placeholder="🍽️"
-    )
-
-    # ✅ 버튼형 체크박스 CSS 적용
-    st.markdown("""
-    <style>
-    /* ✅ 메뉴 체크박스 버튼 스타일 */
-    div.stCheckbox {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-top: 6px;
-    }
-    div.stCheckbox > label {
-        background: #f8f9fa;
-        border: 2px solid #ccc;
-        border-radius: 10px;
-        padding: 8px 20px;
-        cursor: pointer;
-        font-size: 18px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-    }
-    div.stCheckbox > label:has(input:checked) {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-        border-color: #0096c7;
-        color: white;
-    }
-    div.stCheckbox input[type="checkbox"] {
-        transform: scale(1.5);
-        margin-right: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
+    
+    image = load_image(png_path) or load_image(jpg_path)
+    
     with st.container():
-        # ✅ 메뉴명 중앙 정렬
-        st.markdown(
-            f"<div style='text-align:center; margin-bottom:5px;'><strong style='font-size:18px;'>{menu}</strong></div>",
-            unsafe_allow_html=True
+        if image:
+            st.image(image, width=150, caption=menu)
+        else:
+            st.info(f"🍽️ {menu}\n(이미지 준비중)")
+        
+        return st.checkbox(
+            menu, 
+            value=is_selected, 
+            key=key
         )
 
-        # ✅ 이미지 중앙
-        st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
-
-        # ✅ 체크박스도 중앙
-        col_left, col_center, col_right = st.columns([1, 2, 1])
-        with col_center:
-            checkbox_result = st.checkbox("선택", value=is_selected, key=key)
-
-        return checkbox_result
-
-    
-
-
-# save_to_excel 함수 수정 (구글 시트 우선, 실패 시 백업)
+# 엑셀 파일 저장 함수 (GitHub/Streamlit Cloud용)
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
-    """데이터 저장 - Google Sheets 우선, 실패 시 로컬 엑셀 백업"""
+    # 데이터 준비
+    data = {
+        '이름': [name],
+        '식별번호': [id_number],
+        '설문일시': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
+        '선택한_수산물': [', '.join(selected_ingredients)],
+        '선택한_메뉴': [', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])]
+    }
     
-    # 세션 상태 초기화
-    st.session_state.google_sheets_success = False
-    st.session_state.google_sheets_error = []
+    # 각 수산물별로 별도 컬럼 생성
+    for ingredient in selected_ingredients:
+        data[f'{ingredient}_메뉴'] = [', '.join(selected_menus.get(ingredient, []))]
     
-    # 1순위: Google Sheets에 저장 시도
-    if save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-        return "google_sheets", None
+    df = pd.DataFrame(data)
     
-    # 2순위: 로컬 엑셀 파일에 백업 저장
-    try:
-        new_data = {
-            '이름': name,
-            '식별번호': id_number,
-            '설문일시': format_korean_time(),
-            '선택한_수산물': ', '.join(selected_ingredients),
-            '선택한_메뉴': ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
-        }
-
-        for ingredient in selected_ingredients:
-            new_data[f'{ingredient}_메뉴'] = ', '.join(selected_menus.get(ingredient, []))
-
-        new_df = pd.DataFrame([new_data])
-        filename = "bluefood_survey_backup.xlsx"
-
-        if os.path.exists(filename):
-            old_df = pd.read_excel(filename)
-            final_df = pd.concat([old_df, new_df], ignore_index=True)
-        else:
-            final_df = new_df
-
-        final_df.to_excel(filename, index=False)
-        return filename, final_df
-        
-    except Exception as e:
-        # 백업 저장도 실패한 경우
-        if 'google_sheets_error' not in st.session_state:
-            st.session_state.google_sheets_error = []
-        st.session_state.google_sheets_error.append(f"❌ 백업 파일 저장도 실패: {str(e)}")
-        return None, None
-
+    # Streamlit Cloud에서는 고유한 파일명으로 임시 저장
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'bluefood_survey_{timestamp}.xlsx'
+    
+    # 임시 파일로 저장
+    df.to_excel(filename, index=False)
+    
+    return filename, df
 
 # 수산물별 메뉴 데이터
 MENU_DATA = {
@@ -1078,108 +455,51 @@ if 'selected_ingredients' not in st.session_state:
 if 'selected_menus' not in st.session_state:
     st.session_state.selected_menus = {}
 
+# 메인 앱
+def main():
+    st.title("🌊 블루푸드 선호도 조사")
+    st.markdown("---")
+    
+    # 단계별 진행
+    if st.session_state.step == 'info':
+        show_info_form()
+    elif st.session_state.step == 'ingredients':
+        show_ingredient_selection()
+    elif st.session_state.step == 'menus':
+        show_menu_selection()
+    elif st.session_state.step == 'complete':
+        show_completion()
+
 def show_info_form():
-    st.markdown(
-        """
-        <script>
-        setTimeout(function() {
-            window.scrollTo({top: 0, behavior: 'smooth'});
-        }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
     st.subheader("📝 참여자 정보 입력")
-
-    # ✅ CSS 강제 적용
-    st.markdown(
-        """
-        <style>
-        /* ✅ 레이블(성함, 식별번호) 스타일 */
-        div.row-widget.stTextInput label {
-            font-size: 26px !important;
-            font-weight: bold !important;
-            color: #222 !important;
-        }
-
-        /* ✅ 입력창 폰트 크기 */
-        div.row-widget.stTextInput input {
-            font-size: 24px !important;
-            height: 50px !important;
-        }
-
-        /* ✅ 버튼 스타일 */
-        div.stButton > button {
-            font-size: 26px !important;
-            font-weight: bold !important;
-            height: 55px !important;
-            border-radius: 10px !important;
-            background: linear-gradient(135deg, #4facfe, #00f2fe);
-            color: white !important;
-        }
-        div.stButton > button:hover {
-            background: linear-gradient(135deg, #00b4d8, #0096c7);
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # ✅ 입력 폼
+    
     with st.form("info_form"):
         col1, col2 = st.columns(2)
-
+        
         with col1:
-            name = st.text_input("성함", placeholder="홍길동", max_chars=20)
-
+            name = st.text_input("성함", placeholder="홍길동")
+        
         with col2:
-            id_number = st.text_input("식별번호", placeholder="예: HG001", max_chars=20)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        submitted = st.form_submit_button("설문 시작하기", use_container_width=True)
-
+            id_number = st.text_input("식별번호", placeholder="예: 2024001")
+        
+        submitted = st.form_submit_button("설문 시작하기", type="primary")
+        
         if submitted:
             if name and id_number:
                 st.session_state.name = name
                 st.session_state.id_number = id_number
                 st.session_state.step = 'ingredients'
-                st.markdown(
-                    """
-                    <script>
-                    setTimeout(function() {
-                        window.scrollTo({top: 0, behavior: 'smooth'});
-                    }, 200);
-                    </script>
-                    """,
-                    unsafe_allow_html=True
-                )
                 st.rerun()
             else:
                 st.error("성함과 식별번호를 모두 입력해주세요.")
 
-
-
 def show_ingredient_selection():
-    st.markdown(
-        """
-        <script>
-        setTimeout(function() {
-            window.scrollTo({top: 0, behavior: 'smooth'});
-        }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-    
     st.subheader("🐟 수산물 원재료 선호도")
     
-    # 안내 메시지
-    st.info("**🔸 다음 수산물 중 선호하는 원재료를 선택해주세요**\n\n✓ 최소 3개 이상, 최대 9개까지 선택 가능합니다")
+    st.info("**다음 수산물 중 선호하는 원재료를 선택해주세요** (최소 3개 이상, 최대 9개까지)")
     
     # 선택 개수 표시
     selected_count = len(st.session_state.selected_ingredients)
-    
     if 3 <= selected_count <= 9:
         st.success(f"✅ 선택된 품목: {selected_count}개")
     elif selected_count < 3:
@@ -1191,31 +511,28 @@ def show_ingredient_selection():
     for category, ingredients in INGREDIENT_CATEGORIES.items():
         st.markdown(f"### {category}")
         
-        # 수산물을 4열 그리드로 배치
-        cols = st.columns(4)
-        for i, ingredient in enumerate(ingredients):
-            with cols[i % 4]:
-                is_selected = ingredient in st.session_state.selected_ingredients
-                
-                # 이미지와 함께 식재료 표시
-                selected = display_ingredient_with_image(
-                    ingredient, 
-                    is_selected, 
-                    f"ingredient_{ingredient}"
-                )
-                
-                if selected:
-                    if ingredient not in st.session_state.selected_ingredients:
-                        if len(st.session_state.selected_ingredients) < 9:
-                            st.session_state.selected_ingredients.append(ingredient)
-                            st.rerun()
-                        else:
-                            st.error("최대 9개까지만 선택할 수 있습니다.")
-                            st.rerun()
-                else:
-                    if ingredient in st.session_state.selected_ingredients:
-                        st.session_state.selected_ingredients.remove(ingredient)
+        for ingredient in ingredients:
+            is_selected = ingredient in st.session_state.selected_ingredients
+            
+            # 이미지와 함께 식재료 표시
+            selected = display_ingredient_with_image(
+                ingredient, 
+                is_selected, 
+                f"ingredient_{ingredient}"
+            )
+            
+            if selected:
+                if ingredient not in st.session_state.selected_ingredients:
+                    if len(st.session_state.selected_ingredients) < 9:
+                        st.session_state.selected_ingredients.append(ingredient)
                         st.rerun()
+                    else:
+                        st.error("최대 9개까지만 선택할 수 있습니다.")
+                        st.rerun()
+            else:
+                if ingredient in st.session_state.selected_ingredients:
+                    st.session_state.selected_ingredients.remove(ingredient)
+                    st.rerun()
         
         st.markdown("---")
     
@@ -1229,102 +546,76 @@ def show_ingredient_selection():
                 # 선택된 수산물에 대한 메뉴 딕셔너리 초기화
                 st.session_state.selected_menus = {ingredient: [] for ingredient in st.session_state.selected_ingredients}
                 st.session_state.step = 'menus'
-                st.markdown(
-                    """
-                    <script>
-                    setTimeout(function() {
-                        window.scrollTo({top: 0, behavior: 'smooth'});
-                    }, 200);
-                    </script>
-                    """,
-                    unsafe_allow_html=True
-                )
                 st.rerun()
         else:
             st.button("다음 단계로 →", disabled=True, use_container_width=True)
 
 def show_menu_selection():
-    st.markdown(
-        """
-        <script>
-        setTimeout(function() {
-            window.scrollTo({top: 0, behavior: 'smooth'});
-        }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
     st.subheader("🍽️ 선호 메뉴 선택")
-
-    st.info("**🔸 선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요**\n\n✓ 각 수산물마다 최소 1개 이상의 메뉴를 선택해주세요")
-
+    
+    st.info("**선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요** (각 수산물마다 최소 1개 이상)")
+    
+    # 선택된 수산물 표시
     with st.expander("선택하신 수산물", expanded=True):
-        ingredients_text = " | ".join([f"**{ingredient}**" for ingredient in st.session_state.selected_ingredients])
-        st.markdown(f"🏷️ {ingredients_text}")
-
+        st.write("🏷️ " + " | ".join([f"**{ingredient}**" for ingredient in st.session_state.selected_ingredients]))
+    
+    # 각 수산물별 메뉴 선택
     all_valid = True
-
+    
     for ingredient in st.session_state.selected_ingredients:
         st.markdown(f"### 🐟 {ingredient} 요리")
-
+        
         if ingredient in MENU_DATA:
-            # ✅ 카테고리 무시하고 메뉴만 리스트로 합치기
-            all_menus = []
-            for menu_list in MENU_DATA[ingredient].values():
-                all_menus.extend(menu_list)
-
-            # ✅ 4개씩 가로 배치
-            for row_start in range(0, len(all_menus), 4):
-                cols = st.columns(4)
-                for col_idx, menu in enumerate(all_menus[row_start:row_start+4]):
-                    with cols[col_idx]:
-                        is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
-                        selected = display_menu_with_image(
-                            menu,
-                            ingredient,
-                            is_selected,
-                            f"menu_{ingredient}_{menu}"
-                        )
-
-                        if selected:
-                            if menu not in st.session_state.selected_menus[ingredient]:
-                                st.session_state.selected_menus[ingredient].append(menu)
-                                st.rerun()
-                        else:
-                            if menu in st.session_state.selected_menus[ingredient]:
-                                st.session_state.selected_menus[ingredient].remove(menu)
-                                st.rerun()
-
-        # ✅ 선택 여부 확인
-        menu_count = len(st.session_state.selected_menus.get(ingredient, []))
-        if menu_count == 0:
+            menus = MENU_DATA[ingredient]
+            
+            for category, menu_list in menus.items():
+                if menu_list:
+                    st.markdown(f"**{category}**")
+                    
+                    # 메뉴를 3열로 배치
+                    cols = st.columns(3)
+                    for i, menu in enumerate(menu_list):
+                        with cols[i % 3]:
+                            is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
+                            
+                            # 이미지와 함께 메뉴 표시
+                            selected = display_menu_with_image(
+                                menu, 
+                                ingredient, 
+                                is_selected, 
+                                f"menu_{ingredient}_{menu}"
+                            )
+                            
+                            if selected:
+                                if menu not in st.session_state.selected_menus[ingredient]:
+                                    st.session_state.selected_menus[ingredient].append(menu)
+                                    st.rerun()
+                            else:
+                                if menu in st.session_state.selected_menus[ingredient]:
+                                    st.session_state.selected_menus[ingredient].remove(menu)
+                                    st.rerun()
+        
+        # 각 수산물별 최소 1개 선택 확인
+        if len(st.session_state.selected_menus.get(ingredient, [])) == 0:
             all_valid = False
             st.warning(f"⚠️ {ingredient}에 대해 최소 1개 이상의 메뉴를 선택해주세요.")
         else:
-            st.success(f"✅ {ingredient}: {menu_count}개 메뉴 선택됨")
-
+            st.success(f"✅ {ingredient}: {len(st.session_state.selected_menus[ingredient])}개 메뉴 선택됨")
+        
         st.markdown("---")
-
-    # ✅ 버튼
+    
+    # 버튼들
     col1, col2, col3 = st.columns([1, 1, 1])
+    
     with col1:
         if st.button("← 이전 단계", use_container_width=True):
             st.session_state.step = 'ingredients'
-            st.markdown(
-                """
-                <script>
-                setTimeout(function() {
-                    window.scrollTo({top: 0, behavior: 'smooth'});
-                }, 200);
-                </script>
-                """,
-                unsafe_allow_html=True
-            )
             st.rerun()
-
+    
     with col3:
         if all_valid:
             if st.button("설문 완료하기", type="primary", use_container_width=True):
+                # 엑셀 파일 저장
                 filename, df = save_to_excel(
                     st.session_state.name,
                     st.session_state.id_number,
@@ -1334,21 +625,46 @@ def show_menu_selection():
                 st.session_state.filename = filename
                 st.session_state.survey_data = df
                 st.session_state.step = 'complete'
-                st.markdown(
-                    """
-                    <script>
-                    setTimeout(function() {
-                        window.scrollTo({top: 0, behavior: 'smooth'});
-                    }, 200);
-                    </script>
-                    """,
-                    unsafe_allow_html=True
-                )
                 st.rerun()
         else:
             st.button("설문 완료하기", disabled=True, use_container_width=True)
 
-
+def show_completion():
+    st.balloons()
+    
+    st.success("🎉 설문이 완료되었습니다! 감사합니다")
+    
+    # 결과 요약 표시
+    with st.expander("📊 설문 결과 요약", expanded=True):
+        st.write(f"**참여자:** {st.session_state.name}")
+        st.write(f"**식별번호:** {st.session_state.id_number}")
+        st.write(f"**설문 완료 시간:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        st.markdown("### 선택하신 수산물")
+        st.write("🏷️ " + " | ".join(st.session_state.selected_ingredients))
+        
+        st.markdown("### 선호하시는 메뉴")
+        for ingredient, menus in st.session_state.selected_menus.items():
+            if menus:
+                st.write(f"**{ingredient}:** {', '.join(menus)}")
+    
+    # 엑셀 파일 다운로드
+    if 'filename' in st.session_state and os.path.exists(st.session_state.filename):
+        with open(st.session_state.filename, 'rb') as file:
+            st.download_button(
+                label="📥 결과 엑셀 파일 다운로드",
+                data=file.read(),
+                file_name=st.session_state.filename,
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                type="primary"
+            )
+    
+    # 새 설문 시작 버튼
+    if st.button("🔄 새 설문 시작하기", use_container_width=True):
+        # 세션 상태 초기화
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
 
 if __name__ == "__main__":
     main()
