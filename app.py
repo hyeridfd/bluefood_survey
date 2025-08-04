@@ -1,125 +1,72 @@
 import streamlit as st
 import pandas as pd
+import os
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from PIL import Image
 import base64
 import gspread
-import toml
-import os
 from google.oauth2.service_account import Credentials
-
-
-# ✅ 로컬/Cloud 환경에 따라 secrets 불러오기
-if st.secrets.get("gcp_service_account", None):
-    gcp_service_account = dict(st.secrets["gcp_service_account"])
-    google_sheets = st.secrets["google_sheets"]
-else:
-    import toml, os
-    secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
-    gcp_service_account = secrets["gcp_service_account"]
-    google_sheets = secrets["google_sheets"]
-
-# ✅ Google 인증
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_info(gcp_service_account, scopes=scope)
-client = gspread.authorize(creds)
-
-# ✅ Google Sheet 열기
-sheet = client.open(google_sheets["google_sheet_name"]).sheet1
-#st.success(f"✅ Google Sheets 연결 성공 → {google_sheets['google_sheet_name']}")
 
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
 
-# ✅ 전역에서 한 번만 Google Sheets 연결
-@st.cache_resource
-def get_google_sheet():
-    try:
-        if st.secrets.get("gcp_service_account", None):
-            creds_dict = dict(st.secrets["gcp_service_account"])
-            google_sheets = st.secrets["google_sheets"]
-        else:
-            secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
-            creds_dict = secrets["gcp_service_account"]
-            google_sheets = secrets["google_sheets"]
-
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-        client = gspread.authorize(creds)
-        sheet = client.open(google_sheets["google_sheet_name"]).sheet1
-        return sheet
-    except Exception as e:
-        st.error(f"❌ Google Sheets 연결 실패: {e}")
-        return None
-        
-
-# ✅ 설문 완료 후 중복 저장 방지
-if 'already_saved' not in st.session_state:
-    st.session_state.already_saved = False
-
-def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets 저장 (JSON + 분할 저장 + Rate Limit 보호)"""
-    if st.session_state.get("already_saved", False):
-        return True  # ✅ 이미 저장되었으면 다시 실행하지 않음
-
-    error_logs = []
-    sheet = get_google_sheet()
-    if sheet is None:
-        error_logs.append("❌ Google Sheets 연결 실패")
-        st.session_state.google_sheets_error = error_logs
-        return False
-
-    import json, time
-    try:
-        # ✅ 메뉴를 JSON 문자열로 변환 (50KB 이하만 저장)
-        menus_text = json.dumps(selected_menus, ensure_ascii=False)
-        menus_chunks = [menus_text[i:i+48000] for i in range(0, len(menus_text), 48000)]
-        ingredients_text = ', '.join(selected_ingredients)
-
-        # ✅ 첫 행 저장
-        sheet.append_row([name, id_number, format_korean_time(), ingredients_text, menus_chunks[0]], value_input_option="RAW")
-        error_logs.append("✅ 기본 데이터 저장 성공")
-
-        # ✅ 나머지 분할 데이터 저장
-        for idx, chunk in enumerate(menus_chunks[1:], start=2):
-            sheet.append_row([name, id_number, f"{format_korean_time()} (추가{idx})", "-", chunk], value_input_option="RAW")
-            time.sleep(1)  # ✅ Rate Limit 보호
-            error_logs.append(f"✅ 추가 데이터({idx}) 저장 성공")
-
-        # ✅ 저장 완료 표시
-        st.session_state.google_sheets_success = True
-        st.session_state.google_sheets_error = error_logs
-        st.session_state.already_saved = True
-        return True
-
-    except Exception as e:
-        error_logs.append(f"❌ Google Sheets 저장 실패: {str(e)}")
-        st.session_state.google_sheets_error = error_logs
-        return False
-
-# setup_google_sheets 함수도 수정
-@st.cache_resource
+# ✅ Google Sheets 연동 함수들
 def setup_google_sheets():
-    """Google Sheets API 설정 (로컬/Cloud 호환)"""
+    """Google Sheets API 설정"""
     try:
-        if st.secrets.get("gcp_service_account", None):
-            creds_dict = dict(st.secrets["gcp_service_account"])
-            google_sheets = st.secrets["google_sheets"]
-        else:
-            secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
-            creds_dict = secrets["gcp_service_account"]
-            google_sheets = secrets["google_sheets"]
-
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        scope = [
+            'https://spreadsheets.google.com/feeds',
+            'https://www.googleapis.com/auth/drive'
+        ]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
-        sheet = client.open(google_sheets["google_sheet_name"]).sheet1
-        return sheet
-
+        return client
     except Exception as e:
-        st.error(f"❌ Google Sheets 연결 실패: {e}")
+        st.error(f"Google Sheets 연동 오류: {e}")
         return None
+    
+def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
+    """Google Sheets에 데이터 저장"""
+    try:
+        client = setup_google_sheets()
+        if not client:
+            return False
+        
+        sheet_name = st.secrets["google_sheet_name"]
+        st.write(f"🔍 찾고 있는 시트 이름: '{sheet_name}'")
+        sheet = client.open(sheet_name).sheet1
+        
+        new_row = [
+            name,
+            id_number,
+            format_korean_time(),
+            ', '.join(selected_ingredients),
+            ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
+        ]
+        
+        # 각 수산물별 메뉴 컬럼 추가
+        all_ingredients = [
+            '맛살', '어란', '어묵', '쥐포', '김', '다시마', '매생이', '미역', '파래', '톳',
+            '꼴뚜기', '낙지', '문어', '오징어', '주꾸미', '가재', '게', '새우',
+            '다슬기', '꼬막', '가리비', '골뱅이', '굴', '미더덕', '바지락', '백합', '소라', '재첩', '전복', '홍합',
+            '가자미', '다랑어', '고등어', '갈치', '꽁치', '대구', '멸치', '명태', '박대', '뱅어', '병어', '삼치', '아귀', '연어', '임연수', '장어', '조기'
+        ]
+        
+        for ingredient in all_ingredients:
+            if ingredient in selected_menus:
+                new_row.append(', '.join(selected_menus[ingredient]))
+            else:
+                new_row.append('')
+        
+        sheet.append_row(new_row)
+        st.success("✅ 데이터가 구글 시트에 저장되었습니다!")
+        return True
+        
+    except Exception as e:
+        st.error(f"상세 오류: {type(e).__name__}: {str(e)}")  # 자세한 오류 정보
+        return False
 
 def get_korean_time():
     """한국 시간(KST)을 반환하는 함수"""
@@ -351,9 +298,9 @@ def main():
         show_completion()
 
 
-# show_completion 함수 수정 (오류 정보 표시 추가)
+# 4. show_completion() 함수 수정 - 다운로드 버튼 제거
 def show_completion():
-    # 스크롤 상단 이동
+    # 축하 애니메이션
     st.markdown(
         """
         <script>
@@ -370,46 +317,11 @@ def show_completion():
     # 완료 메시지
     st.success("🎉 설문이 완료되었습니다! 소중한 의견을 주셔서 감사합니다")
     
-    # ✅ 구글 시트 연동 결과 표시
-    if hasattr(st.session_state, 'google_sheets_success') and st.session_state.google_sheets_success:
-        st.success("✅ 데이터가 구글 시트에 성공적으로 저장되었습니다!")
-    elif hasattr(st.session_state, 'google_sheets_error') and st.session_state.google_sheets_error:
-        st.error("❌ 구글 시트 저장 중 문제가 발생했습니다")
-        
-        # 상세 오류 정보 표시
-        with st.expander("🔍 상세 오류 정보 (디버깅용)", expanded=True):
-            for i, error in enumerate(st.session_state.google_sheets_error, 1):
-                st.write(f"{i}. {error}")
-        
-        st.warning("⚠️ 데이터는 임시 백업 파일에 저장되었습니다")
-    
-    # ✅ secrets.toml 설정 정보 표시 (디버깅용)
-    with st.expander("⚙️ 현재 설정 정보", expanded=False):
-        try:
-            if "gcp_service_account" in st.secrets:
-                st.write("✅ secrets.toml 파일 로드됨")
-                if "google_sheet_name" in st.secrets:
-                    st.write(f"📋 시트 이름: '{secrets["google_sheets"]["google_sheet_name"]}'")
-                if "google_sheet_id" in st.secrets:
-                    st.write(f"🆔 시트 ID: {secrets["google_sheets"]['google_sheet_id'][:20]}...")
-                
-                # 서비스 계정 정보
-                gcp_account = st.secrets["gcp_service_account"]
-                if "client_email" in gcp_account:
-                    st.write(f"📧 서비스 계정: {gcp_account['client_email']}")
-                if "project_id" in gcp_account:
-                    st.write(f"🏗️ 프로젝트 ID: {gcp_account['project_id']}")
-            else:
-                st.error("❌ secrets.toml 파일을 찾을 수 없습니다")
-        except Exception as e:
-            st.error(f"설정 정보 표시 오류: {str(e)}")
-    
     # 결과 요약 표시
     with st.expander("📊 설문 결과 요약", expanded=True):
         st.markdown(f"**참여자:** {st.session_state.name}")
         st.markdown(f"**식별번호:** {st.session_state.id_number}")
         st.markdown(f"**설문 완료 시간:** {format_korean_time()}")
-        
         st.markdown("### 선택하신 수산물")
         ingredients_text = " | ".join(st.session_state.selected_ingredients)
         st.markdown(f"🏷️ {ingredients_text}")
@@ -420,15 +332,16 @@ def show_completion():
                 menu_text = ", ".join(menus)
                 st.markdown(f"**{ingredient}:** {menu_text}")
     
-    # 관리자만 다운로드 버튼 표시
+    # ✅ 관리자만 다운로드 버튼 표시
     if st.session_state.is_admin:
         st.markdown("---")
         st.markdown("### 🔐 관리자 전용")
         
-        if 'filename' in st.session_state and st.session_state.filename and os.path.exists(st.session_state.filename):
+        # 개별 응답 엑셀 파일 다운로드
+        if 'filename' in st.session_state and os.path.exists(st.session_state.filename):
             with open(st.session_state.filename, 'rb') as file:
                 st.download_button(
-                    label="📥 백업 파일 다운로드",
+                    label="📥 전체 설문 결과 엑셀 파일 다운로드",
                     data=file.read(),
                     file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                     mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -676,51 +589,40 @@ def display_menu_with_image(menu, ingredient, is_selected, key):
     
 
 
-# save_to_excel 함수 수정 (구글 시트 우선, 실패 시 백업)
+# 엑셀 파일 저장 함수 (GitHub/Streamlit Cloud용)
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
     """데이터 저장 - Google Sheets 우선, 실패 시 로컬 엑셀 백업"""
-    if st.session_state.get("already_saved", False):
-        return "skipped", None
-        
-    # 세션 상태 초기화
-    st.session_state.google_sheets_success = False
-    st.session_state.google_sheets_error = []
     
     # 1순위: Google Sheets에 저장 시도
     if save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
         return "google_sheets", None
     
     # 2순위: 로컬 엑셀 파일에 백업 저장
-    try:
-        new_data = {
-            '이름': name,
-            '식별번호': id_number,
-            '설문일시': format_korean_time(),
-            '선택한_수산물': ', '.join(selected_ingredients),
-            '선택한_메뉴': ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
-        }
+    st.warning("구글 시트 저장에 실패했습니다. 임시 파일에 백업 저장합니다.")
+    
+    # 기존 엑셀 저장 로직
+    new_data = {
+        '이름': name,
+        '식별번호': id_number,
+        '설문일시': format_korean_time(),
+        '선택한_수산물': ', '.join(selected_ingredients),
+        '선택한_메뉴': ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
+    }
 
-        for ingredient in selected_ingredients:
-            new_data[f'{ingredient}_메뉴'] = ', '.join(selected_menus.get(ingredient, []))
+    for ingredient in selected_ingredients:
+        new_data[f'{ingredient}_메뉴'] = ', '.join(selected_menus.get(ingredient, []))
 
-        new_df = pd.DataFrame([new_data])
-        filename = "bluefood_survey_backup.xlsx"
+    new_df = pd.DataFrame([new_data])
+    filename = "bluefood_survey_backup.xlsx"
 
-        if os.path.exists(filename):
-            old_df = pd.read_excel(filename)
-            final_df = pd.concat([old_df, new_df], ignore_index=True)
-        else:
-            final_df = new_df
+    if os.path.exists(filename):
+        old_df = pd.read_excel(filename)
+        final_df = pd.concat([old_df, new_df], ignore_index=True)
+    else:
+        final_df = new_df
 
-        final_df.to_excel(filename, index=False)
-        return filename, final_df
-        
-    except Exception as e:
-        # 백업 저장도 실패한 경우
-        if 'google_sheets_error' not in st.session_state:
-            st.session_state.google_sheets_error = []
-        st.session_state.google_sheets_error.append(f"❌ 백업 파일 저장도 실패: {str(e)}")
-        return None, None
+    final_df.to_excel(filename, index=False)
+    return filename, final_df
 
 
 # 수산물별 메뉴 데이터
@@ -1177,6 +1079,8 @@ def show_ingredient_selection():
     )
     
     st.subheader("🐟 수산물 원재료 선호도")
+    
+    # 안내 메시지
     st.info("**🔸 다음 수산물 중 선호하는 원재료를 선택해주세요**\n\n✓ 최소 3개 이상, 최대 9개까지 선택 가능합니다")
     
     # 선택 개수 표시
@@ -1189,41 +1093,6 @@ def show_ingredient_selection():
     else:
         st.error(f"❌ 선택된 품목: {selected_count}개 (최대 9개까지만 선택 가능)")
     
-    # ✅ CSS를 한 번만 적용
-    st.markdown("""
-    <style>
-    /* 체크박스 컨테이너를 버튼처럼 중앙 배치 */
-    div.stCheckbox {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-top: 5px;
-    }
-    /* 버튼 스타일 */
-    div.stCheckbox > label {
-        background: #f8f9fa;
-        border: 2px solid #ccc;
-        border-radius: 10px;
-        padding: 8px 20px;
-        cursor: pointer;
-        font-size: 18px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-    }
-    /* 체크된 상태 스타일 */
-    div.stCheckbox > label:has(input:checked) {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-        border-color: #0096c7;
-        color: white;
-    }
-    /* 체크박스 자체 확대 */
-    div.stCheckbox input[type="checkbox"] {
-        transform: scale(1.5);
-        margin-right: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
     # 카테고리별 수산물 선택
     for category, ingredients in INGREDIENT_CATEGORIES.items():
         st.markdown(f"### {category}")
@@ -1234,17 +1103,25 @@ def show_ingredient_selection():
             with cols[i % 4]:
                 is_selected = ingredient in st.session_state.selected_ingredients
                 
-                # ✅ 최적화된 재료 표시 함수 사용
-                selected = display_ingredient_optimized(ingredient, is_selected, f"ingredient_{ingredient}")
+                # 이미지와 함께 식재료 표시
+                selected = display_ingredient_with_image(
+                    ingredient, 
+                    is_selected, 
+                    f"ingredient_{ingredient}"
+                )
                 
-                # ✅ st.rerun() 없이 상태 업데이트
-                if selected and ingredient not in st.session_state.selected_ingredients:
-                    if len(st.session_state.selected_ingredients) < 9:
-                        st.session_state.selected_ingredients.append(ingredient)
-                    else:
-                        st.error("최대 9개까지만 선택할 수 있습니다.")
-                elif not selected and ingredient in st.session_state.selected_ingredients:
-                    st.session_state.selected_ingredients.remove(ingredient)
+                if selected:
+                    if ingredient not in st.session_state.selected_ingredients:
+                        if len(st.session_state.selected_ingredients) < 9:
+                            st.session_state.selected_ingredients.append(ingredient)
+                            st.rerun()
+                        else:
+                            st.error("최대 9개까지만 선택할 수 있습니다.")
+                            st.rerun()
+                else:
+                    if ingredient in st.session_state.selected_ingredients:
+                        st.session_state.selected_ingredients.remove(ingredient)
+                        st.rerun()
         
         st.markdown("---")
     
@@ -1255,6 +1132,7 @@ def show_ingredient_selection():
     with col2:
         if 3 <= len(st.session_state.selected_ingredients) <= 9:
             if st.button("다음 단계로 →", type="primary", use_container_width=True):
+                # 선택된 수산물에 대한 메뉴 딕셔너리 초기화
                 st.session_state.selected_menus = {ingredient: [] for ingredient in st.session_state.selected_ingredients}
                 st.session_state.step = 'menus'
                 st.markdown(
@@ -1271,44 +1149,6 @@ def show_ingredient_selection():
         else:
             st.button("다음 단계로 →", disabled=True, use_container_width=True)
 
-# ✅ 최적화된 재료 표시 함수 (추가)
-@st.cache_data
-def get_ingredient_image_html(ingredient):
-    """재료 이미지를 캐시하여 반복 로딩 방지"""
-    jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
-    png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
-
-    if os.path.exists(jpg_path):
-        return render_image_fixed_size(jpg_path, width=240, height=180, placeholder="🍽️")
-    elif os.path.exists(png_path):
-        return render_image_fixed_size(png_path, width=240, height=180, placeholder="🍽️")
-    else:
-        return render_image_fixed_size("", width=240, height=180, placeholder="🍽️")
-    
-
-def display_ingredient_optimized(ingredient, is_selected, key):
-    """최적화된 재료 표시 함수 - CSS 중복 제거, 이미지 캐싱"""
-    
-    # ✅ 캐시된 이미지 HTML 사용
-    html_img = get_ingredient_image_html(ingredient)
-
-    with st.container():
-        # 식재료 이름 (가운데)
-        st.markdown(
-            f"<div style='text-align:center; margin-bottom:5px;'><strong style='font-size:20px;'>{ingredient}</strong></div>",
-            unsafe_allow_html=True
-        )
-
-        # 이미지 가운데 정렬
-        st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
-
-        # 체크박스도 중앙
-        col_left, col_center, col_right = st.columns([1, 2, 1])
-        with col_center:
-            checkbox_result = st.checkbox("선택", value=is_selected, key=key)
-
-        return checkbox_result
-    
 def show_menu_selection():
     st.markdown(
         """
@@ -1320,74 +1160,48 @@ def show_menu_selection():
         """,
         unsafe_allow_html=True
     )
-    
     st.subheader("🍽️ 선호 메뉴 선택")
+
     st.info("**🔸 선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요**\n\n✓ 각 수산물마다 최소 1개 이상의 메뉴를 선택해주세요")
 
     with st.expander("선택하신 수산물", expanded=True):
         ingredients_text = " | ".join([f"**{ingredient}**" for ingredient in st.session_state.selected_ingredients])
         st.markdown(f"🏷️ {ingredients_text}")
 
-    # ✅ CSS를 한 번만 적용 (성능 최적화)
-    st.markdown("""
-    <style>
-    /* 메뉴 체크박스 버튼 스타일 */
-    div.stCheckbox {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-top: 6px;
-    }
-    div.stCheckbox > label {
-        background: #f8f9fa;
-        border: 2px solid #ccc;
-        border-radius: 10px;
-        padding: 8px 20px;
-        cursor: pointer;
-        font-size: 18px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-    }
-    div.stCheckbox > label:has(input:checked) {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-        border-color: #0096c7;
-        color: white;
-    }
-    div.stCheckbox input[type="checkbox"] {
-        transform: scale(1.5);
-        margin-right: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
     all_valid = True
 
-    # ✅ 각 수산물별 메뉴 처리 (st.rerun() 제거로 성능 최적화)
     for ingredient in st.session_state.selected_ingredients:
         st.markdown(f"### 🐟 {ingredient} 요리")
 
         if ingredient in MENU_DATA:
-            # 메뉴 리스트 생성
+            # ✅ 카테고리 무시하고 메뉴만 리스트로 합치기
             all_menus = []
             for menu_list in MENU_DATA[ingredient].values():
                 all_menus.extend(menu_list)
 
-            # 4개씩 가로 배치
+            # ✅ 4개씩 가로 배치
             for row_start in range(0, len(all_menus), 4):
                 cols = st.columns(4)
                 for col_idx, menu in enumerate(all_menus[row_start:row_start+4]):
                     with cols[col_idx]:
-                        # ✅ 최적화된 메뉴 표시 함수 사용
                         is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
-                        selected = display_menu_optimized(menu, ingredient, is_selected, f"menu_{ingredient}_{menu}")
-                        
-                        # ✅ st.rerun() 없이 상태 업데이트 (즉시 반응하지만 새로고침 없음)
-                        if selected and menu not in st.session_state.selected_menus[ingredient]:
-                            st.session_state.selected_menus[ingredient].append(menu)
-                        elif not selected and menu in st.session_state.selected_menus[ingredient]:
-                            st.session_state.selected_menus[ingredient].remove(menu)
+                        selected = display_menu_with_image(
+                            menu,
+                            ingredient,
+                            is_selected,
+                            f"menu_{ingredient}_{menu}"
+                        )
 
-        # 선택 여부 확인
+                        if selected:
+                            if menu not in st.session_state.selected_menus[ingredient]:
+                                st.session_state.selected_menus[ingredient].append(menu)
+                                st.rerun()
+                        else:
+                            if menu in st.session_state.selected_menus[ingredient]:
+                                st.session_state.selected_menus[ingredient].remove(menu)
+                                st.rerun()
+
+        # ✅ 선택 여부 확인
         menu_count = len(st.session_state.selected_menus.get(ingredient, []))
         if menu_count == 0:
             all_valid = False
@@ -1397,7 +1211,7 @@ def show_menu_selection():
 
         st.markdown("---")
 
-    # 버튼들 (st.rerun()은 페이지 전환 시에만 사용)
+    # ✅ 버튼
     col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
         if st.button("← 이전 단계", use_container_width=True):
@@ -1416,13 +1230,7 @@ def show_menu_selection():
 
     with col3:
         if all_valid:
-            # ✅ 버튼 상태 체크
-            clicked = st.button("설문 완료하기", type="primary", use_container_width=True)
-    
-            # ✅ 버튼 클릭 시 바로 중복 저장 방지 플래그 설정
-            if clicked and not st.session_state.get("already_saved", False):
-                st.session_state.already_saved = True   # 🔹 True 먼저 설정
-                # ✅ 이후에 저장 로직 실행
+            if st.button("설문 완료하기", type="primary", use_container_width=True):
                 filename, df = save_to_excel(
                     st.session_state.name,
                     st.session_state.id_number,
@@ -1432,47 +1240,21 @@ def show_menu_selection():
                 st.session_state.filename = filename
                 st.session_state.survey_data = df
                 st.session_state.step = 'complete'
+                st.markdown(
+                    """
+                    <script>
+                    setTimeout(function() {
+                        window.scrollTo({top: 0, behavior: 'smooth'});
+                    }, 200);
+                    </script>
+                    """,
+                    unsafe_allow_html=True
+                )
                 st.rerun()
         else:
             st.button("설문 완료하기", disabled=True, use_container_width=True)
 
 
-
-@st.cache_data
-def get_menu_image_html(menu):
-    """이미지를 캐시하여 반복 로딩 방지"""
-    png_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
-    jpg_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
-
-    if os.path.exists(png_path):
-        return render_image_fixed_size(png_path, width=240, height=180, placeholder="🍽️") 
-    elif os.path.exists(jpg_path):
-        return render_image_fixed_size(jpg_path, width=240, height=180, placeholder="🍽️")
-    else:
-        return render_image_fixed_size("", width=240, height=180, placeholder="🍽️")
-    
-def display_menu_optimized(menu, ingredient, is_selected, key):
-    """최적화된 메뉴 표시 함수 - CSS 중복 제거, 이미지 캐싱"""
-    
-    # ✅ 캐시된 이미지 HTML 사용
-    html_img = get_menu_image_html(menu)
-
-    with st.container():
-        # 메뉴명 중앙 정렬
-        st.markdown(
-            f"<div style='text-align:center; margin-bottom:5px;'><strong style='font-size:18px;'>{menu}</strong></div>",
-            unsafe_allow_html=True
-        )
-
-        # 이미지 중앙
-        st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
-
-        # 체크박스 중앙
-        col_left, col_center, col_right = st.columns([1, 2, 1])
-        with col_center:
-            checkbox_result = st.checkbox("선택", value=is_selected, key=key)
-
-        return checkbox_result
 
 if __name__ == "__main__":
     main()
