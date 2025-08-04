@@ -1173,8 +1173,6 @@ def show_ingredient_selection():
     )
     
     st.subheader("🐟 수산물 원재료 선호도")
-    
-    # 안내 메시지
     st.info("**🔸 다음 수산물 중 선호하는 원재료를 선택해주세요**\n\n✓ 최소 3개 이상, 최대 9개까지 선택 가능합니다")
     
     # 선택 개수 표시
@@ -1187,6 +1185,41 @@ def show_ingredient_selection():
     else:
         st.error(f"❌ 선택된 품목: {selected_count}개 (최대 9개까지만 선택 가능)")
     
+    # ✅ CSS를 한 번만 적용
+    st.markdown("""
+    <style>
+    /* 체크박스 컨테이너를 버튼처럼 중앙 배치 */
+    div.stCheckbox {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 5px;
+    }
+    /* 버튼 스타일 */
+    div.stCheckbox > label {
+        background: #f8f9fa;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        padding: 8px 20px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    /* 체크된 상태 스타일 */
+    div.stCheckbox > label:has(input:checked) {
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        border-color: #0096c7;
+        color: white;
+    }
+    /* 체크박스 자체 확대 */
+    div.stCheckbox input[type="checkbox"] {
+        transform: scale(1.5);
+        margin-right: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # 카테고리별 수산물 선택
     for category, ingredients in INGREDIENT_CATEGORIES.items():
         st.markdown(f"### {category}")
@@ -1197,25 +1230,17 @@ def show_ingredient_selection():
             with cols[i % 4]:
                 is_selected = ingredient in st.session_state.selected_ingredients
                 
-                # 이미지와 함께 식재료 표시
-                selected = display_ingredient_with_image(
-                    ingredient, 
-                    is_selected, 
-                    f"ingredient_{ingredient}"
-                )
+                # ✅ 최적화된 재료 표시 함수 사용
+                selected = display_ingredient_optimized(ingredient, is_selected, f"ingredient_{ingredient}")
                 
-                if selected:
-                    if ingredient not in st.session_state.selected_ingredients:
-                        if len(st.session_state.selected_ingredients) < 9:
-                            st.session_state.selected_ingredients.append(ingredient)
-                            st.rerun()
-                        else:
-                            st.error("최대 9개까지만 선택할 수 있습니다.")
-                            st.rerun()
-                else:
-                    if ingredient in st.session_state.selected_ingredients:
-                        st.session_state.selected_ingredients.remove(ingredient)
-                        st.rerun()
+                # ✅ st.rerun() 없이 상태 업데이트
+                if selected and ingredient not in st.session_state.selected_ingredients:
+                    if len(st.session_state.selected_ingredients) < 9:
+                        st.session_state.selected_ingredients.append(ingredient)
+                    else:
+                        st.error("최대 9개까지만 선택할 수 있습니다.")
+                elif not selected and ingredient in st.session_state.selected_ingredients:
+                    st.session_state.selected_ingredients.remove(ingredient)
         
         st.markdown("---")
     
@@ -1226,7 +1251,6 @@ def show_ingredient_selection():
     with col2:
         if 3 <= len(st.session_state.selected_ingredients) <= 9:
             if st.button("다음 단계로 →", type="primary", use_container_width=True):
-                # 선택된 수산물에 대한 메뉴 딕셔너리 초기화
                 st.session_state.selected_menus = {ingredient: [] for ingredient in st.session_state.selected_ingredients}
                 st.session_state.step = 'menus'
                 st.markdown(
@@ -1243,6 +1267,44 @@ def show_ingredient_selection():
         else:
             st.button("다음 단계로 →", disabled=True, use_container_width=True)
 
+# ✅ 최적화된 재료 표시 함수 (추가)
+@st.cache_data
+def get_ingredient_image_html(ingredient):
+    """재료 이미지를 캐시하여 반복 로딩 방지"""
+    jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
+    png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
+
+    if os.path.exists(jpg_path):
+        return render_image_fixed_size(jpg_path, width=240, height=180, placeholder="🍽️")
+    elif os.path.exists(png_path):
+        return render_image_fixed_size(png_path, width=240, height=180, placeholder="🍽️")
+    else:
+        return render_image_fixed_size("", width=240, height=180, placeholder="🍽️")
+    
+
+def display_ingredient_optimized(ingredient, is_selected, key):
+    """최적화된 재료 표시 함수 - CSS 중복 제거, 이미지 캐싱"""
+    
+    # ✅ 캐시된 이미지 HTML 사용
+    html_img = get_ingredient_image_html(ingredient)
+
+    with st.container():
+        # 식재료 이름 (가운데)
+        st.markdown(
+            f"<div style='text-align:center; margin-bottom:5px;'><strong style='font-size:20px;'>{ingredient}</strong></div>",
+            unsafe_allow_html=True
+        )
+
+        # 이미지 가운데 정렬
+        st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
+
+        # 체크박스도 중앙
+        col_left, col_center, col_right = st.columns([1, 2, 1])
+        with col_center:
+            checkbox_result = st.checkbox("선택", value=is_selected, key=key)
+
+        return checkbox_result
+    
 def show_menu_selection():
     st.markdown(
         """
@@ -1254,48 +1316,74 @@ def show_menu_selection():
         """,
         unsafe_allow_html=True
     )
+    
     st.subheader("🍽️ 선호 메뉴 선택")
-
     st.info("**🔸 선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요**\n\n✓ 각 수산물마다 최소 1개 이상의 메뉴를 선택해주세요")
 
     with st.expander("선택하신 수산물", expanded=True):
         ingredients_text = " | ".join([f"**{ingredient}**" for ingredient in st.session_state.selected_ingredients])
         st.markdown(f"🏷️ {ingredients_text}")
 
+    # ✅ CSS를 한 번만 적용 (성능 최적화)
+    st.markdown("""
+    <style>
+    /* 메뉴 체크박스 버튼 스타일 */
+    div.stCheckbox {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 6px;
+    }
+    div.stCheckbox > label {
+        background: #f8f9fa;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        padding: 8px 20px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    div.stCheckbox > label:has(input:checked) {
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        border-color: #0096c7;
+        color: white;
+    }
+    div.stCheckbox input[type="checkbox"] {
+        transform: scale(1.5);
+        margin-right: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     all_valid = True
 
+    # ✅ 각 수산물별 메뉴 처리 (st.rerun() 제거로 성능 최적화)
     for ingredient in st.session_state.selected_ingredients:
         st.markdown(f"### 🐟 {ingredient} 요리")
 
         if ingredient in MENU_DATA:
-            # ✅ 카테고리 무시하고 메뉴만 리스트로 합치기
+            # 메뉴 리스트 생성
             all_menus = []
             for menu_list in MENU_DATA[ingredient].values():
                 all_menus.extend(menu_list)
 
-            # ✅ 4개씩 가로 배치
+            # 4개씩 가로 배치
             for row_start in range(0, len(all_menus), 4):
                 cols = st.columns(4)
                 for col_idx, menu in enumerate(all_menus[row_start:row_start+4]):
                     with cols[col_idx]:
+                        # ✅ 최적화된 메뉴 표시 함수 사용
                         is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
-                        selected = display_menu_with_image(
-                            menu,
-                            ingredient,
-                            is_selected,
-                            f"menu_{ingredient}_{menu}"
-                        )
+                        selected = display_menu_optimized(menu, ingredient, is_selected, f"menu_{ingredient}_{menu}")
+                        
+                        # ✅ st.rerun() 없이 상태 업데이트 (즉시 반응하지만 새로고침 없음)
+                        if selected and menu not in st.session_state.selected_menus[ingredient]:
+                            st.session_state.selected_menus[ingredient].append(menu)
+                        elif not selected and menu in st.session_state.selected_menus[ingredient]:
+                            st.session_state.selected_menus[ingredient].remove(menu)
 
-                        if selected:
-                            if menu not in st.session_state.selected_menus[ingredient]:
-                                st.session_state.selected_menus[ingredient].append(menu)
-                                st.rerun()
-                        else:
-                            if menu in st.session_state.selected_menus[ingredient]:
-                                st.session_state.selected_menus[ingredient].remove(menu)
-                                st.rerun()
-
-        # ✅ 선택 여부 확인
+        # 선택 여부 확인
         menu_count = len(st.session_state.selected_menus.get(ingredient, []))
         if menu_count == 0:
             all_valid = False
@@ -1305,7 +1393,7 @@ def show_menu_selection():
 
         st.markdown("---")
 
-    # ✅ 버튼
+    # 버튼들 (st.rerun()은 페이지 전환 시에만 사용)
     col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
         if st.button("← 이전 단계", use_container_width=True):
@@ -1348,7 +1436,41 @@ def show_menu_selection():
         else:
             st.button("설문 완료하기", disabled=True, use_container_width=True)
 
+@st.cache_data
+def get_menu_image_html(menu):
+    """이미지를 캐시하여 반복 로딩 방지"""
+    png_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
+    jpg_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
 
+    if os.path.exists(png_path):
+        return render_image_fixed_size(png_path, width=240, height=180, placeholder="🍽️") 
+    elif os.path.exists(jpg_path):
+        return render_image_fixed_size(jpg_path, width=240, height=180, placeholder="🍽️")
+    else:
+        return render_image_fixed_size("", width=240, height=180, placeholder="🍽️")
+    
+def display_menu_optimized(menu, ingredient, is_selected, key):
+    """최적화된 메뉴 표시 함수 - CSS 중복 제거, 이미지 캐싱"""
+    
+    # ✅ 캐시된 이미지 HTML 사용
+    html_img = get_menu_image_html(menu)
+
+    with st.container():
+        # 메뉴명 중앙 정렬
+        st.markdown(
+            f"<div style='text-align:center; margin-bottom:5px;'><strong style='font-size:18px;'>{menu}</strong></div>",
+            unsafe_allow_html=True
+        )
+
+        # 이미지 중앙
+        st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
+
+        # 체크박스 중앙
+        col_left, col_center, col_right = st.columns([1, 2, 1])
+        with col_center:
+            checkbox_result = st.checkbox("선택", value=is_selected, key=key)
+
+        return checkbox_result
 
 if __name__ == "__main__":
     main()
