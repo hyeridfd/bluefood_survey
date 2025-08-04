@@ -27,53 +27,44 @@ def format_korean_time():
     return get_korean_time().strftime('%Y-%m-%d %H:%M:%S')
 
 
-# ✅ Google Sheets 연결 함수 (개선된 버전)
 @st.cache_resource
 def get_google_sheet_cached():
-    """Google Sheets 연결 (캐시 적용)"""
+    st.write("🟢 [DEBUG] Google Sheets 연결 시도 시작됨")
     try:
-        # 1. Secrets 확인
         if "gcp_service_account" not in st.secrets:
-            raise Exception("gcp_service_account가 secrets에 없습니다")
+            st.error("❌ [DEBUG] gcp_service_account 누락")
+            return None
         
-        if "google_sheets" not in st.secrets:
-            raise Exception("google_sheets 설정이 secrets에 없습니다")
-        
-        # 2. 인증 정보 설정
         creds_dict = dict(st.secrets["gcp_service_account"])
+        st.write("🟢 [DEBUG] 서비스 계정 이메일:", creds_dict.get("client_email", "없음"))
+
+        # private_key 줄바꿈 변환
         creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-        
-        # 3. Google Sheets 정보
+        st.write("🟢 [DEBUG] private_key 길이:", len(creds_dict["private_key"]))
+
         google_sheets_config = st.secrets["google_sheets"]
-        
-        # 4. 인증 및 클라이언트 생성
-        scope = [
-            "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive"
-        ]
+        st.write("🟢 [DEBUG] 구글 시트 ID:", google_sheets_config.get("google_sheet_id", "없음"))
+
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
-        
-        # 5. 시트 열기 (ID 우선, 없으면 이름으로)
+        st.write("✅ [DEBUG] 인증 성공")
+
         if "google_sheet_id" in google_sheets_config:
-            sheet_id = google_sheets_config["google_sheet_id"]
-            sheet = client.open_by_key(sheet_id).sheet1
-        elif "google_sheet_name" in google_sheets_config:
-            sheet_name = google_sheets_config["google_sheet_name"]
-            sheet = client.open(sheet_name).sheet1
+            sheet = client.open_by_key(google_sheets_config["google_sheet_id"]).sheet1
         else:
-            raise Exception("google_sheet_id 또는 google_sheet_name이 필요합니다")
+            sheet = client.open(google_sheets_config["google_sheet_name"]).sheet1
         
-        # 6. 헤더 확인 및 생성
+        st.write("✅ [DEBUG] 시트 열기 성공")
+
         setup_sheet_headers(sheet)
-        
         return sheet
-        
-    except gspread.exceptions.APIError as e:
-        st.error(f"Google Sheets API 오류: {e}")
-        return None
+
     except Exception as e:
-        st.error(f"Google Sheets 연결 실패: {e}")
+        import traceback
+        st.error("❌ [DEBUG] Google Sheets 연결 실패")
+        st.error(str(e))
+        st.error(traceback.format_exc())
         return None
 
 def setup_sheet_headers(sheet):
