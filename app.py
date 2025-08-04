@@ -54,12 +54,12 @@ def get_google_sheet_cached():
         print(error_msg)  # Cloud 로그에도 남김
         return None
 
-
-
 # ✅ 설문 완료 후 중복 저장 방지
 if 'already_saved' not in st.session_state:
     st.session_state.already_saved = False
-
+else:
+    st.session_state.already_saved = False   # 🔹 테스트 시 강제 초기화
+    
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
     st.write("🟢 [DEBUG] save_to_google_sheets 호출됨")
 
