@@ -5,9 +5,66 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from PIL import Image
 import base64
+import gspread
+from google.oauth2.service_account import Credentials
 
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
+
+# ✅ Google Sheets 연동 함수들
+def setup_google_sheets():
+    """Google Sheets API 설정"""
+    try:
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        scope = [
+            'https://spreadsheets.google.com/feeds',
+            'https://www.googleapis.com/auth/drive'
+        ]
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+        client = gspread.authorize(creds)
+        return client
+    except Exception as e:
+        st.error(f"Google Sheets 연동 오류: {e}")
+        return None
+def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
+    """Google Sheets에 데이터 저장"""
+    try:
+        client = setup_google_sheets()
+        if not client:
+            return False
+        
+        sheet_name = st.secrets["google_sheet_name"]
+        sheet = client.open(sheet_name).sheet1
+        
+        new_row = [
+            name,
+            id_number,
+            format_korean_time(),
+            ', '.join(selected_ingredients),
+            ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
+        ]
+        
+        # 각 수산물별 메뉴 컬럼 추가
+        all_ingredients = [
+            '맛살', '어란', '어묵', '쥐포', '김', '다시마', '매생이', '미역', '파래', '톳',
+            '꼴뚜기', '낙지', '문어', '오징어', '주꾸미', '가재', '게', '새우',
+            '다슬기', '꼬막', '가리비', '골뱅이', '굴', '미더덕', '바지락', '백합', '소라', '재첩', '전복', '홍합',
+            '가자미', '다랑어', '고등어', '갈치', '꽁치', '대구', '멸치', '명태', '박대', '뱅어', '병어', '삼치', '아귀', '연어', '임연수', '장어', '조기'
+        ]
+        
+        for ingredient in all_ingredients:
+            if ingredient in selected_menus:
+                new_row.append(', '.join(selected_menus[ingredient]))
+            else:
+                new_row.append('')
+        
+        sheet.append_row(new_row)
+        st.success("✅ 데이터가 구글 시트에 저장되었습니다!")
+        return True
+        
+    except Exception as e:
+        st.error(f"구글 시트 저장 오류: {e}")
+        return False
 
 def get_korean_time():
     """한국 시간(KST)을 반환하는 함수"""
@@ -532,7 +589,16 @@ def display_menu_with_image(menu, ingredient, is_selected, key):
 
 # 엑셀 파일 저장 함수 (GitHub/Streamlit Cloud용)
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
-    # 데이터 준비
+    """데이터 저장 - Google Sheets 우선, 실패 시 로컬 엑셀 백업"""
+    
+    # 1순위: Google Sheets에 저장 시도
+    if save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
+        return "google_sheets", None
+    
+    # 2순위: 로컬 엑셀 파일에 백업 저장
+    st.warning("구글 시트 저장에 실패했습니다. 임시 파일에 백업 저장합니다.")
+    
+    # 기존 엑셀 저장 로직
     new_data = {
         '이름': name,
         '식별번호': id_number,
@@ -541,26 +607,19 @@ def save_to_excel(name, id_number, selected_ingredients, selected_menus):
         '선택한_메뉴': ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
     }
 
-    # 각 수산물별로 별도 컬럼 생성
     for ingredient in selected_ingredients:
         new_data[f'{ingredient}_메뉴'] = ', '.join(selected_menus.get(ingredient, []))
 
-    # ✅ DataFrame 변환
     new_df = pd.DataFrame([new_data])
+    filename = "bluefood_survey_backup.xlsx"
 
-    # ✅ 파일명 고정
-    filename = "bluefood_survey.xlsx"
-
-    # ✅ 기존 데이터가 있으면 불러오기 → 이어붙이기
     if os.path.exists(filename):
         old_df = pd.read_excel(filename)
         final_df = pd.concat([old_df, new_df], ignore_index=True)
     else:
         final_df = new_df
 
-    # ✅ 덮어쓰기 (하지만 기존 데이터 포함)
     final_df.to_excel(filename, index=False)
-
     return filename, final_df
 
 
