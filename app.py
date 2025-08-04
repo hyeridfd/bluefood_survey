@@ -1,11 +1,21 @@
 import streamlit as st
 import pandas as pd
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from PIL import Image
 import base64
 
+# ✅ 한국 시간대 설정
+KST = timezone(timedelta(hours=9))
+
+def get_korean_time():
+    """한국 시간(KST)을 반환하는 함수"""
+    return datetime.now(KST)
+
+def format_korean_time():
+    """한국 시간을 문자열로 포맷팅"""
+    return get_korean_time().strftime('%Y-%m-%d %H:%M:%S')
 # 페이지 설정
 st.set_page_config(
     page_title="블루푸드 선호도 조사",
@@ -252,8 +262,7 @@ def show_completion():
     with st.expander("📊 설문 결과 요약", expanded=True):
         st.markdown(f"**참여자:** {st.session_state.name}")
         st.markdown(f"**식별번호:** {st.session_state.id_number}")
-        st.markdown(f"**설문 완료 시간:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        
+        st.markdown(f"**설문 완료 시간:** {format_korean_time()}")
         st.markdown("### 선택하신 수산물")
         ingredients_text = " | ".join(st.session_state.selected_ingredients)
         st.markdown(f"🏷️ {ingredients_text}")
@@ -323,8 +332,11 @@ def show_admin_dashboard():
             
             with col2:
                 if '설문일시' in df.columns:
-                    today_responses = len(df[df['설문일시'].str.contains(datetime.now().strftime('%Y-%m-%d'))])
+                    today_str = get_korean_time().strftime('%Y-%m-%d')
+                    today_responses = len(df[df['설문일시'].str.contains(today_str, na=False)])
                     st.metric("오늘 응답자", today_responses)
+                else:
+                    st.metric("오늘 응답자", "N/A")
             
             with col3:
                 if '선택한_수산물' in df.columns:
@@ -524,7 +536,7 @@ def save_to_excel(name, id_number, selected_ingredients, selected_menus):
     new_data = {
         '이름': name,
         '식별번호': id_number,
-        '설문일시': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        '설문일시': format_korean_time(),
         '선택한_수산물': ', '.join(selected_ingredients),
         '선택한_메뉴': ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
     }
