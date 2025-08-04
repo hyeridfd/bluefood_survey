@@ -91,47 +91,56 @@ def setup_sheet_headers(sheet):
         st.warning(f"헤더 설정 중 오류: {e}")
 
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets에 데이터 저장 (개선된 버전)"""
-    
+    """Google Sheets에 데이터 저장 (디버깅 로그 추가 버전)"""
+
+    st.write("🟢 [DEBUG] save_to_google_sheets 실행됨")
+    st.write("🟢 [DEBUG] 현재 already_saved 상태:", st.session_state.get("already_saved", False))
+
     # 중복 저장 방지
     if st.session_state.get("already_saved", False):
+        st.warning("⚠️ [DEBUG] 이미 저장된 상태라 Google Sheets 호출 스킵됨")
         return True
-    
+
     try:
-        # 1. 시트 객체 가져오기
+        # 1. Google Sheets 객체 가져오기
         sheet = get_google_sheet_cached()
         if sheet is None:
+            st.error("❌ [DEBUG] sheet 객체가 None → Google Sheets 연결 실패")
             return False
-        
+
         # 2. 데이터 준비
         import json
         menus_text = json.dumps(selected_menus, ensure_ascii=False)
         ingredients_text = ', '.join(selected_ingredients)
-        
+
         row_data = [
-            name, 
-            id_number, 
-            format_korean_time(), 
-            ingredients_text, 
+            name,
+            id_number,
+            format_korean_time(),
+            ingredients_text,
             menus_text
         ]
-        
-        # 3. 시트에 데이터 추가
+
+        st.write("🟢 [DEBUG] Google Sheets append_row 호출 데이터:", row_data)
+
+        # 3. 데이터 추가 시도
         response = sheet.append_row(row_data, value_input_option="RAW")
-        
-        # 4. 성공 처리
+        st.write("✅ [DEBUG] append_row 성공 응답:", response)
+
+        # 4. 성공 처리 후 플래그 설정
         st.session_state.google_sheets_success = True
         st.session_state.already_saved = True
-        
         return True
-        
+
     except gspread.exceptions.APIError as e:
-        st.error(f"Google API 오류: {e}")
+        st.error(f"❌ Google API 오류 (상세): {getattr(e, 'response', e)}")
         st.session_state.google_sheets_success = False
         return False
-        
+
     except Exception as e:
-        st.error(f"Google Sheets 저장 실패: {e}")
+        import traceback
+        st.error(f"❌ Google Sheets 저장 실패 (Exception): {e}")
+        st.error(traceback.format_exc())  # 전체 에러 스택 출력
         st.session_state.google_sheets_success = False
         return False
 
