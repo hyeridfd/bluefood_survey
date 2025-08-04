@@ -32,91 +32,62 @@ sheet = client.open(google_sheets["google_sheet_name"]).sheet1
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
 
+# ✅ Google Sheets 저장 (최적화 버전)
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets에 데이터 저장 - 상세 오류 정보 포함"""
-    error_details = []  # 오류 정보를 저장할 리스트
-    
+    error_logs = []
     try:
-        # 1단계: Google Sheets 클라이언트 설정
-        client = setup_google_sheets()
-        if not client:
-            error_details.append("❌ Google Sheets 클라이언트 생성 실패")
-            st.session_state.google_sheets_error = error_details
+        sheet = setup_google_sheets()
+        if sheet is None:
+            error_logs.append("❌ Google Sheets 연결 실패")
+            st.session_state.google_sheets_error = error_logs
             return False
-        
-        error_details.append("✅ Google Sheets 클라이언트 생성 성공")
-        
-        # 2단계: 시트 이름 확인
-        sheet_name = st.secrets["google_sheets"]["google_sheet_name"]
-        error_details.append(f"🔍 찾고 있는 시트 이름: '{sheet_name}'")
-        
-        # 3단계: 시트 열기 시도
-        try:
-            sheet = client.open(sheet_name).sheet1
-            error_details.append("✅ 구글 시트 열기 성공")
-        except Exception as sheet_error:
-            error_details.append(f"❌ 시트 열기 실패: {str(sheet_error)}")
-            error_details.append(f"오류 타입: {type(sheet_error).__name__}")
-            st.session_state.google_sheets_error = error_details
-            return False
-        
-        # 4단계: 데이터 준비
-        new_row = [
-            name,
-            id_number,
-            format_korean_time(),
-            ', '.join(selected_ingredients),
-            ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
-        ]
-        error_details.append(f"✅ 데이터 준비 완료: {len(new_row)}개 컬럼")
-        
-        # 5단계: 구글 시트에 데이터 추가
-        try:
-            sheet.append_row(new_row)
-            error_details.append("✅ 구글 시트에 데이터 추가 성공!")
-            st.session_state.google_sheets_success = True
-            st.session_state.google_sheets_error = error_details  # 성공 시에도 로그 저장
-            return True
-            
-        except Exception as append_error:
-            error_details.append(f"❌ 데이터 추가 실패: {str(append_error)}")
-            error_details.append(f"오류 타입: {type(append_error).__name__}")
-            st.session_state.google_sheets_error = error_details
-            return False
-        
+
+        error_logs.append("✅ Google Sheets 연결 성공")
+
+        # ✅ 메뉴 데이터를 한 번에 문자열로 변환
+        menus_text = ', '.join([f"{ing}: {', '.join(menus)}" for ing, menus in selected_menus.items()])
+        ingredients_text = ', '.join(selected_ingredients)
+
+        # ✅ Google API 한 번만 호출 (batch_update)
+        new_row = [[name, id_number, format_korean_time(), ingredients_text, menus_text]]
+        sheet.append_rows(new_row, value_input_option="RAW")
+        error_logs.append("✅ Google Sheets 데이터 저장 성공")
+
+        st.session_state.google_sheets_success = True
+        st.session_state.google_sheets_error = error_logs
+        return True
+
+    except gspread.exceptions.APIError as api_err:
+        error_logs.append(f"❌ Google API 호출 오류: {api_err}")
+        st.session_state.google_sheets_error = error_logs
+        return False
+
     except Exception as e:
-        error_details.append(f"❌ 전체 프로세스 오류: {str(e)}")
-        error_details.append(f"오류 타입: {type(e).__name__}")
-        st.session_state.google_sheets_error = error_details
+        error_logs.append(f"❌ 저장 실패: {str(e)}")
+        st.session_state.google_sheets_error = error_logs
         return False
 
 # setup_google_sheets 함수도 수정
+@st.cache_resource
 def setup_google_sheets():
-    """Google Sheets API 설정 - 상세 오류 정보 포함"""
+    """Google Sheets API 설정 (로컬/Cloud 호환)"""
     try:
-        # secrets 확인
-        if "gcp_service_account" not in st.secrets:
-            return None
-            
-        creds_dict = dict(st.secrets["gcp_service_account"])
-        
-        # 필수 키 확인
-        required_keys = ['type', 'project_id', 'private_key', 'client_email']
-        for key in required_keys:
-            if key not in creds_dict:
-                return None
-        
-        scope = [
-            'https://spreadsheets.google.com/feeds',
-            'https://www.googleapis.com/auth/drive'
-        ]
-        
+        if st.secrets.get("gcp_service_account", None):
+            creds_dict = dict(st.secrets["gcp_service_account"])
+            google_sheets = st.secrets["google_sheets"]
+        else:
+            secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
+            creds_dict = secrets["gcp_service_account"]
+            google_sheets = secrets["google_sheets"]
+
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
-        
-        return client
-        
+        sheet = client.open(google_sheets["google_sheet_name"]).sheet1
+        return sheet
+
     except Exception as e:
+        st.error(f"❌ Google Sheets 연결 실패: {e}")
         return None
 
 def get_korean_time():
