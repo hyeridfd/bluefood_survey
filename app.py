@@ -58,17 +58,17 @@ if 'already_saved' not in st.session_state:
     st.session_state.already_saved = False
 
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets 저장 (디버깅 강화 + 429,403 대비)"""
-    st.write("🟢 [DEBUG] Google Sheets 저장 시도")
+    """Google Sheets 저장 (429 Rate Limit 대응 + 디버깅)"""
+    st.write("🟢 [DEBUG] Google Sheets 저장 시도 중...")
 
     if st.session_state.get("already_saved", False):
-        st.warning("⚠️ 이미 저장된 설문입니다.")
+        st.warning("⚠️ 이미 저장된 설문입니다. (중복 방지)")
         return True
 
     try:
         sheet = safe_open_sheet()
         if sheet is None:
-            st.error("❌ Google Sheets 객체가 None → 인증 실패 가능성")
+            st.error("❌ Google Sheets 시트 객체를 가져오지 못했습니다.")
             return False
 
         import json
@@ -76,18 +76,19 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         ingredients_text = ', '.join(selected_ingredients)
 
         row_data = [name, id_number, format_korean_time(), ingredients_text, menus_text]
+        st.write("🟢 [DEBUG] 추가할 데이터:", row_data)
 
-        time.sleep(1.2)  
+        # ✅ Rate Limit 대비 딜레이
+        time.sleep(1.2)
+
+        # ✅ append_row 시도
         sheet.append_row(row_data, value_input_option="RAW")
-        st.success("✅ Google Sheets 저장 성공")
+        st.success("✅ Google Sheets에 데이터 저장 성공!")
         st.session_state.already_saved = True
         return True
 
-    except gspread.exceptions.APIError as e:
-        st.error(f"❌ APIError: {e}")
-        return False
     except Exception as e:
-        st.error(f"❌ 예외 발생: {type(e).__name__} → {e}")
+        st.error(f"❌ Google Sheets 저장 중 에러 발생: {e}")
         return False
 
 
