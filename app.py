@@ -28,29 +28,28 @@ def format_korean_time():
 
 
 # ✅ Google Sheets 연결 함수 (안전한 에러 핸들링)
-@st.cache_resource
+# ✅ 캐시 제거 후 디버깅 로그 추가
 def get_google_sheet_cached():
-    """Google Sheets 연결 - Rate Limit 최소화 (캐싱)"""
-    st.write("🔍 [DEBUG] Google Sheets 연결 시도")
+    st.write("🔍 [DEBUG] Google Sheets 연결 시도 (캐시 미사용)")
     try:
-        if st.secrets.get("gcp_service_account", None):
+        if "gcp_service_account" in st.secrets:
             creds_dict = dict(st.secrets["gcp_service_account"])
             sheet_id = st.secrets["google_sheets"]["google_sheet_id"]
         else:
-            secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
-            creds_dict = secrets["gcp_service_account"]
-            sheet_id = secrets["google_sheets"]["google_sheet_id"]
+            raise Exception("❌ gcp_service_account not found in secrets")
 
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
 
-        # ✅ 시트 오픈은 한 번만
-        return client.open_by_key(sheet_id).sheet1
+        sheet = client.open_by_key(sheet_id).sheet1
+        st.write("✅ [DEBUG] Google Sheets 연결 성공")
+        return sheet
 
     except Exception as e:
-        st.error(f"❌ Google Sheets 연결 실패: {e}")
+        st.error(f"❌ [DEBUG] Google Sheets 연결 실패: {e}")
         return None
+
 
 
 # ✅ 설문 완료 후 중복 저장 방지
@@ -58,38 +57,33 @@ if 'already_saved' not in st.session_state:
     st.session_state.already_saved = False
 
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets 저장 (429 Rate Limit 대응 + 디버깅)"""
-    st.write("🟢 [DEBUG] Google Sheets 저장 시도 중...")
+    st.write("🟢 [DEBUG] save_to_google_sheets 호출됨")
 
     if st.session_state.get("already_saved", False):
-        st.warning("⚠️ 이미 저장된 설문입니다. (중복 방지)")
+        st.warning("⚠️ 이미 저장된 설문입니다.")
         return True
 
     try:
         sheet = safe_open_sheet()
         if sheet is None:
-            st.error("❌ Google Sheets 시트 객체를 가져오지 못했습니다.")
+            st.error("❌ [DEBUG] 시트 객체 없음 (safe_open_sheet 실패)")
             return False
 
         import json
         menus_text = json.dumps(selected_menus, ensure_ascii=False)
         ingredients_text = ', '.join(selected_ingredients)
-
         row_data = [name, id_number, format_korean_time(), ingredients_text, menus_text]
-        st.write("🟢 [DEBUG] 추가할 데이터:", row_data)
 
-        # ✅ Rate Limit 대비 딜레이
-        time.sleep(1.2)
-
-        # ✅ append_row 시도
+        st.write(f"📤 [DEBUG] 추가할 데이터: {row_data}")
         sheet.append_row(row_data, value_input_option="RAW")
-        st.success("✅ Google Sheets에 데이터 저장 성공!")
+        st.success("✅ Google Sheets 저장 성공!")
         st.session_state.already_saved = True
         return True
 
     except Exception as e:
-        st.error(f"❌ Google Sheets 저장 중 에러 발생: {e}")
+        st.error(f"❌ [DEBUG] Google Sheets 저장 실패: {e}")
         return False
+
 
 
 
