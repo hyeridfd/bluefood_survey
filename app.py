@@ -679,7 +679,9 @@ def display_menu_with_image(menu, ingredient, is_selected, key):
 # save_to_excel 함수 수정 (구글 시트 우선, 실패 시 백업)
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
     """데이터 저장 - Google Sheets 우선, 실패 시 로컬 엑셀 백업"""
-    
+    if st.session_state.get("already_saved", False):
+        return "skipped", None
+        
     # 세션 상태 초기화
     st.session_state.google_sheets_success = False
     st.session_state.google_sheets_error = []
@@ -1414,22 +1416,26 @@ def show_menu_selection():
 
     with col3:
         if all_valid:
-            if st.button("설문 완료하기", type="primary", use_container_width=True):
-                # ✅ 버튼 클릭 시 바로 중복 저장 방지
-                if not st.session_state.get("already_saved", False):
-                    st.session_state.already_saved = True   # 🔹 버튼 클릭 직후 True로 설정
-                    filename, df = save_to_excel(
-                        st.session_state.name,
-                        st.session_state.id_number,
-                        st.session_state.selected_ingredients,
-                        st.session_state.selected_menus
-                    )
-                    st.session_state.filename = filename
-                    st.session_state.survey_data = df
-                    st.session_state.step = 'complete'
-                    st.rerun()
+            # ✅ 버튼 상태 체크
+            clicked = st.button("설문 완료하기", type="primary", use_container_width=True)
+    
+            # ✅ 버튼 클릭 시 바로 중복 저장 방지 플래그 설정
+            if clicked and not st.session_state.get("already_saved", False):
+                st.session_state.already_saved = True   # 🔹 True 먼저 설정
+                # ✅ 이후에 저장 로직 실행
+                filename, df = save_to_excel(
+                    st.session_state.name,
+                    st.session_state.id_number,
+                    st.session_state.selected_ingredients,
+                    st.session_state.selected_menus
+                )
+                st.session_state.filename = filename
+                st.session_state.survey_data = df
+                st.session_state.step = 'complete'
+                st.rerun()
         else:
             st.button("설문 완료하기", disabled=True, use_container_width=True)
+
 
 
 @st.cache_data
