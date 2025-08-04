@@ -38,6 +38,40 @@ def main():
     # ✅ 사이드바 글씨 크기 CSS 적용
     st.markdown(
         """
+        <script>
+        // 페이지 로드 시 스크롤을 상단으로 이동
+        window.onload = function() {
+            window.scrollTo(0, 0);
+        };
+        
+        // Streamlit의 페이지 업데이트 감지하여 스크롤 이동
+        setTimeout(function() {
+            window.scrollTo(0, 0);
+        }, 100);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        """
+        <script>
+        // 페이지 로드 시 스크롤을 상단으로 이동
+        window.onload = function() {
+            window.scrollTo(0, 0);
+        };
+        
+        // Streamlit의 페이지 업데이트 감지하여 스크롤 이동
+        setTimeout(function() {
+            window.scrollTo(0, 0);
+        }, 100);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        """
         <style>
         /* 사이드바 전체 폰트 크기 */
         section[data-testid="stSidebar"] * {
@@ -198,6 +232,17 @@ def main():
 # 4. show_completion() 함수 수정 - 다운로드 버튼 제거
 def show_completion():
     # 축하 애니메이션
+    st.markdown(
+        """
+        <script>
+        setTimeout(function() {
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }, 100);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
     st.balloons()
     
     # 완료 메시지
@@ -244,6 +289,16 @@ def show_completion():
             if key not in ['is_admin', 'show_admin_login']:
                 del st.session_state[key]
         st.session_state.is_admin = admin_status
+        st.markdown(
+            """
+            <script>
+            setTimeout(function() {
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            }, 200);
+            </script>
+            """,
+            unsafe_allow_html=True
+        )
         st.rerun()
 
 # 5. 추가 보안을 위한 관리자 전용 페이지 함수 (선택사항)
@@ -857,6 +912,16 @@ if 'selected_menus' not in st.session_state:
     st.session_state.selected_menus = {}
 
 def show_info_form():
+    st.markdown(
+        """
+        <script>
+        setTimeout(function() {
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }, 100);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
     st.subheader("📝 참여자 정보 입력")
 
     # ✅ CSS 강제 적용
@@ -912,6 +977,16 @@ def show_info_form():
                 st.session_state.name = name
                 st.session_state.id_number = id_number
                 st.session_state.step = 'ingredients'
+                st.markdown(
+                    """
+                    <script>
+                    setTimeout(function() {
+                        window.scrollTo({top: 0, behavior: 'smooth'});
+                    }, 200);
+                    </script>
+                    """,
+                    unsafe_allow_html=True
+                )
                 st.rerun()
             else:
                 st.error("성함과 식별번호를 모두 입력해주세요.")
@@ -919,6 +994,17 @@ def show_info_form():
 
 
 def show_ingredient_selection():
+    st.markdown(
+        """
+        <script>
+        setTimeout(function() {
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }, 100);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+    
     st.subheader("🐟 수산물 원재료 선호도")
     
     # 안내 메시지
@@ -976,11 +1062,31 @@ def show_ingredient_selection():
                 # 선택된 수산물에 대한 메뉴 딕셔너리 초기화
                 st.session_state.selected_menus = {ingredient: [] for ingredient in st.session_state.selected_ingredients}
                 st.session_state.step = 'menus'
+                st.markdown(
+                    """
+                    <script>
+                    setTimeout(function() {
+                        window.scrollTo({top: 0, behavior: 'smooth'});
+                    }, 200);
+                    </script>
+                    """,
+                    unsafe_allow_html=True
+                )
                 st.rerun()
         else:
             st.button("다음 단계로 →", disabled=True, use_container_width=True)
 
 def show_menu_selection():
+    st.markdown(
+        """
+        <script>
+        setTimeout(function() {
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }, 100);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
     st.subheader("🍽️ 선호 메뉴 선택")
 
     st.info("**🔸 선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요**\n\n✓ 각 수산물마다 최소 1개 이상의 메뉴를 선택해주세요")
@@ -1037,6 +1143,16 @@ def show_menu_selection():
     with col1:
         if st.button("← 이전 단계", use_container_width=True):
             st.session_state.step = 'ingredients'
+            st.markdown(
+                """
+                <script>
+                setTimeout(function() {
+                    window.scrollTo({top: 0, behavior: 'smooth'});
+                }, 200);
+                </script>
+                """,
+                unsafe_allow_html=True
+            )
             st.rerun()
 
     with col3:
@@ -1051,6 +1167,16 @@ def show_menu_selection():
                 st.session_state.filename = filename
                 st.session_state.survey_data = df
                 st.session_state.step = 'complete'
+                st.markdown(
+                    """
+                    <script>
+                    setTimeout(function() {
+                        window.scrollTo({top: 0, behavior: 'smooth'});
+                    }, 200);
+                    </script>
+                    """,
+                    unsafe_allow_html=True
+                )
                 st.rerun()
         else:
             st.button("설문 완료하기", disabled=True, use_container_width=True)
