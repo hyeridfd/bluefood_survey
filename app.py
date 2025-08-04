@@ -34,10 +34,10 @@ KST = timezone(timedelta(hours=9))
 
 # ✅ 전역에서 한 번만 Google Sheets 연결
 @st.cache_resource
-def get_google_sheet():
-    """Google Sheets 연결 (ID 기반)"""
+@st.cache_resource
+def get_google_sheet_cached():
+    """Google Sheets 연결 - 캐싱하여 중복 호출 방지"""
     try:
-        # ✅ secrets에서 ID 가져오기
         if st.secrets.get("gcp_service_account", None):
             creds_dict = dict(st.secrets["gcp_service_account"])
             sheet_id = st.secrets["google_sheets"]["google_sheet_id"]
@@ -49,18 +49,13 @@ def get_google_sheet():
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
-
-        st.write("✅ [DEBUG] Google Sheets 인증 성공")
         sheet = client.open_by_key(sheet_id).sheet1
-        st.write("✅ [DEBUG] Google Sheets 시트 접근 성공")
+        st.write("✅ [DEBUG] Google Sheet 캐시 연결 성공")
         return sheet
 
     except Exception as e:
-        import traceback
-        st.error(f"❌ [DEBUG] Google Sheets 연결 실패: {e}")
-        st.text(traceback.format_exc())
+        st.error(f"❌ Google Sheets 연결 실패: {e}")
         return None
-
         
 
 # ✅ 설문 완료 후 중복 저장 방지
@@ -68,36 +63,30 @@ if 'already_saved' not in st.session_state:
     st.session_state.already_saved = False
 
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    st.write("🔍 [DEBUG] Google Sheets 저장 시작")
-
+    """Google Sheets 저장 (Rate Limit 보호 적용)"""
     try:
-        sheet = get_google_sheet()
+        sheet = get_google_sheet_cached()
         if sheet is None:
-            st.error("❌ [DEBUG] Google Sheet 객체가 None입니다.")
+            st.error("❌ Google Sheets 연결 실패")
             return False
 
-        # ✅ 데이터 준비
         import json, time
         menus_text = json.dumps(selected_menus, ensure_ascii=False)
         menus_chunks = [menus_text[i:i+48000] for i in range(0, len(menus_text), 48000)]
         ingredients_text = ', '.join(selected_ingredients)
 
-        # ✅ 첫 데이터 저장 시도
+        # ✅ API 호출 최소화 (append_row는 1~2번만)
         sheet.append_row([name, id_number, format_korean_time(), ingredients_text, menus_chunks[0]])
-        st.success("✅ [DEBUG] 첫 행 저장 완료")
-
-        # ✅ 나머지 추가 데이터 저장
+        time.sleep(1)  # ✅ 안전 대기 (1초)
         for idx, chunk in enumerate(menus_chunks[1:], start=2):
             sheet.append_row([name, id_number, f"{format_korean_time()}(추가{idx})", "-", chunk])
-            time.sleep(1)
-            st.info(f"✅ [DEBUG] 추가 데이터({idx}) 저장 완료")
+            time.sleep(1)  # ✅ Rate Limit 보호
 
+        st.success("✅ Google Sheets에 데이터 저장 완료")
         return True
 
     except Exception as e:
-        import traceback
-        st.error(f"❌ [DEBUG] Google Sheets 저장 오류: {e}")
-        st.text(traceback.format_exc())
+        st.error(f"❌ Google Sheets 저장 실패: {e}")
         return False
 
 
