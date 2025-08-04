@@ -17,6 +17,187 @@ st.set_page_config(
 INGREDIENT_IMAGE_PATH = "images/ingredients"
 MENU_IMAGE_PATH = "images/menus"
 
+# 기존 코드에서 수정할 부분들
+
+# 1. 관리자 패스워드 설정 (상단에 추가)
+ADMIN_PASSWORD = "bluefood2025"  # 원하는 패스워드로 변경하세요
+
+# 2. 세션 상태 초기화 부분에 추가
+if 'step' not in st.session_state:
+    st.session_state.step = 'info'
+if 'selected_ingredients' not in st.session_state:
+    st.session_state.selected_ingredients = []
+if 'selected_menus' not in st.session_state:
+    st.session_state.selected_menus = {}
+# ✅ 관리자 인증 상태 추가
+if 'is_admin' not in st.session_state:
+    st.session_state.is_admin = False
+if 'show_admin_login' not in st.session_state:
+    st.session_state.show_admin_login = False
+
+# 3. main() 함수의 사이드바 부분 수정
+def main():
+    # 기존 CSS 코드...
+    
+    # ✅ 사이드바 설정 - 관리자 로그인 추가
+    with st.sidebar:
+        # 기존 연구 정보 카드...
+        
+        # 🔹 관리자 로그인 섹션 추가
+        st.markdown("---")
+        
+        if not st.session_state.is_admin:
+            if st.button("🔐 관리자 로그인", use_container_width=True):
+                st.session_state.show_admin_login = True
+                st.rerun()
+            
+            if st.session_state.show_admin_login:
+                with st.form("admin_login"):
+                    password = st.text_input("관리자 패스워드", type="password")
+                    login_btn = st.form_submit_button("로그인")
+                    
+                    if login_btn:
+                        if password == ADMIN_PASSWORD:
+                            st.session_state.is_admin = True
+                            st.session_state.show_admin_login = False
+                            st.success("관리자로 로그인되었습니다!")
+                            st.rerun()
+                        else:
+                            st.error("잘못된 패스워드입니다.")
+        else:
+            # ✅ 관리자 로그인 상태
+            st.success("🔐 관리자 모드")
+            
+            # 전체 데이터 다운로드 버튼
+            if os.path.exists("bluefood_survey.xlsx"):
+                with open("bluefood_survey.xlsx", 'rb') as file:
+                    st.download_button(
+                        label="📥 전체 설문 데이터 다운로드",
+                        data=file.read(),
+                        file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        use_container_width=True
+                    )
+                
+                # 데이터 현황 표시
+                try:
+                    df = pd.read_excel("bluefood_survey.xlsx")
+                    st.markdown(f"**📊 총 응답자: {len(df)}명**")
+                    st.markdown(f"**📅 최근 응답: {df['설문일시'].max() if '설문일시' in df.columns else 'N/A'}**")
+                except:
+                    st.markdown("**📊 데이터 로드 오류**")
+            else:
+                st.info("아직 설문 데이터가 없습니다.")
+            
+            # 로그아웃 버튼
+            if st.button("🚪 로그아웃", use_container_width=True):
+                st.session_state.is_admin = False
+                st.session_state.show_admin_login = False
+                st.rerun()
+        
+        # 기존 설문 안내 카드...
+
+# 4. show_completion() 함수 수정 - 다운로드 버튼 제거
+def show_completion():
+    # 축하 애니메이션
+    st.balloons()
+    
+    # 완료 메시지
+    st.success("🎉 설문이 완료되었습니다! 소중한 의견을 주셔서 감사합니다")
+    
+    # 결과 요약 표시
+    with st.expander("📊 설문 결과 요약", expanded=True):
+        st.markdown(f"**참여자:** {st.session_state.name}")
+        st.markdown(f"**식별번호:** {st.session_state.id_number}")
+        st.markdown(f"**설문 완료 시간:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        st.markdown("### 선택하신 수산물")
+        ingredients_text = " | ".join(st.session_state.selected_ingredients)
+        st.markdown(f"🏷️ {ingredients_text}")
+        
+        st.markdown("### 선호하시는 메뉴")
+        for ingredient, menus in st.session_state.selected_menus.items():
+            if menus:
+                menu_text = ", ".join(menus)
+                st.markdown(f"**{ingredient}:** {menu_text}")
+    
+    # ✅ 관리자만 다운로드 버튼 표시
+    if st.session_state.is_admin:
+        st.markdown("---")
+        st.markdown("### 🔐 관리자 전용")
+        
+        # 개별 응답 엑셀 파일 다운로드
+        if 'filename' in st.session_state and os.path.exists(st.session_state.filename):
+            with open(st.session_state.filename, 'rb') as file:
+                st.download_button(
+                    label="📥 전체 설문 결과 엑셀 파일 다운로드",
+                    data=file.read(),
+                    file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    type="primary",
+                    use_container_width=True
+                )
+    
+    # 새 설문 시작 버튼
+    if st.button("🔄 새 설문 시작하기", use_container_width=True):
+        # 세션 상태 초기화 (관리자 상태는 유지)
+        admin_status = st.session_state.is_admin
+        for key in list(st.session_state.keys()):
+            if key not in ['is_admin', 'show_admin_login']:
+                del st.session_state[key]
+        st.session_state.is_admin = admin_status
+        st.rerun()
+
+# 5. 추가 보안을 위한 관리자 전용 페이지 함수 (선택사항)
+def show_admin_dashboard():
+    """관리자 전용 대시보드"""
+    if not st.session_state.is_admin:
+        st.error("관리자 권한이 필요합니다.")
+        return
+    
+    st.title("🔐 관리자 대시보드")
+    
+    if os.path.exists("bluefood_survey.xlsx"):
+        try:
+            df = pd.read_excel("bluefood_survey.xlsx")
+            
+            # 기본 통계
+            st.subheader("📊 설문 통계")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("총 응답자 수", len(df))
+            
+            with col2:
+                if '설문일시' in df.columns:
+                    today_responses = len(df[df['설문일시'].str.contains(datetime.now().strftime('%Y-%m-%d'))])
+                    st.metric("오늘 응답자", today_responses)
+            
+            with col3:
+                if '선택한_수산물' in df.columns:
+                    avg_ingredients = df['선택한_수산물'].str.split(', ').str.len().mean()
+                    st.metric("평균 선택 수산물", f"{avg_ingredients:.1f}개")
+            
+            # 데이터 미리보기
+            st.subheader("📋 최근 응답 데이터")
+            st.dataframe(df.tail(10), use_container_width=True)
+            
+            # 전체 데이터 다운로드
+            st.subheader("📥 데이터 다운로드")
+            with open("bluefood_survey.xlsx", 'rb') as file:
+                st.download_button(
+                    label="전체 설문 데이터 다운로드",
+                    data=file.read(),
+                    file_name=f"bluefood_survey_complete_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    type="primary"
+                )
+        
+        except Exception as e:
+            st.error(f"데이터 로드 중 오류가 발생했습니다: {e}")
+    else:
+        st.info("아직 설문 데이터가 없습니다.")
+        
 # 이미지 로드 함수
 # ✅ 고정 크기 이미지 렌더링 함수
 def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟"):
@@ -885,47 +1066,6 @@ def show_menu_selection():
             st.button("설문 완료하기", disabled=True, use_container_width=True)
 
 
-def show_completion():
-    # 축하 애니메이션
-    st.balloons()
-    
-    # 완료 메시지
-    st.success("🎉 설문이 완료되었습니다! 소중한 의견을 주셔서 감사합니다")
-    
-    # 결과 요약 표시
-    with st.expander("📊 설문 결과 요약", expanded=True):
-        st.markdown(f"**참여자:** {st.session_state.name}")
-        st.markdown(f"**식별번호:** {st.session_state.id_number}")
-        st.markdown(f"**설문 완료 시간:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        
-        st.markdown("### 선택하신 수산물")
-        ingredients_text = " | ".join(st.session_state.selected_ingredients)
-        st.markdown(f"🏷️ {ingredients_text}")
-        
-        st.markdown("### 선호하시는 메뉴")
-        for ingredient, menus in st.session_state.selected_menus.items():
-            if menus:
-                menu_text = ", ".join(menus)
-                st.markdown(f"**{ingredient}:** {menu_text}")
-    
-    # 엑셀 파일 다운로드
-    if 'filename' in st.session_state and os.path.exists(st.session_state.filename):
-        with open(st.session_state.filename, 'rb') as file:
-            st.download_button(
-                label="📥 결과 엑셀 파일 다운로드",
-                data=file.read(),
-                file_name=st.session_state.filename,
-                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                type="primary",
-                use_container_width=True
-            )
-    
-    # 새 설문 시작 버튼
-    if st.button("🔄 새 설문 시작하기", use_container_width=True):
-        # 세션 상태 초기화
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
 
 if __name__ == "__main__":
     main()
