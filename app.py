@@ -901,7 +901,7 @@ def show_info_form():
             name = st.text_input("성함", placeholder="홍길동", max_chars=20)
 
         with col2:
-            id_number = st.text_input("식별번호", placeholder="예: 2024001", max_chars=20)
+            id_number = st.text_input("식별번호", placeholder="예: HG001", max_chars=20)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
