@@ -61,7 +61,8 @@ else:
     st.session_state.already_saved = False   # 🔹 테스트 시 강제 초기화
     
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    st.write("🟢 [DEBUG] save_to_google_sheets 호출됨")
+    st.write("🟢 [DEBUG] save_to_google_sheets 실행됨, already_saved =", st.session_state.get("already_saved"))
+
 
     # ✅ 중복 저장 방지 상태 초기화 (테스트 시 강제 해제 가능)
     if st.session_state.get("already_saved", False):
@@ -678,6 +679,7 @@ def display_menu_with_image(menu, ingredient, is_selected, key):
 
 # save_to_excel 함수 수정 (구글 시트 우선, 실패 시 백업)
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
+    st.write("🟢 [DEBUG] save_to_excel 실행됨")
     """데이터 저장 - Google Sheets 우선, 실패 시 로컬 엑셀 백업"""
     if st.session_state.get("already_saved", False):
         return "skipped", None
