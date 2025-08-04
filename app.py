@@ -6,20 +6,27 @@ from PIL import Image
 import base64
 import gspread
 import toml
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 
 
-# ✅ 인증 정보 가져오기
-gcp_service_account = st.secrets["gcp_service_account"]
+# ✅ 로컬/Cloud 환경에 따라 secrets 불러오기
+if st.secrets.get("gcp_service_account", None):
+    gcp_service_account = dict(st.secrets["gcp_service_account"])
+    google_sheets = st.secrets["google_sheets"]
+else:
+    import toml, os
+    secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
+    gcp_service_account = secrets["gcp_service_account"]
+    google_sheets = secrets["google_sheets"]
 
-# ✅ gspread 인증
+# ✅ Google 인증
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_dict(gcp_service_account, scope)
+creds = Credentials.from_service_account_info(gcp_service_account, scopes=scope)
 client = gspread.authorize(creds)
 
-# ✅ 구글 시트 열기
-sheet = client.open(st.secrets["google_sheets"]["google_sheet_name"]).sheet1
-st.success("✅ Google Sheets 연결 성공")
+# ✅ Google Sheet 열기
+sheet = client.open(google_sheets["google_sheet_name"]).sheet1
+st.success(f"✅ Google Sheets 연결 성공 → {google_sheets['google_sheet_name']}")
 
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
