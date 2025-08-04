@@ -28,26 +28,30 @@ def format_korean_time():
 
 
 # ✅ Google Sheets 연결 함수 (안전한 에러 핸들링)
-# ✅ 캐시 제거 후 디버깅 로그 추가
 def get_google_sheet_cached():
-    st.write("🔍 [DEBUG] Google Sheets 연결 시도 (캐시 미사용)")
+    st.write("🔍 [DEBUG] Google Sheets 연결 시도")
+
     try:
-        if "gcp_service_account" in st.secrets:
-            creds_dict = dict(st.secrets["gcp_service_account"])
-            sheet_id = st.secrets["google_sheets"]["google_sheet_id"]
-        else:
-            raise Exception("❌ gcp_service_account not found in secrets")
+        if "gcp_service_account" not in st.secrets:
+            raise Exception("❌ gcp_service_account가 st.secrets에 없음")
+
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        # ✅ 개행 복원
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+        sheet_id = st.secrets["google_sheets"]["google_sheet_id"]
 
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
-
         sheet = client.open_by_key(sheet_id).sheet1
-        st.write("✅ [DEBUG] Google Sheets 연결 성공")
+
+        st.success("✅ [DEBUG] Google Sheets 연결 성공")
         return sheet
 
     except Exception as e:
-        st.error(f"❌ [DEBUG] Google Sheets 연결 실패: {e}")
+        error_msg = f"🚨 [DEBUG] Google Sheets 연결 실패: {str(e)}"
+        st.error(error_msg)
+        print(error_msg)  # Cloud 로그에도 남김
         return None
 
 
