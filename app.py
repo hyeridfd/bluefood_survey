@@ -12,59 +12,62 @@ import random
 from google.oauth2.service_account import Credentials
 
 
-# ✅ 로컬/Cloud 환경에 따라 secrets 불러오기
-if st.secrets.get("gcp_service_account", None):
-    gcp_service_account = dict(st.secrets["gcp_service_account"])
-    google_sheets = st.secrets["google_sheets"]
-else:
-    import toml, os
-    secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
-    gcp_service_account = secrets["gcp_service_account"]
-    google_sheets = secrets["google_sheets"]
-
-# ✅ Google 인증
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_info(gcp_service_account, scopes=scope)
-client = gspread.authorize(creds)
-
-# ✅ Google Sheet 열기
-#sheet = client.open(google_sheets["google_sheet_name"]).sheet1
-#st.success(f"✅ Google Sheets 연결 성공 → {google_sheets['google_sheet_name']}")
-
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
 
-# ✅ 전역에서 한 번만 Google Sheets 연결
-@st.cache_resource
+# ✅ 관리자 패스워드 설정
+ADMIN_PASSWORD = "bluefood2025"
+
+def get_korean_time():
+    """한국 시간(KST)을 반환하는 함수"""
+    return datetime.now(KST)
+
+def format_korean_time():
+    """한국 시간을 문자열로 포맷팅"""
+    return get_korean_time().strftime('%Y-%m-%d %H:%M:%S')
+
+
+# ✅ Google Sheets 연결 함수 (안전한 에러 핸들링)
 @st.cache_resource
 def get_google_sheet_cached():
     """Google Sheets 연결 - 캐싱하여 중복 호출 방지"""
     try:
+        st.write("🔍 [DEBUG] Google Sheets 연결 시작")
+        
         if st.secrets.get("gcp_service_account", None):
             creds_dict = dict(st.secrets["gcp_service_account"])
             sheet_id = st.secrets["google_sheets"]["google_sheet_id"]
+            st.write("🔍 [DEBUG] Streamlit Cloud secrets 사용")
         else:
             secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
             creds_dict = secrets["gcp_service_account"]
             sheet_id = secrets["google_sheets"]["google_sheet_id"]
+            st.write("🔍 [DEBUG] 로컬 secrets.toml 사용")
+
+        st.write(f"🔍 [DEBUG] 시트 ID: {sheet_id}")
+        st.write(f"🔍 [DEBUG] 서비스 계정: {creds_dict.get('client_email', 'N/A')}")
 
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
+        
+        st.write("🔍 [DEBUG] 인증 완료, 시트 열기 시도")
         sheet = client.open_by_key(sheet_id).sheet1
-        st.write("✅ [DEBUG] Google Sheet 캐시 연결 성공")
+        
+        st.write("✅ [DEBUG] Google Sheet 연결 성공!")
         return sheet
 
     except Exception as e:
         st.error(f"❌ Google Sheets 연결 실패: {e}")
+        st.write(f"🔍 [DEBUG] 연결 오류 세부사항: {type(e).__name__}: {str(e)}")
         return None
-        
 
 # ✅ 설문 완료 후 중복 저장 방지
 if 'already_saved' not in st.session_state:
     st.session_state.already_saved = False
 
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
+    """Google Sheets 저장 (강화된 디버깅)"""
     st.write("🟢 [DEBUG] Google Sheets 저장 시도 중...")
 
     if st.session_state.get("already_saved", False):
@@ -77,39 +80,36 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
             st.error("❌ Google Sheets 연결 실패 (sheet=None)")
             return False
 
-        import json, time
+        import json
         menus_text = json.dumps(selected_menus, ensure_ascii=False)
-        menus_chunks = [menus_text[i:i+48000] for i in range(0, len(menus_text), 48000)]
         ingredients_text = ', '.join(selected_ingredients)
 
-        # ✅ 로그
-        st.write("✅ [DEBUG] 첫 행 추가:", [name, id_number, format_korean_time(), ingredients_text, menus_chunks[0]])
+        # 저장할 데이터 구성
+        timestamp = format_korean_time()
+        row_data = [name, id_number, timestamp, ingredients_text, menus_text]
 
-        sheet.append_row([name, id_number, format_korean_time(), ingredients_text, menus_chunks[0]])
-        time.sleep(1)
+        # 디버깅: 저장할 데이터 확인
+        st.write("🔍 [DEBUG] 저장할 데이터:")
+        st.write(f"- 이름: {name}")
+        st.write(f"- 식별번호: {id_number}")
+        st.write(f"- 시간: {timestamp}")
+        st.write(f"- 수산물: {ingredients_text}")
+        st.write(f"- 메뉴 길이: {len(menus_text)} 문자")
 
-        for idx, chunk in enumerate(menus_chunks[1:], start=2):
-            st.write(f"✅ [DEBUG] 추가 데이터({idx}) 저장:", chunk[:50] + "...")
-            sheet.append_row([name, id_number, f"{format_korean_time()}(추가{idx})", "-", chunk])
-            time.sleep(1)
-
+        # Google Sheets에 행 추가
+        st.write("🔍 [DEBUG] Google Sheets에 데이터 추가 중...")
+        sheet.append_row(row_data, value_input_option="RAW")
+        
+        st.write("✅ [DEBUG] 데이터 추가 완료!")
         st.success("✅ Google Sheets에 데이터 저장 성공")
         st.session_state.already_saved = True
         return True
 
     except Exception as e:
-        st.error(f"❌ Google Sheets 저장 실패: {e}")
+        error_msg = f"❌ Google Sheets 저장 실패: {e}"
+        st.error(error_msg)
+        st.write(f"🔍 [DEBUG] 저장 오류 세부사항: {type(e).__name__}: {str(e)}")
         return False
-
-def safe_append_row(sheet, row_data, retries=3):
-    for attempt in range(retries):
-        try:
-            sheet.append_row(row_data)
-            return True
-        except Exception as e:
-            st.warning(f"⚠️ append_row 실패({attempt+1}/{retries}): {e}")
-            time.sleep(2 + random.uniform(0, 1))
-    return False
 
 
 # setup_google_sheets 함수도 수정
@@ -135,13 +135,7 @@ def setup_google_sheets():
         st.error(f"❌ Google Sheets 연결 실패: {e}")
         return None
 
-def get_korean_time():
-    """한국 시간(KST)을 반환하는 함수"""
-    return datetime.now(KST)
 
-def format_korean_time():
-    """한국 시간을 문자열로 포맷팅"""
-    return get_korean_time().strftime('%Y-%m-%d %H:%M:%S')
 # 페이지 설정
 st.set_page_config(
     page_title="블루푸드 선호도 조사",
@@ -153,10 +147,6 @@ st.set_page_config(
 INGREDIENT_IMAGE_PATH = "images/ingredients"
 MENU_IMAGE_PATH = "images/menus"
 
-# 기존 코드에서 수정할 부분들
-
-# 1. 관리자 패스워드 설정 (상단에 추가)
-ADMIN_PASSWORD = "bluefood2025"  # 원하는 패스워드로 변경하세요
 
 # 2. 세션 상태 초기화 부분에 추가
 if 'step' not in st.session_state:
