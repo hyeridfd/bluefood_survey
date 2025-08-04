@@ -28,107 +28,93 @@ def format_korean_time():
 
 
 # ✅ Google Sheets 연결 함수 (안전한 에러 핸들링)
+@st.cache_resource
 def get_google_sheet_cached():
+    """Google Sheets 연결 (캐시 적용)"""
     st.write("🔍 [DEBUG] Google Sheets 연결 시도")
-
+    
     try:
+        # 1. Secrets 확인
         if "gcp_service_account" not in st.secrets:
             raise Exception("❌ gcp_service_account가 st.secrets에 없음")
-
+        
+        if "google_sheets" not in st.secrets:
+            raise Exception("❌ google_sheets 설정이 st.secrets에 없음")
+        
+        # 2. 인증 정보 설정
         creds_dict = dict(st.secrets["gcp_service_account"])
-        # ✅ 개행 복원
         creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-        sheet_id = st.secrets["google_sheets"]["google_sheet_id"]
-
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        
+        # 3. Google Sheets 정보
+        google_sheets_config = st.secrets["google_sheets"]
+        
+        # 4. 인증 및 클라이언트 생성
+        scope = [
+            "https://spreadsheets.google.com/feeds",
+            "https://www.googleapis.com/auth/drive"
+        ]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
-        sheet = client.open_by_key(sheet_id).sheet1
-
+        
+        # 5. 시트 열기 (ID 우선, 없으면 이름으로)
+        if "google_sheet_id" in google_sheets_config:
+            sheet_id = google_sheets_config["google_sheet_id"]
+            sheet = client.open_by_key(sheet_id).sheet1
+            st.write(f"✅ [DEBUG] 시트 ID로 연결: {sheet_id}")
+        elif "google_sheet_name" in google_sheets_config:
+            sheet_name = google_sheets_config["google_sheet_name"]
+            sheet = client.open(sheet_name).sheet1
+            st.write(f"✅ [DEBUG] 시트 이름으로 연결: {sheet_name}")
+        else:
+            raise Exception("❌ google_sheet_id 또는 google_sheet_name이 필요합니다")
+        
+        # 6. 헤더 확인 및 생성
+        setup_sheet_headers(sheet)
+        
         st.success("✅ [DEBUG] Google Sheets 연결 성공")
         return sheet
-
+        
     except Exception as e:
         error_msg = f"🚨 [DEBUG] Google Sheets 연결 실패: {str(e)}"
         st.error(error_msg)
-        print(error_msg)  # Cloud 로그에도 남김
+        print(error_msg)
         return None
 
-# ✅ 설문 완료 후 중복 저장 방지
-if 'already_saved' not in st.session_state:
-    st.session_state.already_saved = False
-else:
-    st.session_state.already_saved = False   # 🔹 테스트 시 강제 초기화
-    
-def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    st.write("🟢 [DEBUG] save_to_google_sheets 실행됨, already_saved =", st.session_state.get("already_saved"))
-
-
-    # ✅ 중복 저장 방지 상태 초기화 (테스트 시 강제 해제 가능)
-    if st.session_state.get("already_saved", False):
-        st.warning("⚠️ 이미 저장된 설문입니다.")
-        return True
-
-    try:
-        sheet = safe_open_sheet()
-        if sheet is None:
-            raise Exception("❌ safe_open_sheet()가 None 반환 → Google Sheets 연결 실패")
-
-        import json
-        menus_text = json.dumps(selected_menus, ensure_ascii=False)
-        ingredients_text = ', '.join(selected_ingredients)
-        row_data = [name, id_number, format_korean_time(), ingredients_text, menus_text]
-
-        st.write(f"📤 [DEBUG] Google Sheets에 추가할 데이터: {row_data}")
-        response = sheet.append_row(row_data, value_input_option="RAW")
-        st.write(f"✅ [DEBUG] append_row 결과: {response}")
-
-        st.session_state.google_sheets_success = True
-        st.success("✅ Google Sheets 저장 성공!")
-        st.session_state.already_saved = True
-        return True
-
-    except Exception as e:
-        error_msg = f"❌ Google Sheets 저장 실패: {e}"
-        st.error(error_msg)
-        print(error_msg)
-        st.session_state.google_sheets_success = False
-        return False
-
 # setup_google_sheets 함수도 수정
-@st.cache_resource
-# def setup_google_sheets():
-#     """Google Sheets API 설정 (로컬/Cloud 호환)"""
-#     try:
-#         if st.secrets.get("gcp_service_account", None):
-#             creds_dict = dict(st.secrets["gcp_service_account"])
-#             google_sheets = st.secrets["google_sheets"]
-#         else:
-#             secrets = toml.load(os.path.join(os.path.dirname(__file__), ".streamlit", "secrets.toml"))
-#             creds_dict = secrets["gcp_service_account"]
-#             google_sheets = secrets["google_sheets"]
+def setup_sheet_headers(sheet):
+    """시트 헤더 설정 (첫 번째 행이 비어있으면 헤더 추가)"""
+    try:
+        # 첫 번째 행 확인
+        first_row = sheet.row_values(1)
+        
+        # 헤더가 없거나 비어있으면 추가
+        if not first_row or first_row == ['']:
+            headers = ['이름', '식별번호', '설문일시', '선택한_수산물', '선택한_메뉴']
+            sheet.append_row(headers)
+            st.write("✅ [DEBUG] 헤더 행 추가됨")
+        else:
+            st.write(f"✅ [DEBUG] 기존 헤더: {first_row}")
+            
+    except Exception as e:
+        st.warning(f"⚠️ [DEBUG] 헤더 설정 중 오류: {e}")
 
-#         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-#         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-#         client = gspread.authorize(creds)
-#         sheet = client.open(google_sheets["google_sheet_name"]).sheet1
-#         return sheet
-
-#     except Exception as e:
-#         st.error(f"❌ Google Sheets 연결 실패: {e}")
-#         return None
-
+# ✅ safe_open_sheet 함수도 수정
 def safe_open_sheet(retries=3):
     """Google Sheets API 호출 시 재시도"""
     for attempt in range(retries):
         try:
             sheet = get_google_sheet_cached()
             if sheet:
-                st.write("✅ [DEBUG] safe_open_sheet: 시트 객체 가져오기 성공")
+                st.write("✅ [DEBUG] 시트 연결 성공")
                 return sheet
         except gspread.exceptions.APIError as e:
-            st.warning(f"⚠️ API 호출 실패({attempt+1}/{retries}): {e} → 5초 후 재시도")
-            time.sleep(5)
+            st.warning(f"⚠️ API 호출 실패({attempt+1}/{retries}): {e}")
+            if attempt < retries - 1:
+                time.sleep(5)
+        except Exception as e:
+            st.error(f"❌ 시트 연결 오류: {e}")
+            break
+    
     st.error("❌ Google Sheets 연결 최종 실패")
     return None
 
@@ -724,7 +710,59 @@ def save_to_excel(name, id_number, selected_ingredients, selected_menus):
         st.session_state.google_sheets_error.append(f"❌ 백업 파일 저장도 실패: {str(e)}")
         return None, None
 
-
+def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
+    """Google Sheets에 데이터 저장 (개선된 버전)"""
+    st.write("🟢 [DEBUG] save_to_google_sheets 호출됨")
+    
+    if st.session_state.get("already_saved", False):
+        st.warning("⚠️ 이미 저장된 설문입니다.")
+        return True
+    
+    try:
+        # 1. 시트 객체 가져오기
+        sheet = get_google_sheet_cached()
+        if sheet is None:
+            st.error("❌ [DEBUG] 시트 연결 실패")
+            return False
+        
+        # 2. 데이터 준비
+        import json
+        menus_text = json.dumps(selected_menus, ensure_ascii=False)
+        ingredients_text = ', '.join(selected_ingredients)
+        
+        row_data = [
+            name, 
+            id_number, 
+            format_korean_time(), 
+            ingredients_text, 
+            menus_text
+        ]
+        
+        st.write(f"📤 [DEBUG] 추가할 데이터: {row_data}")
+        
+        # 3. 시트에 데이터 추가
+        response = sheet.append_row(row_data, value_input_option="RAW")
+        st.write(f"✅ [DEBUG] append_row 응답: {response}")
+        
+        # 4. 성공 처리
+        st.session_state.google_sheets_success = True
+        st.session_state.already_saved = True
+        st.success("✅ Google Sheets 저장 성공!")
+        
+        return True
+        
+    except gspread.exceptions.APIError as e:
+        error_msg = f"❌ Google API 오류: {e}"
+        st.error(error_msg)
+        st.session_state.google_sheets_success = False
+        return False
+        
+    except Exception as e:
+        error_msg = f"❌ Google Sheets 저장 실패: {e}"
+        st.error(error_msg)
+        st.session_state.google_sheets_success = False
+        return False
+        
 # 수산물별 메뉴 데이터
 MENU_DATA = {
     '맛살': {
