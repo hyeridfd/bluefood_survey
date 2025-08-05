@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib as mpl
 import matplotlib.font_manager as fm
+import urllib.request
 
 # ✅ 1. 사용자 홈 디렉토리에 폰트 저장 경로 설정
 font_dir = os.path.expanduser("~/.streamlit/fonts")
