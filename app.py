@@ -1395,25 +1395,26 @@ def show_menu_selection():
 
     with col3:
         if all_valid:
-            # 버튼 상태 체크
-            clicked = st.button("설문 완료하기", type="primary", use_container_width=True)
-    
-            # 버튼 클릭 시 바로 중복 저장 방지 플래그 설정
-            if clicked and not st.session_state.get("already_saved", False):
-                st.session_state.already_saved = True   # True 먼저 설정
-                # 이후에 저장 로직 실행
+            if st.button("설문 완료하기", type="primary", use_container_width=True):
+                # ✅ 저장 실행
                 filename, df = save_to_excel(
                     st.session_state.name,
                     st.session_state.id_number,
                     st.session_state.selected_ingredients,
                     st.session_state.selected_menus
                 )
-                st.session_state.filename = filename
-                st.session_state.survey_data = df
-                st.session_state.step = 'complete'
-                st.rerun()
+    
+                # ✅ 저장 성공 여부에 따라 상태 업데이트
+                if filename is not None or st.session_state.get("google_sheets_success", False):
+                    st.session_state.already_saved = True
+                    st.session_state.filename = filename
+                    st.session_state.survey_data = df
+                    st.session_state.step = 'complete'
+                    st.rerun()   # 🔥 페이지 즉시 전환
+                else:
+                    st.error("❌ 설문 데이터 저장에 실패했습니다. 다시 시도해주세요.")
         else:
-            st.button("설문 완료하기", disabled=True, use_container_width=True)
+        st.button("설문 완료하기", disabled=True, use_container_width=True)
 
 def show_completion():
     # 스크롤 상단 이동
