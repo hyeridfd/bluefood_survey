@@ -17,17 +17,20 @@ import seaborn as sns
 import matplotlib as mpl
 import matplotlib.font_manager as fm
 
-# ✅ 한글 폰트 경로 설정 (NanumGothic 사용 예시)
-font_path = '/usr/share/fonts/truetype/nanum/NanumGothic.ttf'
+# ✅ 1. NanumGothic 폰트 경로 지정
+font_dir = "/usr/share/fonts/truetype/nanum"
+font_path = os.path.join(font_dir, "NanumGothic.ttf")
 
-# ✅ rcParams는 mpl.rcParams로 접근해야 함
-if os.path.exists(font_path):
-    mpl.rcParams['font.family'] = fm.FontProperties(fname=font_path).get_name()
-else:
-    mpl.rcParams['font.family'] = 'DejaVu Sans'
+# ✅ 2. 폰트가 없으면 다운로드
+if not os.path.exists(font_path):
+    os.makedirs(font_dir, exist_ok=True)
+    url = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
+    urllib.request.urlretrieve(url, font_path)
 
-# ✅ 마이너스 깨짐 방지
-mpl.rcParams['axes.unicode_minus'] = False
+# ✅ 3. matplotlib에 폰트 적용
+mpl.rcParams['font.family'] = fm.FontProperties(fname=font_path).get_name()
+mpl.rcParams['axes.unicode_minus'] = False  # 마이너스 깨짐 방지
+
 
 def show_admin_dashboard(df):
     """관리자 대시보드: 응답 현황 시각화 및 중복 응답 감지"""
