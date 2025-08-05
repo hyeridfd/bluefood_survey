@@ -28,7 +28,7 @@ def format_korean_time():
     return get_korean_time().strftime('%Y-%m-%d %H:%M:%S')
 
 
-@st.cache_resource
+#@st.cache_resource
 def get_google_sheet_cached():
     """개선된 Google Sheets 연결 함수"""
     # 디버깅 정보를 항상 표시하도록 수정
