@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib as mpl
 import matplotlib.font_manager as fm
+from matplotlib import rcParams
+from matplotlib import font_manager as fm
 import urllib.request
 
 # ✅ 1. 사용자 홈 디렉토리에 폰트 저장 경로 설정
@@ -28,6 +30,22 @@ if not os.path.exists(font_path):
     url = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
     urllib.request.urlretrieve(url, font_path)
 
+# ✅ 한글 폰트 설정 (NanumGothic)
+try:
+    font_path = '/usr/share/fonts/truetype/nanum/NanumGothic.ttf'  # Linux 환경
+    if not os.path.exists(font_path):
+        font_path = '/System/Library/Fonts/Supplemental/AppleGothic.ttf'  # macOS
+    if not os.path.exists(font_path):
+        font_path = 'C:/Windows/Fonts/malgun.ttf'  # Windows
+    if not os.path.exists(font_path):
+        font_path = fm.findfont(fm.FontProperties(family='DejaVu Sans'))  # fallback
+
+    fontprop = fm.FontProperties(fname=font_path)
+    rcParams['font.family'] = fontprop.get_name()
+except Exception as e:
+    st.warning(f"⚠️ 폰트 로드 실패, 기본 폰트 사용: {e}")
+    fontprop = None
+    
 # ✅ 3. matplotlib에 폰트 적용
 mpl.rcParams['font.family'] = fm.FontProperties(fname=font_path).get_name()
 mpl.rcParams['axes.unicode_minus'] = False
@@ -60,23 +78,31 @@ def show_admin_dashboard(df):
             st.success("✅ 중복 응답 없음")
 
     # --- 3. 수산물 선호도 ---
-    st.markdown("### 🐟 수산물 선호도 TOP5")
-    if '선택한_수산물' in df.columns:
-        try:
-            all_ingredients = df['선택한_수산물'].dropna().astype(str).str.split(',').explode().str.strip()
-            top_ing = all_ingredients.value_counts().head(5)
+    # --- 3. 수산물 선호도 ---
+st.markdown("### 🐟 수산물 선호도 TOP5")
+if '선택한_수산물' in df.columns:
+    try:
+        all_ingredients = df['선택한_수산물'].dropna().astype(str).str.split(',').explode().str.strip()
+        top_ing = all_ingredients.value_counts().head(5)
 
-            if not top_ing.empty:
-                fig1, ax1 = plt.subplots()
-                sns.barplot(x=top_ing.values, y=top_ing.index, ax=ax1)
+        if not top_ing.empty:
+            fig1, ax1 = plt.subplots()
+            sns.barplot(x=top_ing.values, y=top_ing.index, ax=ax1)
+
+            # ✅ fontprop가 존재하면 적용
+            if fontprop:
                 ax1.set_title("선호 수산물 TOP5", fontproperties=fontprop)
-                st.pyplot(fig1)
             else:
-                st.info("📌 수산물 데이터가 없습니다.")
-        except Exception as e:
-            st.error(f"데이터 로드 오류 (수산물): {e}")
-    else:
-        st.error("⚠️ '선택한_수산물' 컬럼이 없습니다.")
+                ax1.set_title("선호 수산물 TOP5")
+
+            st.pyplot(fig1)
+        else:
+            st.info("📌 수산물 데이터가 없습니다.")
+    except Exception as e:
+        st.error(f"데이터 로드 오류 (수산물): {e}")
+else:
+    st.error("⚠️ '선택한_수산물' 컬럼이 없습니다.")
+
 
     # --- 4. 메뉴 선호도 ---
     st.markdown("### 🍽️ 메뉴 선호도 TOP5")
