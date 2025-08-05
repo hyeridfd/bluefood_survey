@@ -52,12 +52,17 @@ def show_admin_dashboard(df):
     import ast
     menu_list = []
     for menus in df['선택한_메뉴'].dropna():
-        try:
-            parsed = ast.literal_eval(menus)
-            for ing, menu_items in parsed.items():
-                menu_list.extend(menu_items)
-        except:
-            pass
+        # "맛살: 게맛살볶음밥, 어란: 명란파스타" → ['맛살: 게맛살볶음밥', '어란: 명란파스타']
+        pairs = [m.strip() for m in str(menus).split(',')]
+        for pair in pairs:
+            if ':' in pair:
+                # "맛살: 게맛살볶음밥" → "게맛살볶음밥"
+                menu = pair.split(':', 1)[1].strip()
+                menu_list.append(menu)
+            else:
+                # ':' 없는 경우 그대로 추가
+                menu_list.append(pair.strip())
+
     menu_series = pd.Series(menu_list)
     top_menu = menu_series.value_counts().head(5)
 
