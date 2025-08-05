@@ -187,7 +187,6 @@ def get_google_sheet_cached():
             st.code(traceback.format_exc())
             return None
 
-
 def setup_sheet_headers(sheet):
     """시트 헤더 설정 (첫 번째 행이 비어있으면 헤더 추가)"""
     try:
@@ -208,7 +207,7 @@ def setup_sheet_headers(sheet):
     except Exception as e:
         st.warning(f"⚠️ [DEBUG] 헤더 설정 중 오류: {e}")
         st.code(traceback.format_exc())
-
+        
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
     """Google Sheets에 데이터 저장 (상세 디버깅 버전)"""
     
@@ -280,7 +279,6 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         st.code(traceback.format_exc())
         st.session_state.google_sheets_success = False
         return False
-
 
 # 테스트 함수 (관리자용)
 def show_google_sheets_test():
