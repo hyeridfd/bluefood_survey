@@ -207,7 +207,7 @@ def setup_sheet_headers(sheet):
     except Exception as e:
         st.warning(f"⚠️ [DEBUG] 헤더 설정 중 오류: {e}")
         st.code(traceback.format_exc())
-        
+
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
     """Google Sheets에 데이터 저장 (상세 디버깅 버전)"""
     
