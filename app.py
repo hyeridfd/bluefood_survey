@@ -14,6 +14,8 @@ from google.oauth2.service_account import Credentials
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib as mpl
+import matplotlib.font_manager as fm
 
 # ✅ 한글 폰트 경로 설정 (NanumGothic 사용 예시)
 font_path = '/usr/share/fonts/truetype/nanum/NanumGothic.ttf'
