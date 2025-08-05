@@ -34,6 +34,14 @@ mpl.rcParams['axes.unicode_minus'] = False
 
 def show_admin_dashboard(df):
     """관리자 대시보드: 응답 현황 시각화 및 중복 응답 감지"""
+    import ast
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+
+    # ✅ seaborn 폰트 강제 적용
+    sns.set(font=mpl.rcParams['font.family'])
+
     st.markdown("## 📊 관리자 대시보드")
 
     if df is None or df.empty:
@@ -66,27 +74,27 @@ def show_admin_dashboard(df):
 
     # --- 4. 선호 메뉴 분석 ---
     st.markdown("### 🍽️ 메뉴 선호도 TOP5")
-    import ast
     menu_list = []
     for menus in df['선택한_메뉴'].dropna():
-        # "맛살: 게맛살볶음밥, 어란: 명란파스타" → ['맛살: 게맛살볶음밥', '어란: 명란파스타']
-        pairs = [m.strip() for m in str(menus).split(',')]
-        for pair in pairs:
-            if ':' in pair:
-                # "맛살: 게맛살볶음밥" → "게맛살볶음밥"
-                menu = pair.split(':', 1)[1].strip()
-                menu_list.append(menu)
-            else:
-                # ':' 없는 경우 그대로 추가
-                menu_list.append(pair.strip())
+        try:
+            parsed = ast.literal_eval(menus)
+            for ing, menu_items in parsed.items():
+                menu_list.extend([m for m in menu_items if m])  # ✅ None 제거
+        except:
+            pass
 
-    menu_series = pd.Series(menu_list)
-    top_menu = menu_series.value_counts().head(5)
+    # ✅ None 및 특수문자 제거
+    menu_series = pd.Series([m for m in menu_list if m and m != 'None'])
+    menu_series = menu_series.astype(str).str.replace(r'[^가-힣a-zA-Z0-9 ]', '', regex=True)
 
-    fig2, ax2 = plt.subplots()
-    sns.barplot(x=top_menu.values, y=top_menu.index, ax=ax2, palette="Blues_d")
-    ax2.set_title("선호 메뉴 TOP5")
-    st.pyplot(fig2)
+    if not menu_series.empty:
+        top_menu = menu_series.value_counts().head(5)
+        fig2, ax2 = plt.subplots()
+        sns.barplot(x=top_menu.values, y=top_menu.index, ax=ax2, palette="Blues_d")
+        ax2.set_title("선호 메뉴 TOP5")
+        st.pyplot(fig2)
+    else:
+        st.info("📌 메뉴 데이터가 없습니다.")
 
     # --- 5. 날짜별 응답 추이 ---
     st.markdown("### ⏱️ 날짜별 응답 추이")
