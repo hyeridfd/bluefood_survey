@@ -1414,7 +1414,7 @@ def show_menu_selection():
                 else:
                     st.error("❌ 설문 데이터 저장에 실패했습니다. 다시 시도해주세요.")
         else:
-        st.button("설문 완료하기", disabled=True, use_container_width=True)
+            st.button("설문 완료하기", disabled=True, use_container_width=True)
 
 def show_completion():
     # 스크롤 상단 이동
