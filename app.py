@@ -15,6 +15,19 @@ from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# ✅ 한글 폰트 경로 설정 (NanumGothic 사용 예시)
+font_path = '/usr/share/fonts/truetype/nanum/NanumGothic.ttf'
+
+# ✅ 로컬/서버 환경에 따라 존재 여부 확인 후 적용
+if os.path.exists(font_path):
+    rcParams['font.family'] = fm.FontProperties(fname=font_path).get_name()
+else:
+    # ✅ 폰트가 없을 경우, 시스템 기본 폰트 시도
+    rcParams['font.family'] = 'DejaVu Sans'
+
+# ✅ 마이너스 기호 깨짐 방지
+rcParams['axes.unicode_minus'] = False
+
 def show_admin_dashboard(df):
     """관리자 대시보드: 응답 현황 시각화 및 중복 응답 감지"""
     st.markdown("## 📊 관리자 대시보드")
