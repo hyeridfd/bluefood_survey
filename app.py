@@ -9,6 +9,7 @@ import toml
 import os
 import time
 import random
+import traceback
 from google.oauth2.service_account import Credentials
 
 
@@ -30,101 +31,162 @@ def format_korean_time():
 @st.cache_resource
 def get_google_sheet_cached():
     """개선된 Google Sheets 연결 함수"""
-    st.write("🟢 [DEBUG] Google Sheets 연결 시도 시작됨")
-    
-    try:
-        # Secrets 확인
-        if "gcp_service_account" not in st.secrets:
-            st.error("❌ [DEBUG] gcp_service_account 누락")
-            return None
+    # 디버깅 정보를 항상 표시하도록 수정
+    debug_container = st.empty()
+    with debug_container.container():
+        st.write("🟢 [DEBUG] Google Sheets 연결 시도 시작됨")
         
-        if "google_sheets" not in st.secrets:
-            st.error("❌ [DEBUG] google_sheets 설정 누락")
-            return None
-        
-        # 서비스 계정 정보 가져오기
-        creds_dict = dict(st.secrets["gcp_service_account"])
-        st.write("🟢 [DEBUG] 서비스 계정 이메일:", creds_dict.get("client_email", "없음"))
-        st.write("🟢 [DEBUG] 프로젝트 ID:", creds_dict.get("project_id", "없음"))
-
-        # private_key 줄바꿈 변환 (이미 올바른 형태인지 확인)
-        if "private_key" in creds_dict:
-            if "\\n" in creds_dict["private_key"]:
-                creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-            st.write("🟢 [DEBUG] private_key 길이:", len(creds_dict["private_key"]))
-            st.write("🟢 [DEBUG] private_key 시작 부분:", creds_dict["private_key"][:50] + "...")
-
-        # Google Sheets 설정
-        google_sheets_config = st.secrets["google_sheets"]
-        sheet_name = google_sheets_config.get("google_sheet_name")
-        sheet_id = google_sheets_config.get("google_sheet_id")
-        
-        st.write("🟢 [DEBUG] 구글 시트 이름:", sheet_name)
-        st.write("🟢 [DEBUG] 구글 시트 ID:", sheet_id)
-
-        # Scope 설정 (더 포괄적으로)
-        scope = [
-            "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive",
-            "https://www.googleapis.com/auth/spreadsheets"
-        ]
-        
-        # 인증 시도
-        st.write("🟢 [DEBUG] 인증 시도 중...")
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-        client = gspread.authorize(creds)
-        st.write("✅ [DEBUG] 인증 성공")
-
-        # 시트 열기 시도
-        st.write("🟢 [DEBUG] 시트 열기 시도 중...")
-        
-        # 먼저 ID로 시도, 실패하면 이름으로 시도
-        sheet = None
-        if sheet_id:
-            try:
-                workbook = client.open_by_key(sheet_id)
-                sheet = workbook.sheet1
-                st.write("✅ [DEBUG] Sheet ID로 시트 열기 성공")
-            except Exception as e:
-                st.warning(f"⚠️ [DEBUG] Sheet ID로 열기 실패: {e}")
-        
-        if sheet is None and sheet_name:
-            try:
-                workbook = client.open(sheet_name)
-                sheet = workbook.sheet1
-                st.write("✅ [DEBUG] Sheet 이름으로 시트 열기 성공")
-            except Exception as e:
-                st.error(f"❌ [DEBUG] Sheet 이름으로 열기도 실패: {e}")
-                return None
-        
-        if sheet is None:
-            st.error("❌ [DEBUG] 시트를 열 수 없습니다")
-            return None
-
-        # 헤더 설정
-        setup_sheet_headers(sheet)
-        
-        # 연결 테스트
         try:
-            # 시트의 첫 번째 셀 읽기 테스트
-            test_value = sheet.cell(1, 1).value
-            st.write(f"🟢 [DEBUG] 시트 읽기 테스트 성공: {test_value}")
-        except Exception as e:
-            st.warning(f"⚠️ [DEBUG] 시트 읽기 테스트 실패: {e}")
-        
-        st.success("✅ [DEBUG] Google Sheets 연결 완료!")
-        return sheet
+            # Secrets 확인
+            if "gcp_service_account" not in st.secrets:
+                st.error("❌ [DEBUG] gcp_service_account 누락")
+                return None
+            
+            if "google_sheets" not in st.secrets:
+                st.error("❌ [DEBUG] google_sheets 설정 누락")
+                return None
+            
+            # 서비스 계정 정보 가져오기
+            creds_dict = dict(st.secrets["gcp_service_account"])
+            st.write("🟢 [DEBUG] 서비스 계정 이메일:", creds_dict.get("client_email", "없음"))
+            st.write("🟢 [DEBUG] 프로젝트 ID:", creds_dict.get("project_id", "없음"))
 
-    except gspread.exceptions.APIError as e:
-        st.error(f"❌ [DEBUG] Google Sheets API 오류: {e}")
-        st.error("🔍 API 오류 세부 정보:")
-        st.code(str(e))
-        return None
-    except Exception as e:
-        st.error(f"❌ [DEBUG] Google Sheets 연결 실패: {e}")
-        st.error("🔍 오류 세부 정보:")
-        st.code(traceback.format_exc())
-        return None
+            # private_key 줄바꿈 변환 확인
+            if "private_key" in creds_dict:
+                original_key = creds_dict["private_key"]
+                if "\\n" in original_key:
+                    creds_dict["private_key"] = original_key.replace("\\n", "\n")
+                    st.write("🟢 [DEBUG] private_key 줄바꿈 변환 완료")
+                else:
+                    st.write("🟢 [DEBUG] private_key 이미 올바른 형태")
+                
+                st.write("🟢 [DEBUG] private_key 길이:", len(creds_dict["private_key"]))
+                st.write("🟢 [DEBUG] private_key 시작:", creds_dict["private_key"][:50] + "...")
+                st.write("🟢 [DEBUG] private_key 끝:", "..." + creds_dict["private_key"][-50:])
+
+            # Google Sheets 설정
+            google_sheets_config = st.secrets["google_sheets"]
+            sheet_name = google_sheets_config.get("google_sheet_name")
+            sheet_id = google_sheets_config.get("google_sheet_id")
+            
+            st.write("🟢 [DEBUG] 구글 시트 이름:", sheet_name)
+            st.write("🟢 [DEBUG] 구글 시트 ID:", sheet_id)
+
+            # Scope 설정
+            scope = [
+                "https://spreadsheets.google.com/feeds",
+                "https://www.googleapis.com/auth/drive",
+                "https://www.googleapis.com/auth/spreadsheets"
+            ]
+            st.write("🟢 [DEBUG] 사용할 스코프:", scope)
+            
+            # 인증 시도
+            st.write("🟢 [DEBUG] 서비스 계정 인증 시도 중...")
+            try:
+                creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+                st.write("✅ [DEBUG] 서비스 계정 인증 성공")
+            except Exception as auth_error:
+                st.error(f"❌ [DEBUG] 서비스 계정 인증 실패: {auth_error}")
+                st.code(traceback.format_exc())
+                return None
+
+            # gspread 클라이언트 생성
+            st.write("🟢 [DEBUG] gspread 클라이언트 생성 중...")
+            try:
+                client = gspread.authorize(creds)
+                st.write("✅ [DEBUG] gspread 클라이언트 생성 성공")
+            except Exception as client_error:
+                st.error(f"❌ [DEBUG] gspread 클라이언트 생성 실패: {client_error}")
+                st.code(traceback.format_exc())
+                return None
+
+            # 시트 열기 시도
+            st.write("🟢 [DEBUG] 시트 열기 시도 중...")
+            sheet = None
+            
+            # 1. Sheet ID로 먼저 시도
+            if sheet_id:
+                try:
+                    st.write(f"🟢 [DEBUG] Sheet ID로 시도: {sheet_id}")
+                    workbook = client.open_by_key(sheet_id)
+                    sheet = workbook.sheet1
+                    st.write("✅ [DEBUG] Sheet ID로 시트 열기 성공")
+                except gspread.exceptions.SpreadsheetNotFound:
+                    st.error("❌ [DEBUG] 스프레드시트를 찾을 수 없습니다 (ID 오류 또는 권한 부족)")
+                except gspread.exceptions.APIError as api_error:
+                    st.error(f"❌ [DEBUG] Google API 오류 (Sheet ID): {api_error}")
+                    if "PERMISSION_DENIED" in str(api_error):
+                        st.error("❌ [DEBUG] 권한 거부됨! 서비스 계정이 시트에 접근할 수 없습니다.")
+                        st.info("💡 해결방법: Google Sheets에서 bluefood-service@bluefood-survey.iam.gserviceaccount.com을 편집자로 공유해주세요.")
+                except Exception as e:
+                    st.warning(f"⚠️ [DEBUG] Sheet ID로 열기 실패: {e}")
+            
+            # 2. Sheet 이름으로 시도 (ID 실패 시)
+            if sheet is None and sheet_name:
+                try:
+                    st.write(f"🟢 [DEBUG] Sheet 이름으로 시도: {sheet_name}")
+                    workbook = client.open(sheet_name)
+                    sheet = workbook.sheet1
+                    st.write("✅ [DEBUG] Sheet 이름으로 시트 열기 성공")
+                except gspread.exceptions.SpreadsheetNotFound:
+                    st.error(f"❌ [DEBUG] '{sheet_name}' 이름의 스프레드시트를 찾을 수 없습니다")
+                except gspread.exceptions.APIError as api_error:
+                    st.error(f"❌ [DEBUG] Google API 오류 (Sheet 이름): {api_error}")
+                except Exception as e:
+                    st.error(f"❌ [DEBUG] Sheet 이름으로 열기도 실패: {e}")
+            
+            if sheet is None:
+                st.error("❌ [DEBUG] 모든 방법으로 시트 열기 실패")
+                return None
+
+            # 시트 정보 확인
+            try:
+                st.write("🟢 [DEBUG] 시트 정보 확인 중...")
+                sheet_title = sheet.title
+                sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet.spreadsheet.id}"
+                st.write(f"✅ [DEBUG] 시트 제목: {sheet_title}")
+                st.write(f"✅ [DEBUG] 시트 URL: {sheet_url}")
+            except Exception as e:
+                st.warning(f"⚠️ [DEBUG] 시트 정보 확인 실패: {e}")
+
+            # 헤더 설정
+            setup_sheet_headers(sheet)
+            
+            # 최종 연결 테스트
+            try:
+                st.write("🟢 [DEBUG] 최종 연결 테스트 중...")
+                test_value = sheet.cell(1, 1).value
+                st.write(f"✅ [DEBUG] 시트 읽기 테스트 성공: '{test_value}'")
+            except Exception as e:
+                st.warning(f"⚠️ [DEBUG] 시트 읽기 테스트 실패: {e}")
+            
+            st.success("✅ [DEBUG] Google Sheets 연결 완료!")
+            return sheet
+
+        except gspread.exceptions.APIError as e:
+            st.error(f"❌ [DEBUG] Google Sheets API 오류: {e}")
+            st.error("🔍 API 오류 세부 정보:")
+            st.code(str(e))
+            
+            # 일반적인 API 오류 해결 가이드
+            if "PERMISSION_DENIED" in str(e):
+                st.error("🔥 권한 문제 해결 가이드:")
+                st.info("1. Google Sheets 파일을 열어주세요")
+                st.info("2. 공유 버튼 클릭")
+                st.info("3. bluefood-service@bluefood-survey.iam.gserviceaccount.com 추가")
+                st.info("4. 권한을 '편집자'로 설정")
+            elif "UNAUTHENTICATED" in str(e):
+                st.error("🔥 인증 문제: 서비스 계정 키가 올바르지 않습니다")
+            elif "NOT_FOUND" in str(e):
+                st.error("🔥 시트를 찾을 수 없습니다: ID나 이름을 확인해주세요")
+            
+            return None
+        except Exception as e:
+            st.error(f"❌ [DEBUG] 예상치 못한 오류: {e}")
+            st.error("🔍 오류 세부 정보:")
+            st.code(traceback.format_exc())
+            return None
+
 
 def setup_sheet_headers(sheet):
     """시트 헤더 설정 (첫 번째 행이 비어있으면 헤더 추가)"""
@@ -145,6 +207,7 @@ def setup_sheet_headers(sheet):
             
     except Exception as e:
         st.warning(f"⚠️ [DEBUG] 헤더 설정 중 오류: {e}")
+        st.code(traceback.format_exc())
 
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
     """Google Sheets에 데이터 저장 (상세 디버깅 버전)"""
@@ -157,6 +220,7 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
     
     try:
         # 시트 연결
+        st.write("🟢 [DEBUG] 시트 연결 시도 중...")
         sheet = get_google_sheet_cached()
         if sheet is None:
             st.error("🔴 [DEBUG] Google Sheet 객체를 가져오지 못함")
@@ -165,14 +229,11 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         st.write("🟢 [DEBUG] Google Sheet 연결 성공")
 
         # 데이터 준비
+        st.write("🟢 [DEBUG] 저장할 데이터 준비 중...")
         import json
         menus_text = json.dumps(selected_menus, ensure_ascii=False)
         ingredients_text = ', '.join(selected_ingredients)
-
-        # 현재 시간 (한국 시간)
-        from datetime import datetime, timezone, timedelta
-        KST = timezone(timedelta(hours=9))
-        current_time = datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')
+        current_time = format_korean_time()
 
         row_data = [name, id_number, current_time, ingredients_text, menus_text]
         st.write("🟢 [DEBUG] 추가할 row_data:", row_data)
@@ -180,20 +241,25 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         # 데이터 추가 시도
         st.write("🟢 [DEBUG] 시트에 데이터 추가 시도 중...")
         sheet.append_row(row_data, value_input_option="RAW")
+        st.write("✅ [DEBUG] 데이터 추가 완료")
         
         # 저장 완료 처리
         st.session_state.google_sheets_success = True
         st.session_state.already_saved = True
-        st.success("✅ Google Sheets 저장 성공")
         
         # 저장 확인 (마지막 행 읽기)
         try:
+            st.write("🟢 [DEBUG] 저장 확인 중...")
             all_values = sheet.get_all_values()
-            last_row = all_values[-1] if all_values else []
-            st.write(f"🟢 [DEBUG] 저장된 마지막 행: {last_row}")
+            if all_values:
+                last_row = all_values[-1]
+                st.write(f"✅ [DEBUG] 저장된 마지막 행: {last_row}")
+            else:
+                st.warning("⚠️ [DEBUG] 시트에 데이터가 없음")
         except Exception as e:
             st.warning(f"⚠️ [DEBUG] 저장 확인 실패: {e}")
         
+        st.success("✅ Google Sheets 저장 성공!")
         return True
 
     except gspread.exceptions.APIError as e:
@@ -214,6 +280,51 @@ def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
         st.code(traceback.format_exc())
         st.session_state.google_sheets_success = False
         return False
+
+
+# 테스트 함수 (관리자용)
+def show_google_sheets_test():
+    """Google Sheets 연결 테스트 (관리자 전용)"""
+    if st.session_state.get('is_admin', False):
+        st.markdown("---")
+        st.markdown("### 🧪 Google Sheets 연결 테스트 (관리자 전용)")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🔍 연결 테스트", use_container_width=True):
+                with st.spinner("연결 테스트 중..."):
+                    sheet = get_google_sheet_cached()
+                    
+                    if sheet:
+                        try:
+                            # 현재 데이터 확인
+                            all_values = sheet.get_all_values()
+                            st.success(f"✅ 연결 성공! 현재 {len(all_values)}행의 데이터가 있습니다.")
+                            
+                            if all_values:
+                                st.write("📊 시트의 마지막 5행:")
+                                for i, row in enumerate(all_values[-5:], 1):
+                                    st.write(f"{len(all_values)-5+i}: {row}")
+                        except Exception as e:
+                            st.error(f"❌ 데이터 읽기 실패: {e}")
+                    else:
+                        st.error("❌ 시트 연결 실패")
+        
+        with col2:
+            if st.button("🧪 테스트 데이터 추가", use_container_width=True):
+                with st.spinner("테스트 데이터 추가 중..."):
+                    test_result = save_to_google_sheets(
+                        "테스트사용자", 
+                        "TEST001", 
+                        ["김", "새우"], 
+                        {"김": ["김밥"], "새우": ["새우튀김"]}
+                    )
+                    if test_result:
+                        st.success("✅ 테스트 데이터 추가 성공!")
+                    else:
+                        st.error("❌ 테스트 데이터 추가 실패!")
+                        
 # 테스트 함수 추가
 def test_google_sheets_connection():
     """Google Sheets 연결 테스트"""
