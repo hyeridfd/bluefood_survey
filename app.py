@@ -896,6 +896,7 @@ def main():
                     st.markdown("**📊 데이터 로드 오류**")
             else:
                 st.info("아직 설문 데이터가 없습니다.")
+                show_google_sheets_test()
             
             # 로그아웃 버튼
             if st.button("🚪 로그아웃", use_container_width=True):
