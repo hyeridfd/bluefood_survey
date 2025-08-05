@@ -454,22 +454,15 @@ def test_google_sheets_connection():
                 st.error("❌ 시트 연결 실패")
                 
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
-    """데이터 저장 - Google Sheets 우선, 실패 시 로컬 엑셀 백업"""
+    """데이터 저장 - Google Sheets와 로컬 엑셀 모두 저장"""
     
-    # 중복 저장 방지
     if st.session_state.get("already_saved", False):
         return "skipped", None
         
-    # 세션 상태 초기화
-    st.session_state.google_sheets_success = False
-    st.session_state.google_sheets_error = []
+    # Google Sheets 저장 시도 (성공/실패와 무관하게 진행)
+    save_to_google_sheets(name, id_number, selected_ingredients, selected_menus)
     
-    # 1순위: Google Sheets에 저장 시도
-    if save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-        st.success("✅ Google Sheets에 데이터가 저장되었습니다!")
-        return "google_sheets", None
-    
-    # 2순위: 로컬 엑셀 파일에 백업 저장
+    # ✅ 항상 로컬 엑셀에도 저장하도록 수정
     try:
         new_data = {
             '이름': name,
@@ -483,7 +476,7 @@ def save_to_excel(name, id_number, selected_ingredients, selected_menus):
             new_data[f'{ingredient}_메뉴'] = ', '.join(selected_menus.get(ingredient, []))
 
         new_df = pd.DataFrame([new_data])
-        filename = "bluefood_survey_backup.xlsx"
+        filename = "bluefood_survey.xlsx"
 
         if os.path.exists(filename):
             old_df = pd.read_excel(filename)
@@ -492,13 +485,11 @@ def save_to_excel(name, id_number, selected_ingredients, selected_menus):
             final_df = new_df
 
         final_df.to_excel(filename, index=False)
-        st.warning("⚠️ Google Sheets 연결 실패로 로컬 백업 파일에 저장되었습니다.")
         return filename, final_df
-        
-    except Exception as e:
-        st.error(f"❌ 백업 저장도 실패했습니다: {e}")
-        return None, None
 
+    except Exception as e:
+        st.error(f"❌ 로컬 엑셀 저장 실패: {e}")
+        return None, None
 
 # 페이지 설정
 st.set_page_config(
