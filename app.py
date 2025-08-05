@@ -54,47 +54,48 @@ def show_admin_dashboard(df):
     """관리자 대시보드: 응답 현황 시각화 및 중복 응답 감지"""
     st.markdown("## 📊 관리자 대시보드")
 
-    # 🔹 컬럼명 안전 처리
-    df.columns = df.columns.str.strip()
-
     if df is None or df.empty:
         st.warning("⚠️ 응답 데이터가 없습니다.")
         return
 
-    # --- 1. 응답 요약 ---
+    # ✅ 1. 응답 요약 정보
     st.markdown(f"**총 응답자 수:** {df['식별번호'].nunique()}명")
     st.markdown(f"**총 응답 수:** {len(df)}건")
-    if '설문일시' in df.columns:
-        st.markdown(f"**최근 응답 시간:** {df['설문일시'].max()}")
+    st.markdown(f"**최근 응답 시간:** {df['설문일시'].max()}")
 
-    # --- 2. 중복 응답 감지 ---
+    # ✅ 2. 중복 응답 감지
     st.markdown("### 🔍 중복 응답 감지")
-    if '식별번호' in df.columns:
-        dup = df[df.duplicated('식별번호', keep=False)]
-        if not dup.empty:
-            st.warning(f"⚠️ {dup['식별번호'].nunique()}명의 중복 응답 발견")
-            st.dataframe(dup)
-        else:
-            st.success("✅ 중복 응답 없음")
+    dup = df[df.duplicated('식별번호', keep=False)]
+    if not dup.empty:
+        st.warning(f"⚠️ {dup['식별번호'].nunique()}명의 중복 응답 발견")
+        st.dataframe(dup)
+    else:
+        st.success("✅ 중복 응답 없음")
 
-    # --- 3. 수산물 선호도 ---
-    # --- 3. 수산물 선호도 ---
-st.markdown("### 🐟 수산물 선호도 TOP5")
+    # ✅ 3. 수산물 선호도 TOP5
+    st.markdown("### 🐟 수산물 선호도 TOP5")
     if '선택한_수산물' in df.columns:
         try:
-            all_ingredients = df['선택한_수산물'].dropna().astype(str).str.split(',').explode().str.strip()
+            all_ingredients = (
+                df['선택한_수산물']
+                .dropna()
+                .astype(str)
+                .str.split(',')
+                .explode()
+                .str.strip()
+            )
             top_ing = all_ingredients.value_counts().head(5)
-    
+
             if not top_ing.empty:
                 fig1, ax1 = plt.subplots()
                 sns.barplot(x=top_ing.values, y=top_ing.index, ax=ax1)
-    
-                # ✅ fontprop가 존재하면 적용
-                if fontprop:
+
+                # ✅ fontprop이 정의되어 있을 때만 적용
+                try:
                     ax1.set_title("선호 수산물 TOP5", fontproperties=fontprop)
-                else:
+                except NameError:
                     ax1.set_title("선호 수산물 TOP5")
-    
+
                 st.pyplot(fig1)
             else:
                 st.info("📌 수산물 데이터가 없습니다.")
