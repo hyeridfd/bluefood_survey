@@ -12,7 +12,72 @@ import random
 import traceback
 from google.oauth2.service_account import Credentials
 
+import matplotlib.pyplot as plt
+import seaborn as sns
 
+def show_admin_dashboard(df):
+    """관리자 대시보드: 응답 현황 시각화 및 중복 응답 감지"""
+    st.markdown("## 📊 관리자 대시보드")
+
+    if df is None or df.empty:
+        st.warning("⚠️ 응답 데이터가 없습니다.")
+        return
+
+    # --- 1. 응답 요약 정보 ---
+    st.markdown(f"**총 응답자 수:** {df['식별번호'].nunique()}명")
+    st.markdown(f"**총 응답 수:** {len(df)}건")
+    st.markdown(f"**최근 응답 시간:** {df['설문일시'].max()}")
+
+    # --- 2. 중복 응답 감지 ---
+    st.markdown("### 🔍 중복 응답 감지")
+    dup = df[df.duplicated('식별번호', keep=False)]
+    if not dup.empty:
+        st.warning(f"⚠️ {dup['식별번호'].nunique()}명의 중복 응답 발견")
+        st.dataframe(dup)
+    else:
+        st.success("✅ 중복 응답 없음")
+
+    # --- 3. 선호 수산물 분석 ---
+    st.markdown("### 🐟 수산물 선호도 TOP5")
+    all_ingredients = df['선택한_수산물'].dropna().str.split(', ').explode()
+    top_ing = all_ingredients.value_counts().head(5)
+
+    fig1, ax1 = plt.subplots()
+    sns.barplot(x=top_ing.values, y=top_ing.index, ax=ax1)
+    ax1.set_title("선호 수산물 TOP5")
+    st.pyplot(fig1)
+
+    # --- 4. 선호 메뉴 분석 ---
+    st.markdown("### 🍽️ 메뉴 선호도 TOP5")
+    import ast
+    menu_list = []
+    for menus in df['선택한_메뉴'].dropna():
+        try:
+            parsed = ast.literal_eval(menus)
+            for ing, menu_items in parsed.items():
+                menu_list.extend(menu_items)
+        except:
+            pass
+    menu_series = pd.Series(menu_list)
+    top_menu = menu_series.value_counts().head(5)
+
+    fig2, ax2 = plt.subplots()
+    sns.barplot(x=top_menu.values, y=top_menu.index, ax=ax2, palette="Blues_d")
+    ax2.set_title("선호 메뉴 TOP5")
+    st.pyplot(fig2)
+
+    # --- 5. 날짜별 응답 추이 ---
+    st.markdown("### ⏱️ 날짜별 응답 추이")
+    df['설문일자'] = pd.to_datetime(df['설문일시']).dt.date
+    daily_count = df.groupby('설문일자').size()
+
+    fig3, ax3 = plt.subplots()
+    daily_count.plot(kind='line', marker='o', ax=ax3)
+    ax3.set_ylabel("응답 수")
+    ax3.set_xlabel("날짜")
+    ax3.set_title("날짜별 응답 추이")
+    st.pyplot(fig3)
+    
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
 
@@ -929,6 +994,7 @@ def main():
                     st.markdown(f"**📊 총 응답자: {len(df)}명**")
                     if '설문일시' in df.columns:
                         st.markdown(f"**📅 최근 응답: {df['설문일시'].max()}**")
+                    show_admin_dashboard(df)
                 except:
                     st.markdown("**📊 데이터 로드 오류**")
             else:
