@@ -436,13 +436,28 @@ def test_google_sheets_connection():
                     st.error(f"❌ 테스트 실패: {e}")
             else:
                 st.error("❌ 시트 연결 실패")
-                
-# ✅ 기존 save_to_excel 수정 → Drive 업로드 포함
+
+
+# ✅ Google Drive 인증 함수
+def authenticate_drive():
+    gauth = GoogleAuth()
+    gauth.LoadCredentialsFile("mycreds.txt")
+    if gauth.credentials is None:
+        gauth.LocalWebserverAuth()      # 최초 실행 시 브라우저 인증 필요
+    elif gauth.access_token_expired:
+        gauth.Refresh()
+    else:
+        gauth.Authorize()
+    gauth.SaveCredentialsFile("mycreds.txt")
+    return GoogleDrive(gauth)
+    
+# ✅ 기존 save_to_excel → Google Drive 업로드 포함 버전
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
+    """응답 데이터를 로컬 Excel에 저장하고, Google Drive에 자동 업로드"""
     if st.session_state.get("already_saved", False):
         return "skipped", None
 
-    # 새 데이터 생성
+    # ▶ 데이터 구성
     new_data = {
         '이름': name,
         '식별번호': id_number,
@@ -450,33 +465,39 @@ def save_to_excel(name, id_number, selected_ingredients, selected_menus):
         '선택한_수산물': ', '.join(selected_ingredients),
         '선택한_메뉴': ', '.join([f"{ing}: {', '.join(menus)}" for ing, menus in selected_menus.items()])
     }
-
     for ingredient in selected_ingredients:
         new_data[f'{ingredient}_메뉴'] = ', '.join(selected_menus.get(ingredient, []))
 
     new_df = pd.DataFrame([new_data])
     filename = "bluefood_survey_backup.xlsx"
 
-    # ✅ 로컬 저장
+    # ▶ 로컬 Excel 백업
     if os.path.exists(filename):
         old_df = pd.read_excel(filename)
         final_df = pd.concat([old_df, new_df], ignore_index=True)
     else:
         final_df = new_df
-
     final_df.to_excel(filename, index=False)
 
-    # ✅ Google Drive 업로드
+    # ▶ Google Drive 업로드
+    drive_link = None
     try:
-        folder_id = "YOUR_DRIVE_FOLDER_ID"  # 👉 Google Drive 폴더 ID 입력
-        drive_link = upload_to_drive(filename, folder_id=folder_id)
+        folder_id = "1p0_GddPksvrA_17f2DPE3qmdbM67wUfX"   # ✅ Drive 폴더 ID 입력
+        drive = authenticate_drive()
+        file_drive = drive.CreateFile({
+            "title": filename,
+            "parents": [{"id": folder_id}] if folder_id else []
+        })
+        file_drive.SetContentFile(filename)
+        file_drive.Upload()
+        drive_link = file_drive['alternateLink']
         st.success("✅ Google Drive 업로드 완료!")
-        st.markdown(f"[📂 Google Drive에서 확인하기]({drive_link})")
+        st.markdown(f"[📂 Google Drive에서 데이터 확인하기]({drive_link})")
     except Exception as e:
         st.warning(f"⚠️ Google Drive 업로드 실패: {e}")
 
+    # ▶ 상태 반환
     return filename, final_df
-
 
 # 페이지 설정
 st.set_page_config(
