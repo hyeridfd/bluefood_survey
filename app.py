@@ -36,6 +36,9 @@ def show_admin_dashboard(df):
     """관리자 대시보드: 응답 현황 시각화 및 중복 응답 감지"""
     st.markdown("## 📊 관리자 대시보드")
 
+    # 🔹 컬럼명 안전 처리
+    df.columns = df.columns.str.strip()
+
     if df is None or df.empty:
         st.warning("⚠️ 응답 데이터가 없습니다.")
         return
@@ -43,72 +46,85 @@ def show_admin_dashboard(df):
     # --- 1. 응답 요약 ---
     st.markdown(f"**총 응답자 수:** {df['식별번호'].nunique()}명")
     st.markdown(f"**총 응답 수:** {len(df)}건")
-    st.markdown(f"**최근 응답 시간:** {df['설문일시'].max()}")
+    if '설문일시' in df.columns:
+        st.markdown(f"**최근 응답 시간:** {df['설문일시'].max()}")
 
     # --- 2. 중복 응답 감지 ---
     st.markdown("### 🔍 중복 응답 감지")
-    dup = df[df.duplicated('식별번호', keep=False)]
-    if not dup.empty:
-        st.warning(f"⚠️ {dup['식별번호'].nunique()}명의 중복 응답 발견")
-        st.dataframe(dup)
-    else:
-        st.success("✅ 중복 응답 없음")
+    if '식별번호' in df.columns:
+        dup = df[df.duplicated('식별번호', keep=False)]
+        if not dup.empty:
+            st.warning(f"⚠️ {dup['식별번호'].nunique()}명의 중복 응답 발견")
+            st.dataframe(dup)
+        else:
+            st.success("✅ 중복 응답 없음")
 
-    # --- 3. 선호 수산물 분석 ---
+    # --- 3. 수산물 선호도 ---
     st.markdown("### 🐟 수산물 선호도 TOP5")
-    all_ingredients = df['선택한_수산물'].dropna().str.split(',').explode().str.strip()
-    top_ing = all_ingredients.value_counts().head(5)
+    if '선택한_수산물' in df.columns:
+        try:
+            all_ingredients = df['선택한_수산물'].dropna().astype(str).str.split(',').explode().str.strip()
+            top_ing = all_ingredients.value_counts().head(5)
 
-    if not top_ing.empty:
-        fig1, ax1 = plt.subplots()
-        sns.barplot(x=top_ing.values, y=top_ing.index, ax=ax1)
-        ax1.set_title("선호 수산물 TOP5", fontproperties=fontprop)
-        st.pyplot(fig1)
+            if not top_ing.empty:
+                fig1, ax1 = plt.subplots()
+                sns.barplot(x=top_ing.values, y=top_ing.index, ax=ax1)
+                ax1.set_title("선호 수산물 TOP5", fontproperties=fontprop)
+                st.pyplot(fig1)
+            else:
+                st.info("📌 수산물 데이터가 없습니다.")
+        except Exception as e:
+            st.error(f"데이터 로드 오류 (수산물): {e}")
     else:
-        st.info("🔹 수산물 데이터가 없습니다.")
+        st.error("⚠️ '선택한_수산물' 컬럼이 없습니다.")
 
-    # --- 4. 선호 메뉴 분석 ---
+    # --- 4. 메뉴 선호도 ---
     st.markdown("### 🍽️ 메뉴 선호도 TOP5")
     menu_list = []
+    if '선택한_메뉴' in df.columns:
+        try:
+            for menus in df['선택한_메뉴'].dropna():
+                for item in str(menus).split(","):
+                    if ":" in item:
+                        menu_list.append(item.split(":", 1)[1].strip())
+                    else:
+                        menu_list.append(item.strip())
 
-    for menus in df['선택한_메뉴'].dropna():
-        # ✅ "어란: 날치알밥, 어묵: 어묵우동" 형태 → 메뉴명만 추출
-        for item in menus.split(","):
-            item = item.strip()
-            if ":" in item:
-                _, menu_name = item.split(":", 1)
-                menu_list.append(menu_name.strip())
-            elif item:
-                menu_list.append(item.strip())
+            if menu_list:
+                menu_series = pd.Series(menu_list)
+                top_menu = menu_series.value_counts().head(5)
 
-    menu_series = pd.Series(menu_list)
-
-    if not menu_series.empty:
-        top_menu = menu_series.value_counts().head(5)
-        fig2, ax2 = plt.subplots()
-        sns.barplot(x=top_menu.values, y=top_menu.index, ax=ax2, palette="Blues_d")
-        ax2.set_title("선호 메뉴 TOP5", fontproperties=fontprop)
-        st.pyplot(fig2)
+                fig2, ax2 = plt.subplots()
+                sns.barplot(x=top_menu.values, y=top_menu.index, ax=ax2, palette="Blues_d")
+                ax2.set_title("선호 메뉴 TOP5", fontproperties=fontprop)
+                st.pyplot(fig2)
+            else:
+                st.info("📌 메뉴 데이터가 없습니다.")
+        except Exception as e:
+            st.error(f"데이터 로드 오류 (메뉴): {e}")
     else:
-        st.info("📌 메뉴 데이터가 없습니다.")
+        st.error("⚠️ '선택한_메뉴' 컬럼이 없습니다.")
 
     # --- 5. 날짜별 응답 추이 ---
     st.markdown("### ⏱️ 날짜별 응답 추이")
-    df['설문일자'] = pd.to_datetime(df['설문일시'], errors='coerce').dt.date
-    daily_count = df.groupby('설문일자').size().reset_index(name='응답수')
+    if '설문일시' in df.columns:
+        try:
+            df['설문일자'] = pd.to_datetime(df['설문일시'], errors='coerce').dt.date
+            daily_count = df.groupby('설문일자').size().reset_index(name='응답수')
 
-    if not daily_count.empty:
-        fig3, ax3 = plt.subplots()
-        ax3.plot(daily_count['설문일자'], daily_count['응답수'], marker='o')
-        ax3.set_ylabel("응답 수")
-        ax3.set_xlabel("날짜")
-        ax3.set_title("날짜별 응답 추이", fontproperties=fontprop)
-        ax3.grid(True, linestyle="--", alpha=0.5)
-        fig3.autofmt_xdate()
-        st.pyplot(fig3)
-    else:
-        st.info("📌 날짜별 데이터가 없습니다.")
-
+            if not daily_count.empty:
+                fig3, ax3 = plt.subplots()
+                ax3.plot(daily_count['설문일자'], daily_count['응답수'], marker='o')
+                ax3.set_ylabel("응답 수")
+                ax3.set_xlabel("날짜")
+                ax3.set_title("날짜별 응답 추이", fontproperties=fontprop)
+                ax3.grid(True, linestyle="--", alpha=0.5)
+                fig3.autofmt_xdate()
+                st.pyplot(fig3)
+            else:
+                st.info("📌 날짜별 데이터가 없습니다.")
+        except Exception as e:
+            st.error(f"데이터 로드 오류 (날짜): {e}")
     
 # ✅ 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
