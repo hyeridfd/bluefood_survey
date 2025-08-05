@@ -17,8 +17,8 @@ import seaborn as sns
 import matplotlib as mpl
 import matplotlib.font_manager as fm
 
-# ✅ 1. NanumGothic 폰트 경로 지정
-font_dir = "/usr/share/fonts/truetype/nanum"
+# ✅ 1. 사용자 홈 디렉토리에 폰트 저장 경로 설정
+font_dir = os.path.expanduser("~/.streamlit/fonts")
 font_path = os.path.join(font_dir, "NanumGothic.ttf")
 
 # ✅ 2. 폰트가 없으면 다운로드
@@ -29,8 +29,7 @@ if not os.path.exists(font_path):
 
 # ✅ 3. matplotlib에 폰트 적용
 mpl.rcParams['font.family'] = fm.FontProperties(fname=font_path).get_name()
-mpl.rcParams['axes.unicode_minus'] = False  # 마이너스 깨짐 방지
-
+mpl.rcParams['axes.unicode_minus'] = False
 
 def show_admin_dashboard(df):
     """관리자 대시보드: 응답 현황 시각화 및 중복 응답 감지"""
