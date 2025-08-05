@@ -80,28 +80,28 @@ def show_admin_dashboard(df):
     # --- 3. 수산물 선호도 ---
     # --- 3. 수산물 선호도 ---
 st.markdown("### 🐟 수산물 선호도 TOP5")
-if '선택한_수산물' in df.columns:
-    try:
-        all_ingredients = df['선택한_수산물'].dropna().astype(str).str.split(',').explode().str.strip()
-        top_ing = all_ingredients.value_counts().head(5)
-
-        if not top_ing.empty:
-            fig1, ax1 = plt.subplots()
-            sns.barplot(x=top_ing.values, y=top_ing.index, ax=ax1)
-
-            # ✅ fontprop가 존재하면 적용
-            if fontprop:
-                ax1.set_title("선호 수산물 TOP5", fontproperties=fontprop)
+    if '선택한_수산물' in df.columns:
+        try:
+            all_ingredients = df['선택한_수산물'].dropna().astype(str).str.split(',').explode().str.strip()
+            top_ing = all_ingredients.value_counts().head(5)
+    
+            if not top_ing.empty:
+                fig1, ax1 = plt.subplots()
+                sns.barplot(x=top_ing.values, y=top_ing.index, ax=ax1)
+    
+                # ✅ fontprop가 존재하면 적용
+                if fontprop:
+                    ax1.set_title("선호 수산물 TOP5", fontproperties=fontprop)
+                else:
+                    ax1.set_title("선호 수산물 TOP5")
+    
+                st.pyplot(fig1)
             else:
-                ax1.set_title("선호 수산물 TOP5")
-
-            st.pyplot(fig1)
-        else:
-            st.info("📌 수산물 데이터가 없습니다.")
-    except Exception as e:
-        st.error(f"데이터 로드 오류 (수산물): {e}")
-else:
-    st.error("⚠️ '선택한_수산물' 컬럼이 없습니다.")
+                st.info("📌 수산물 데이터가 없습니다.")
+        except Exception as e:
+            st.error(f"데이터 로드 오류 (수산물): {e}")
+    else:
+        st.error("⚠️ '선택한_수산물' 컬럼이 없습니다.")
 
 
     # --- 4. 메뉴 선호도 ---
