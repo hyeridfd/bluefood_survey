@@ -11,6 +11,8 @@ import time
 import random
 import traceback
 from google.oauth2.service_account import Credentials
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
 
 # ✅ 한국 시간대 설정
@@ -27,6 +29,26 @@ def format_korean_time():
     """한국 시간을 문자열로 포맷팅"""
     return get_korean_time().strftime('%Y-%m-%d %H:%M:%S')
 
+# ✅ Google Drive 업로드 함수
+def upload_to_drive(local_file, folder_id=None):
+    gauth = GoogleAuth()
+    gauth.LoadCredentialsFile("mycreds.txt")
+    if gauth.credentials is None:
+        gauth.LocalWebserverAuth()
+    elif gauth.access_token_expired:
+        gauth.Refresh()
+    else:
+        gauth.Authorize()
+    gauth.SaveCredentialsFile("mycreds.txt")
+
+    drive = GoogleDrive(gauth)
+    file_drive = drive.CreateFile({
+        "title": os.path.basename(local_file),
+        "parents": [{"id": folder_id}] if folder_id else []
+    })
+    file_drive.SetContentFile(local_file)
+    file_drive.Upload()
+    return file_drive['alternateLink']
 
 #@st.cache_resource
 def get_google_sheet_cached():
@@ -415,51 +437,45 @@ def test_google_sheets_connection():
             else:
                 st.error("❌ 시트 연결 실패")
                 
+# ✅ 기존 save_to_excel 수정 → Drive 업로드 포함
 def save_to_excel(name, id_number, selected_ingredients, selected_menus):
-    """데이터 저장 - Google Sheets 우선, 실패 시 로컬 엑셀 백업"""
-    
-    # 중복 저장 방지
     if st.session_state.get("already_saved", False):
         return "skipped", None
-        
-    # 세션 상태 초기화
-    st.session_state.google_sheets_success = False
-    st.session_state.google_sheets_error = []
-    
-    # 1순위: Google Sheets에 저장 시도
-    if save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-        st.success("✅ Google Sheets에 데이터가 저장되었습니다!")
-        return "google_sheets", None
-    
-    # 2순위: 로컬 엑셀 파일에 백업 저장
+
+    # 새 데이터 생성
+    new_data = {
+        '이름': name,
+        '식별번호': id_number,
+        '설문일시': format_korean_time(),
+        '선택한_수산물': ', '.join(selected_ingredients),
+        '선택한_메뉴': ', '.join([f"{ing}: {', '.join(menus)}" for ing, menus in selected_menus.items()])
+    }
+
+    for ingredient in selected_ingredients:
+        new_data[f'{ingredient}_메뉴'] = ', '.join(selected_menus.get(ingredient, []))
+
+    new_df = pd.DataFrame([new_data])
+    filename = "bluefood_survey_backup.xlsx"
+
+    # ✅ 로컬 저장
+    if os.path.exists(filename):
+        old_df = pd.read_excel(filename)
+        final_df = pd.concat([old_df, new_df], ignore_index=True)
+    else:
+        final_df = new_df
+
+    final_df.to_excel(filename, index=False)
+
+    # ✅ Google Drive 업로드
     try:
-        new_data = {
-            '이름': name,
-            '식별번호': id_number,
-            '설문일시': format_korean_time(),
-            '선택한_수산물': ', '.join(selected_ingredients),
-            '선택한_메뉴': ', '.join([f"{ingredient}: {', '.join(menus)}" for ingredient, menus in selected_menus.items()])
-        }
-
-        for ingredient in selected_ingredients:
-            new_data[f'{ingredient}_메뉴'] = ', '.join(selected_menus.get(ingredient, []))
-
-        new_df = pd.DataFrame([new_data])
-        filename = "bluefood_survey_backup.xlsx"
-
-        if os.path.exists(filename):
-            old_df = pd.read_excel(filename)
-            final_df = pd.concat([old_df, new_df], ignore_index=True)
-        else:
-            final_df = new_df
-
-        final_df.to_excel(filename, index=False)
-        st.warning("⚠️ Google Sheets 연결 실패로 로컬 백업 파일에 저장되었습니다.")
-        return filename, final_df
-        
+        folder_id = "YOUR_DRIVE_FOLDER_ID"  # 👉 Google Drive 폴더 ID 입력
+        drive_link = upload_to_drive(filename, folder_id=folder_id)
+        st.success("✅ Google Drive 업로드 완료!")
+        st.markdown(f"[📂 Google Drive에서 확인하기]({drive_link})")
     except Exception as e:
-        st.error(f"❌ 백업 저장도 실패했습니다: {e}")
-        return None, None
+        st.warning(f"⚠️ Google Drive 업로드 실패: {e}")
+
+    return filename, final_df
 
 
 # 페이지 설정
