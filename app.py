@@ -273,74 +273,47 @@ def save_to_google_sheets_debug(name, id_number, selected_ingredients, selected_
         return False
 
 def save_to_google_sheets(name, id_number, selected_ingredients, selected_menus):
-    """Google Sheets에 데이터 저장 (상세 디버깅 버전)"""
-    
-    st.write("🟢 [DEBUG] save_to_google_sheets() 호출됨")
+    """Google Sheets에 데이터 저장 (실제 설문용 - 최소 디버깅)"""
     
     if st.session_state.get("already_saved", False):
-        st.write("🟢 [DEBUG] 이미 저장된 상태라 skip")
+        st.info("🟢 이미 저장된 데이터입니다.")
         return True
     
     try:
+        st.info("🔄 Google Sheets에 데이터를 저장하는 중...")
+        
         # 시트 연결
-        st.write("🟢 [DEBUG] 시트 연결 시도 중...")
         sheet = get_google_sheet_cached()
         if sheet is None:
-            st.error("🔴 [DEBUG] Google Sheet 객체를 가져오지 못함")
+            st.error("❌ Google Sheets 연결에 실패했습니다.")
             return False
-        
-        st.write("🟢 [DEBUG] Google Sheet 연결 성공")
 
         # 데이터 준비
-        st.write("🟢 [DEBUG] 저장할 데이터 준비 중...")
         import json
         menus_text = json.dumps(selected_menus, ensure_ascii=False)
         ingredients_text = ', '.join(selected_ingredients)
         current_time = format_korean_time()
 
         row_data = [name, id_number, current_time, ingredients_text, menus_text]
-        st.write("🟢 [DEBUG] 추가할 row_data:", row_data)
 
         # 데이터 추가 시도
-        st.write("🟢 [DEBUG] 시트에 데이터 추가 시도 중...")
         sheet.append_row(row_data, value_input_option="RAW")
-        st.write("✅ [DEBUG] 데이터 추가 완료")
         
         # 저장 완료 처리
         st.session_state.google_sheets_success = True
         st.session_state.already_saved = True
         
-        # 저장 확인 (마지막 행 읽기)
-        try:
-            st.write("🟢 [DEBUG] 저장 확인 중...")
-            all_values = sheet.get_all_values()
-            if all_values:
-                last_row = all_values[-1]
-                st.write(f"✅ [DEBUG] 저장된 마지막 행: {last_row}")
-            else:
-                st.warning("⚠️ [DEBUG] 시트에 데이터가 없음")
-        except Exception as e:
-            st.warning(f"⚠️ [DEBUG] 저장 확인 실패: {e}")
-        
-        st.success("✅ Google Sheets 저장 성공!")
+        st.success("✅ Google Sheets에 데이터가 성공적으로 저장되었습니다!")
         return True
 
     except gspread.exceptions.APIError as e:
-        st.error(f"🔴 Google API 오류 발생: {e}")
-        st.error("🔍 API 오류 세부사항:")
-        st.code(str(e))
-        
-        # 권한 관련 오류인지 확인
+        st.error(f"❌ Google API 오류: {e}")
         if "PERMISSION_DENIED" in str(e):
-            st.error("❌ 권한 오류: 서비스 계정이 시트에 대한 편집 권한이 없습니다!")
-            st.info("해결방법: Google Sheets에서 bluefood-service@bluefood-survey.iam.gserviceaccount.com을 편집자로 공유해주세요.")
-        
+            st.error("💡 권한 문제: 서비스 계정에 시트 편집 권한이 필요합니다.")
         st.session_state.google_sheets_success = False
         return False
     except Exception as e:
-        st.error(f"🔴 Google Sheets 저장 실패 (예외): {e}")
-        st.error("🔍 오류 세부사항:")
-        st.code(traceback.format_exc())
+        st.error(f"❌ Google Sheets 저장 중 오류 발생: {e}")
         st.session_state.google_sheets_success = False
         return False
 
