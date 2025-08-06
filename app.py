@@ -88,6 +88,12 @@ def show_admin_dashboard(df):
                     ax1.set_xlabel("응답 수", fontproperties=fontprop)
                     ax1.set_ylabel("수산물", fontproperties=fontprop)
 
+                # ✅ y축 ticklabel (수산물 이름) 폰트 적용
+                    for label in ax1.get_yticklabels():
+                        label.set_fontproperties(fontprop)
+                    for label in ax1.get_xticklabels():
+                        label.set_fontproperties(fontprop)
+
                 except NameError:
                     ax1.set_title("선호 수산물 TOP5")
 
@@ -119,6 +125,14 @@ def show_admin_dashboard(df):
                 fig2, ax2 = plt.subplots()
                 sns.barplot(x=top_menu.values, y=top_menu.index, ax=ax2, palette="Blues_d")
                 ax2.set_title("선호 메뉴 TOP5", fontproperties=fontprop)
+                ax2.set_xlabel("응답 수", fontproperties=fontprop)
+                ax2.set_ylabel("메뉴", fontproperties=fontprop)
+
+                for label in ax2.get_yticklabels():
+                    label.set_fontproperties(fontprop)
+                for label in ax2.get_xticklabels():
+                    label.set_fontproperties(fontprop)
+
                 st.pyplot(fig2)
             else:
                 st.info("📌 메뉴 데이터가 없습니다.")
