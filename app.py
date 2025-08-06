@@ -20,35 +20,27 @@ from matplotlib import rcParams
 from matplotlib import font_manager as fm
 import urllib.request
 
-# ✅ 1. 사용자 홈 디렉토리에 폰트 저장 경로 설정
-font_dir = os.path.expanduser("~/.streamlit/fonts")
-font_path = os.path.join(font_dir, "NanumGothic.ttf")
+# ✅ NanumGothic 폰트 다운로드 경로 (Streamlit Cloud에서도 사용 가능)
+FONT_PATH = "/tmp/NanumGothic.ttf"
+FONT_URL = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
 
-# ✅ 2. 폰트가 없으면 다운로드
-if not os.path.exists(font_path):
-    os.makedirs(font_dir, exist_ok=True)
-    url = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
-    urllib.request.urlretrieve(url, font_path)
+# ✅ 폰트 다운로드 (없으면 자동 다운로드)
+if not os.path.exists(FONT_PATH):
+    try:
+        urllib.request.urlretrieve(FONT_URL, FONT_PATH)
+    except Exception as e:
+        print(f"⚠️ 폰트 다운로드 실패: {e}")
 
-# ✅ 한글 폰트 설정 (NanumGothic)
+# ✅ fontprop 전역 정의
 try:
-    font_path = '/usr/share/fonts/truetype/nanum/NanumGothic.ttf'  # Linux 환경
-    if not os.path.exists(font_path):
-        font_path = '/System/Library/Fonts/Supplemental/AppleGothic.ttf'  # macOS
-    if not os.path.exists(font_path):
-        font_path = 'C:/Windows/Fonts/malgun.ttf'  # Windows
-    if not os.path.exists(font_path):
-        font_path = fm.findfont(fm.FontProperties(family='DejaVu Sans'))  # fallback
-
-    fontprop = fm.FontProperties(fname=font_path)
+    fontprop = fm.FontProperties(fname=FONT_PATH)
     rcParams['font.family'] = fontprop.get_name()
+    mpl.rcParams['font.family'] = fontprop.get_name()
+    mpl.rcParams['axes.unicode_minus'] = False
 except Exception as e:
-    st.warning(f"⚠️ 폰트 로드 실패, 기본 폰트 사용: {e}")
+    print(f"⚠️ 폰트 로드 실패, 기본 폰트 사용: {e}")
     fontprop = None
-    
-# ✅ 3. matplotlib에 폰트 적용
-mpl.rcParams['font.family'] = fm.FontProperties(fname=font_path).get_name()
-mpl.rcParams['axes.unicode_minus'] = False
+
 
 def show_admin_dashboard(df):
     """관리자 대시보드: 응답 현황 시각화 및 중복 응답 감지"""
@@ -93,6 +85,9 @@ def show_admin_dashboard(df):
                 # ✅ fontprop이 정의되어 있을 때만 적용
                 try:
                     ax1.set_title("선호 수산물 TOP5", fontproperties=fontprop)
+                    ax1.set_xlabel("응답 수", fontproperties=fontprop)
+                    ax1.set_ylabel("수산물", fontproperties=fontprop)
+
                 except NameError:
                     ax1.set_title("선호 수산물 TOP5")
 
