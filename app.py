@@ -80,7 +80,7 @@ def show_admin_dashboard(df):
 
             if not top_ing.empty:
                 fig1, ax1 = plt.subplots()
-                sns.barplot(x=top_ing.values, y=top_ing.index, ax=ax1)
+                sns.barplot(x=top_ing.values, y=top_ing.index, ax=ax1, palette=["#A7C7E7", "#89CFF0", "#7EC8E3", "#5DADE2", "#3498DB"])
 
                 # ✅ fontprop이 정의되어 있을 때만 적용
                 try:
