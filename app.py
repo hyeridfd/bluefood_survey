@@ -123,7 +123,7 @@ def show_admin_dashboard(df):
                 top_menu = menu_series.value_counts().head(5)
 
                 fig2, ax2 = plt.subplots()
-                sns.barplot(x=top_menu.values, y=top_menu.index, ax=ax2, palette="Blues_d")
+                sns.barplot(x=top_menu.values, y=top_menu.index, ax=ax2, palette=["#A7C7E7", "#89CFF0", "#7EC8E3", "#5DADE2", "#3498DB"]))
                 ax2.set_title("선호 메뉴 TOP5", fontproperties=fontprop)
                 ax2.set_xlabel("응답 수", fontproperties=fontprop)
                 ax2.set_ylabel("메뉴", fontproperties=fontprop)
