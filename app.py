@@ -154,6 +154,9 @@ def show_admin_dashboard(df):
                 ax3.set_ylabel("응답 수")
                 ax3.set_xlabel("날짜")
                 ax3.set_title("날짜별 응답 추이", fontproperties=fontprop)
+                ax3.set_xlabel("날짜", fontproperties=fontprop)
+                ax1.set_ylabel("응답 수", fontproperties=fontprop)
+
                 ax3.grid(True, linestyle="--", alpha=0.5)
                 fig3.autofmt_xdate()
                 st.pyplot(fig3)
