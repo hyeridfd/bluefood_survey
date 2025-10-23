@@ -808,6 +808,30 @@ def main():
         background-color: #e9ecef;
         transform: translateX(5px);
     }
+    /* 칩 그리드는 그대로라면 유지 */
+    .chip-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+    @media (max-width:1360px){.chip-grid{grid-template-columns:repeat(5,1fr)}}
+    @media (max-width:1180px){.chip-grid{grid-template-columns:repeat(4,1fr)}}
+    @media (max-width:980px){.chip-grid{grid-template-columns:repeat(3,1fr)}}
+    @media (max-width:720px){.chip-grid{grid-template-columns:repeat(2,1fr)}}
+    
+    /* ✅ 체크박스 라벨을 '파란 칩'처럼, 전체가 클릭 영역이 되게 */
+    div[data-testid="stCheckbox"] > label{
+      width:100%; min-height:42px; display:flex; justify-content:center; align-items:center;
+      border:1.6px solid #e7f1ff; background:#f0f7ff; color:#134b70;
+      padding:10px 12px; border-radius:12px; font-weight:800; font-size:16px;
+      cursor:pointer; user-select:none; transition:.12s ease;
+    }
+    div[data-testid="stCheckbox"] > label:hover{transform:translateY(-1px); background:#e9f2ff; border-color:#cfe5ff}
+    div[data-testid="stCheckbox"] > label:has(input:checked){
+      background:linear-gradient(135deg,#4facfe,#00f2fe); color:#fff; border-color:transparent;
+      box-shadow:0 4px 12px rgba(0,153,255,.20);
+    }
+    
+    /* ✅ 실제 체크박스(스퀘어)는 숨김 — 접근성은 유지 */
+    div[data-testid="stCheckbox"] input[type="checkbox"]{
+      position:absolute; opacity:0; width:0; height:0; pointer-events:none;
+    }
     </style>
     """, unsafe_allow_html=True)
     
