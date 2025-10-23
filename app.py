@@ -1254,23 +1254,23 @@ def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟")
 
 # 최적화된 재료 표시 함수
 @st.cache_data
-def get_ingredient_image_html(ingredient):
-    """재료 이미지를 캐시하여 반복 로딩 방지"""
-    jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
-    png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
+# def get_ingredient_image_html(ingredient):
+#     """재료 이미지를 캐시하여 반복 로딩 방지"""
+#     jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
+#     png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
 
-    if os.path.exists(jpg_path):
-        return render_image_fixed_size(jpg_path, width=240, height=180, placeholder="🍽️")
-    elif os.path.exists(png_path):
-        return render_image_fixed_size(png_path, width=240, height=180, placeholder="🍽️")
-    else:
-        return render_image_fixed_size("", width=240, height=180, placeholder="🍽️")
+#     if os.path.exists(jpg_path):
+#         return render_image_fixed_size(jpg_path, width=240, height=180, placeholder="🍽️")
+#     elif os.path.exists(png_path):
+#         return render_image_fixed_size(png_path, width=240, height=180, placeholder="🍽️")
+#     else:
+#         return render_image_fixed_size("", width=240, height=180, placeholder="🍽️")
 
 def display_ingredient_optimized(ingredient, is_selected, key):
     """최적화된 재료 표시 함수 - CSS 중복 제거, 이미지 캐싱"""
     
     # 캐시된 이미지 HTML 사용
-    html_img = get_ingredient_image_html(ingredient)
+    #html_img = get_ingredient_image_html(ingredient)
 
     with st.container():
         # 식재료 이름 (가운데)
@@ -1280,7 +1280,7 @@ def display_ingredient_optimized(ingredient, is_selected, key):
         )
 
         # 이미지 가운데 정렬
-        st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
+        #st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
 
         # 체크박스도 중앙
         col_left, col_center, col_right = st.columns([1, 2, 1])
