@@ -1303,28 +1303,25 @@ def show_ingredient_selection():
     
     st.subheader("🐟 수산물 원재료 선호도")
     st.info("**🔸 다음 수산물 중 선호하는 원재료를 선택해주세요**\n\n✓ 최소 3개 이상, 최대 9개까지 선택 가능합니다")
-    
-    # 선택 개수 표시
+
+    # 현재 선택 개수 상태
     selected_count = len(st.session_state.selected_ingredients)
-    
     if 3 <= selected_count <= 9:
         st.success(f"✅ 선택된 품목: {selected_count}개")
     elif selected_count < 3:
         st.warning(f"⚠️ 선택된 품목: {selected_count}개 ({3-selected_count}개 더 선택 필요)")
     else:
         st.error(f"❌ 선택된 품목: {selected_count}개 (최대 9개까지만 선택 가능)")
-    
-    # CSS를 한 번만 적용
+
+    # ✅ 체크박스 버튼형 스타일(기존 유지)
     st.markdown("""
     <style>
-    /* 체크박스 컨테이너를 버튼처럼 중앙 배치 */
     div.stCheckbox {
         display: flex;
         justify-content: center;
         align-items: center;
         margin-top: 5px;
     }
-    /* 버튼 스타일 */
     div.stCheckbox > label {
         background: #f8f9fa;
         border: 2px solid #ccc;
@@ -1335,13 +1332,11 @@ def show_ingredient_selection():
         font-weight: bold;
         transition: all 0.3s ease;
     }
-    /* 체크된 상태 스타일 */
     div.stCheckbox > label:has(input:checked) {
         background: linear-gradient(135deg, #4facfe, #00f2fe);
         border-color: #0096c7;
         color: white;
     }
-    /* 체크박스 자체 확대 */
     div.stCheckbox input[type="checkbox"] {
         transform: scale(1.5);
         margin-right: 10px;
@@ -1349,38 +1344,71 @@ def show_ingredient_selection():
     </style>
     """, unsafe_allow_html=True)
 
-    # 카테고리별 수산물 선택
-    for category, ingredients in INGREDIENT_CATEGORIES.items():
-        st.markdown(f"### {category}")
-        
-        # 수산물을 4열 그리드로 배치
-        cols = st.columns(4)
-        for i, ingredient in enumerate(ingredients):
-            with cols[i % 4]:
-                is_selected = ingredient in st.session_state.selected_ingredients
-                
-                # 최적화된 재료 표시 함수 사용
-                selected = display_ingredient_optimized(ingredient, is_selected, f"ingredient_{ingredient}")
-                
-                # st.rerun() 없이 상태 업데이트
-                if selected and ingredient not in st.session_state.selected_ingredients:
-                    if len(st.session_state.selected_ingredients) < 9:
-                        st.session_state.selected_ingredients.append(ingredient)
-                    else:
-                        st.error("최대 9개까지만 선택할 수 있습니다.")
-                elif not selected and ingredient in st.session_state.selected_ingredients:
-                    st.session_state.selected_ingredients.remove(ingredient)
-        
-        st.markdown("---")
-    
-    # 다음 단계 버튼
+    # ✅ 카테고리 탭 구성
+    category_names = list(INGREDIENT_CATEGORIES.keys())  # ['🍤 가공수산물', '🌿 해조류', ...]
+    tabs = st.tabs(category_names)
+
+    for tab, category in zip(tabs, category_names):
+        with tab:
+            st.markdown(f"### {category}")
+            ingredients = INGREDIENT_CATEGORIES[category]
+
+            # 4열 그리드
+            cols = st.columns(4)
+            for i, ingredient in enumerate(ingredients):
+                with cols[i % 4]:
+                    is_selected = ingredient in st.session_state.selected_ingredients
+
+                    # 기존 카드형 표시 함수 그대로 재활용
+                    selected = display_ingredient_optimized(
+                        ingredient, is_selected, f"ingredient_{ingredient}"
+                    )
+
+                    # 상태 업데이트 (st.rerun 없이)
+                    if selected and ingredient not in st.session_state.selected_ingredients:
+                        if len(st.session_state.selected_ingredients) < 9:
+                            st.session_state.selected_ingredients.append(ingredient)
+                        else:
+                            st.error("최대 9개까지만 선택할 수 있습니다.")
+                    elif (not selected) and (ingredient in st.session_state.selected_ingredients):
+                        st.session_state.selected_ingredients.remove(ingredient)
+
+            # 카테고리 내 요약(선택 현황)
+            cat_selected = [x for x in st.session_state.selected_ingredients if x in ingredients]
+            if len(cat_selected) == 0:
+                st.info("이 카테고리에서 아직 선택한 항목이 없습니다.")
+            else:
+                st.success("이 카테고리에서 선택됨: " + " | ".join(cat_selected))
+
+    # 하단 구분선
     st.markdown("---")
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    with col2:
+
+    # 하단 버튼 영역
+    c1, c2, c3 = st.columns([1, 2, 1])
+
+    with c1:
+        # 선택 초기화(원하면 사용)
+        if st.button("선택 초기화", use_container_width=True):
+            st.session_state.selected_ingredients = []
+            # 선택한 메뉴도 초기화(다음 단계 로직 간 충돌 방지)
+            st.session_state.selected_menus = {}
+            st.experimental_rerun()
+
+    with c2:
+        # 상태 메시지 재노출
+        selected_count = len(st.session_state.selected_ingredients)
+        if 3 <= selected_count <= 9:
+            st.success(f"현재 선택: {selected_count}개")
+        elif selected_count < 3:
+            st.warning(f"현재 선택: {selected_count}개 (최소 3개 필요)")
+        else:
+            st.error(f"현재 선택: {selected_count}개 (최대 9개)")
+
+    with c3:
+        # 다음 단계로
         if 3 <= len(st.session_state.selected_ingredients) <= 9:
             if st.button("다음 단계로 →", type="primary", use_container_width=True):
-                st.session_state.selected_menus = {ingredient: [] for ingredient in st.session_state.selected_ingredients}
+                st.session_state.selected_menus = {ing: [] for ing in st.session_state.selected_ingredients}
                 st.session_state.step = 'menus'
                 st.markdown(
                     """
@@ -1395,6 +1423,7 @@ def show_ingredient_selection():
                 st.rerun()
         else:
             st.button("다음 단계로 →", disabled=True, use_container_width=True)
+
 
 @st.cache_data
 def get_menu_image_html(menu):
