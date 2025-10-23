@@ -1134,7 +1134,6 @@ def main():
         show_completion()
 
 # ---------- 식별번호 검증 유틸 ----------
-# ---------- 화이트리스트 로딩 & 검증 ----------
 @st.cache_data(ttl=300)
 def load_allowed_name_id_pairs():
     """
