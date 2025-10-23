@@ -808,6 +808,45 @@ def main():
         background-color: #e9ecef;
         transform: translateX(5px);
     }
+    .chips-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin: 20px 0;
+    }
+    
+    /* 클릭 가능한 큰 네모 칩 */
+    .clickable-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 140px;              /* 🔺 네모 크기 고정 */
+      border-radius: 18px;
+      border: 2px solid #d9eaff;
+      background-color: #f0f7ff;
+      font-weight: 800;
+      font-size: 20px;
+      color: #134b70;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      user-select: none;
+    }
+    
+    /* hover 효과 */
+    .clickable-box:hover {
+      transform: translateY(-3px);
+      background-color: #e6f1ff;
+      border-color: #b7daff;
+    }
+    
+    /* 체크 상태일 때 스타일 */
+    .clickable-box.checked {
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      color: white;
+      border: none;
+      box-shadow: 0 6px 15px rgba(0, 153, 255, 0.25);
+    }
     </style>
     """, unsafe_allow_html=True)
     
@@ -1047,24 +1086,29 @@ def show_ingredient_selection():
     # 카테고리별로 표시 (텍스트로만 표시)
     for category, items in categories.items():
         st.markdown(f"### {category}")
-        
-        # 4개씩 가로 배치 (텍스트 체크박스로 변경)
-        for row_start in range(0, len(items), 4):
-            cols = st.columns(4)
-            for col_idx, item in enumerate(items[row_start:row_start+4]):
-                with cols[col_idx]:
-                    # 텍스트와 체크박스로 표시
-                    st.markdown(f"<div style='text-align:center; font-size:20px; font-weight:bold; padding:10px; background:#f0f8ff; border-radius:10px; margin-bottom:5px;'>{item}</div>", unsafe_allow_html=True)
-                    
-                    # 체크박스 중앙 정렬
-                    col_left, col_center, col_right = st.columns([1, 2, 1])
-                    with col_center:
-                        if st.checkbox("선택", value=(item in selected), key=f"ingredient_{item}"):
-                            if item not in selected:
-                                selected.append(item)
-                        else:
-                            if item in selected:
-                                selected.remove(item)
+    
+        # ✅ 4칸 그리드로 감싸기
+        st.markdown('<div class="chips-row">', unsafe_allow_html=True)
+    
+        for item in items:
+            # ✅ 각 칩마다 checkbox 상태 유지
+            checked = st.checkbox("", key=f"ingredient_{item}", value=(item in selected), label_visibility="collapsed")
+    
+            # ✅ 클릭 가능한 큰 네모 블록 렌더링
+            st.markdown(f"""
+            <label for="ingredient_{item}" class="clickable-box {'checked' if checked else ''}">
+                {item}
+            </label>
+            """, unsafe_allow_html=True)
+    
+            # ✅ 선택 상태 갱신
+            if checked and item not in selected:
+                selected.append(item)
+            elif not checked and item in selected:
+                selected.remove(item)
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
     
     # 선택 상태 업데이트
     st.session_state.selected_ingredients = selected
