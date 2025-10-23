@@ -1254,7 +1254,7 @@ def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟")
 
 # 최적화된 재료 표시 함수
 @st.cache_data
-# def get_ingredient_image_html(ingredient):
+def get_ingredient_image_html(ingredient):
     """재료 이미지를 캐시하여 반복 로딩 방지"""
     jpg_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.jpg")
     png_path = os.path.join(INGREDIENT_IMAGE_PATH, f"{ingredient}.png")
