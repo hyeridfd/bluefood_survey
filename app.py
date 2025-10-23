@@ -186,7 +186,7 @@ def get_google_sheet_cached():
     # 디버깅 정보를 항상 표시하도록 수정
     debug_container = st.empty()
     with debug_container.container():
-        st.write("🟢 [DEBUG] Google Sheets 연결 시도 시작됨")
+        #st.write("🟢 [DEBUG] Google Sheets 연결 시도 시작됨")
         
         try:
             # Secrets 확인
@@ -200,29 +200,29 @@ def get_google_sheet_cached():
             
             # 서비스 계정 정보 가져오기
             creds_dict = dict(st.secrets["gcp_service_account"])
-            st.write("🟢 [DEBUG] 서비스 계정 이메일:", creds_dict.get("client_email", "없음"))
-            st.write("🟢 [DEBUG] 프로젝트 ID:", creds_dict.get("project_id", "없음"))
+            #st.write("🟢 [DEBUG] 서비스 계정 이메일:", creds_dict.get("client_email", "없음"))
+            #st.write("🟢 [DEBUG] 프로젝트 ID:", creds_dict.get("project_id", "없음"))
 
             # private_key 줄바꿈 변환 확인
             if "private_key" in creds_dict:
                 original_key = creds_dict["private_key"]
                 if "\\n" in original_key:
                     creds_dict["private_key"] = original_key.replace("\\n", "\n")
-                    st.write("🟢 [DEBUG] private_key 줄바꿈 변환 완료")
+                    #st.write("🟢 [DEBUG] private_key 줄바꿈 변환 완료")
                 else:
-                    st.write("🟢 [DEBUG] private_key 이미 올바른 형태")
+                    #st.write("🟢 [DEBUG] private_key 이미 올바른 형태")
                 
-                st.write("🟢 [DEBUG] private_key 길이:", len(creds_dict["private_key"]))
-                st.write("🟢 [DEBUG] private_key 시작:", creds_dict["private_key"][:50] + "...")
-                st.write("🟢 [DEBUG] private_key 끝:", "..." + creds_dict["private_key"][-50:])
+                #st.write("🟢 [DEBUG] private_key 길이:", len(creds_dict["private_key"]))
+                #st.write("🟢 [DEBUG] private_key 시작:", creds_dict["private_key"][:50] + "...")
+                #st.write("🟢 [DEBUG] private_key 끝:", "..." + creds_dict["private_key"][-50:])
 
             # Google Sheets 설정
             google_sheets_config = st.secrets["google_sheets"]
             sheet_name = google_sheets_config.get("google_sheet_name")
             sheet_id = google_sheets_config.get("google_sheet_id")
             
-            st.write("🟢 [DEBUG] 구글 시트 이름:", sheet_name)
-            st.write("🟢 [DEBUG] 구글 시트 ID:", sheet_id)
+            #st.write("🟢 [DEBUG] 구글 시트 이름:", sheet_name)
+            #st.write("🟢 [DEBUG] 구글 시트 ID:", sheet_id)
 
             # Scope 설정
             scope = [
@@ -232,31 +232,31 @@ def get_google_sheet_cached():
             
             # Credentials 생성
             creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-            st.write("🟢 [DEBUG] Credentials 객체 생성 성공")
+            #st.write("🟢 [DEBUG] Credentials 객체 생성 성공")
             
             # gspread 클라이언트 생성
             client = gspread.authorize(creds)
-            st.write("🟢 [DEBUG] gspread 클라이언트 인증 성공")
+            #st.write("🟢 [DEBUG] gspread 클라이언트 인증 성공")
             
             # 구글 시트 열기 시도
             try:
                 # ID로 열기 시도
                 if sheet_id:
                     sheet = client.open_by_key(sheet_id)
-                    st.write("🟢 [DEBUG] Sheet ID로 연결 성공:", sheet_id)
+                    #st.write("🟢 [DEBUG] Sheet ID로 연결 성공:", sheet_id)
                 # 이름으로 열기
                 elif sheet_name:
                     sheet = client.open(sheet_name)
-                    st.write("🟢 [DEBUG] Sheet 이름으로 연결 성공:", sheet_name)
+                    #st.write("🟢 [DEBUG] Sheet 이름으로 연결 성공:", sheet_name)
                 else:
-                    st.error("❌ [DEBUG] Sheet ID와 이름 모두 누락")
+                    #st.error("❌ [DEBUG] Sheet ID와 이름 모두 누락")
                     return None
                 
                 st.success("✅ [DEBUG] Google Sheets 연결 완료!")
                 
                 # 워크시트 정보
                 worksheet = sheet.get_worksheet(0)
-                st.write(f"🟢 [DEBUG] 첫 번째 워크시트: {worksheet.title}")
+                #st.write(f"🟢 [DEBUG] 첫 번째 워크시트: {worksheet.title}")
                 
                 # worksheet만 반환
                 return worksheet
@@ -312,11 +312,11 @@ def save_to_google_sheets(name, id_number, ingredients, menus):
         # 헤더가 없으면 추가
         if len(all_values) == 0 or all_values[0] != ["설문일시", "이름", "식별번호", "선택한_수산물", "선택한_메뉴"]:
             worksheet.insert_row(["설문일시", "이름", "식별번호", "선택한_수산물", "선택한_메뉴"], 1)
-            st.write("🟢 [DEBUG] 헤더 행 추가 완료")
+            #st.write("🟢 [DEBUG] 헤더 행 추가 완료")
         
         # 데이터 추가
         worksheet.append_row(new_row)
-        st.success(f"✅ [DEBUG] Google Sheets 저장 성공! (행 {len(all_values) + 1})")
+        #st.success(f"✅ [DEBUG] Google Sheets 저장 성공! (행 {len(all_values) + 1})")
         success = True
         
     except Exception as e:
@@ -370,179 +370,358 @@ def save_to_excel(name, id_number, ingredients, menus):
     
     return str(filename), df
 
-# 수산물 목록
-INGREDIENTS = [
-    "고등어", "갈치", "연어", "꽁치", "삼치",
-    "오징어", "낙지", "문어", "주꾸미", "한치",
-    "새우", "꽃게", "대게", "가리비", "홍합",
-    "굴", "전복", "소라", "바지락", "홍어",
-    "가자미", "멸치", "장어", "농어", "참치",
-    "우럭", "광어", "도미", "조기", "갑오징어"
-]
+# 이미지 경로 설정
+INGREDIENT_IMAGE_PATH = "images/ingredients"
+MENU_IMAGE_PATH = "images/menus"
 
-# 메뉴 데이터
+# 수산물 카테고리별 분류
+INGREDIENT_CATEGORIES = {
+    '🍤 가공수산물': ['맛살', '어란', '어묵', '쥐포'],
+    '🌿 해조류': ['김', '다시마', '매생이', '미역', '파래', '톳'],
+    '🦑 연체류': ['꼴뚜기', '낙지', '문어', '오징어', '주꾸미'],
+    '🦀 갑각류': ['가재', '게', '새우'],
+    '🐚 패류': ['다슬기', '꼬막', '가리비', '골뱅이', '굴', '미더덕', '바지락', '백합', '소라', '재첩', '전복', '홍합'],
+    '🐟 어류': ['가자미', '다랑어', '고등어', '갈치', '꽁치', '대구', '멸치', '명태', '박대', '뱅어', '병어', '삼치', '아귀', '연어', '임연수', '장어', '조기']
+}
+
+# 수산물별 메뉴 데이터
 MENU_DATA = {
-    "고등어": {
-        "국물요리": ["김치찌개", "된장찌개"],
-        "구이/볶음": ["구이", "간장조림", "카레", "강정"],
-        "기타": ["무조림", "김치조림"]
+    '맛살': {
+        '밥/죽': ['게맛살볶음밥'],
+        '무침': ['게맛살콩나물무침'],
+        '볶음': ['맛살볶음'],
+        '부침': ['맛살전']
     },
-    "갈치": {
-        "국물요리": ["국", "찌개"],
-        "구이/볶음": ["구이", "조림"],
-        "기타": ["튀김", "무조림"]
+    '어란': {
+        '밥/죽': ['날치알밥'],
+        '면류': ['명란파스타'],
+        '국/탕': ['알탕'],
+        '찜': ['날치알달걀찜'],
+        '무침': ['명란젓갈'],
+        '볶음': ['날치알스크램블에그'],
+        '부침': ['날치알계란말이'],
+        '구이': ['명란구이']
     },
-    "연어": {
-        "구이/볶음": ["구이", "스테이크", "데리야끼"],
-        "날것/절임": ["초밥", "회"],
-        "기타": ["샐러드", "리조또", "파스타"]
+    '어묵': {
+        '밥/죽': ['어묵볶음밥'],
+        '면류': ['어묵우동'],
+        '국/탕': ['어묵탕'],
+        '조림': ['어묵조림'],
+        '찜': ['콩나물어묵찜', '어묵찜'],
+        '볶음': ['매콤어묵볶음', '간장어묵볶음'],
+        '부침': ['어묵전'],
+        '튀김': ['어묵고로케']
     },
-    "꽁치": {
-        "구이/볶음": ["구이", "조림"],
-        "국물요리": ["김치찌개"],
-        "기타": ["튀김"]
+    '쥐포': {
+        '조림': ['쥐포조림'],
+        '무침': ['쥐포무침'],
+        '볶음': ['쥐포볶음'],
+        '부침': ['쥐포전'],
+        '튀김': ['쥐포튀김'],
+        '구이': ['쥐포구이']
     },
-    "삼치": {
-        "구이/볶음": ["구이", "조림"],
-        "국물요리": ["찌개"],
-        "기타": ["튀김", "무조림"]
+    '김': {
+        '밥/죽': ['김밥'],
+        '무침': ['김무침'],
+        '튀김': ['김부각'],
+        '구이': ['김자반']
     },
-    "오징어": {
-        "구이/볶음": ["볶음", "구이", "튀김"],
-        "국물요리": ["찌개", "국"],
-        "날것/절임": ["회", "젓갈"],
-        "기타": ["무침", "순대"]
+    '다시마': {
+        '무침': ['다시마채무침'],
+        '볶음': ['다시마채볶음'],
+        '튀김': ['다시마튀각']
     },
-    "낙지": {
-        "구이/볶음": ["볶음", "꼬치구이"],
-        "국물요리": ["연포탕", "찜"],
-        "날것/절임": ["탕탕이", "회"],
-        "기타": ["호롱이"]
+    '매생이': {
+        '면류': ['매생이칼국수'],
+        '국/탕': ['매생이굴국'],
+        '부침': ['매생이전']
     },
-    "문어": {
-        "구이/볶음": ["숙회", "볶음"],
-        "날것/절임": ["회", "초무침"],
-        "기타": ["샐러드"]
+    '미역': {
+        '밥/죽': ['미역국밥'],
+        '국/탕': ['미역국'],
+        '무침': ['미역초무침'],
+        '볶음': ['미역줄기볶음']
     },
-    "주꾸미": {
-        "구이/볶음": ["볶음", "구이"],
-        "국물요리": ["샤브샤브"],
-        "날것/절임": ["회"],
-        "기타": ["무침"]
+    '파래': {
+        '무침': ['파래무침'],
+        '볶음': ['파래볶음'],
+        '부침': ['물파래전']
     },
-    "한치": {
-        "구이/볶음": ["구이", "볶음"],
-        "날것/절임": ["회"],
-        "기타": ["무침", "튀김"]
+    '톳': {
+        '밥/죽': ['톳밥'],
+        '무침': ['톳무침']
     },
-    "새우": {
-        "구이/볶음": ["구이", "튀김", "볶음"],
-        "국물요리": ["찜"],
-        "날것/절임": ["초밥", "회"],
-        "기타": ["샐러드", "볶음밥", "파스타"]
+    '꼴뚜기': {
+        '조림': ['꼴뚜기조림'],
+        '찜': ['꼴뚜기찜'],
+        '무침': ['꼴뚜기젓무침'],
+        '볶음': ['꼴뚜기볶음']
     },
-    "꽃게": {
-        "국물요리": ["찜", "탕", "된장찌개"],
-        "날것/절임": ["간장게장", "양념게장"],
-        "기타": ["볶음", "라면"]
+    '낙지': {
+        '밥/죽': ['낙지비빔밥'],
+        '면류': ['낙지수제비'],
+        '국/탕': ['낙지연포탕'],
+        '찜': ['낙지찜'],
+        '무침': ['낙지초무침'],
+        '볶음': ['낙지볶음'],
+        '구이': ['낙지호롱구이'],
+        '기타(생식)': ['낙지탕탕이']
     },
-    "대게": {
-        "국물요리": ["찜", "탕"],
-        "날것/절임": ["회"],
-        "기타": ["구이", "버터구이"]
+    '문어': {
+        '밥/죽': ['문어볶음밥'],
+        '면류': ['문어라면'],
+        '국/탕': ['문어탕'],
+        '조림': ['문어조림'],
+        '찜': ['문어콩나물찜'],
+        '무침': ['문어초무침'],
+        '볶음': ['문어볶음'],
+        '부침': ['문어전'],
+        '튀김': ['문어튀김'],
+        '기타(생식)': ['문어회']
     },
-    "가리비": {
-        "구이/볶음": ["구이", "버터구이"],
-        "국물요리": ["찜"],
-        "날것/절임": ["회"],
-        "기타": ["파스타", "리조또"]
+    '오징어': {
+        '밥/죽': ['오징어덮밥'],
+        '국/탕': ['오징어무국'],
+        '조림': ['오징어조림'],
+        '찜': ['오징어콩나물찜', '오징어숙회'],
+        '무침': ['오징어초무침'],
+        '볶음': ['오징어볶음'],
+        '부침': ['오징어해물전'],
+        '튀김': ['오징어튀김'],
+        '구이': ['오징어버터구이'],
+        '기타(생식)': ['오징어회']
     },
-    "홍합": {
-        "국물요리": ["국", "탕", "찜"],
-        "기타": ["볶음", "파스타", "리조또"]
+    '주꾸미': {
+        '밥/죽': ['주꾸미볶음덮밥'],
+        '면류': ['주꾸미감자수제비', '주꾸미짬뽕'],
+        '국/탕': ['주꾸미연포탕'],
+        '찜': ['주꾸미숙회', '주꾸미찜'],
+        '무침': ['주꾸미무침'],
+        '볶음': ['주꾸미볶음']
     },
-    "굴": {
-        "국물요리": ["국", "찌개"],
-        "구이/볶음": ["전", "튀김", "구이"],
-        "날것/절임": ["회"],
-        "기타": ["무침", "밥", "파스타"]
+    '가재': {
+        '찜': ['가재찜'],
+        '구이': ['가재구이']
     },
-    "전복": {
-        "구이/볶음": ["구이", "버터구이"],
-        "국물요리": ["죽", "찜"],
-        "날것/절임": ["회"],
-        "기타": ["장조림"]
+    '게': {
+        '밥/죽': ['게살볶음밥'],
+        '면류': ['게살파스타', '꽃게라면'],
+        '국/탕': ['꽃게탕'],
+        '조림': ['꽃게조림'],
+        '찜': ['꽃게찜'],
+        '무침': ['꽃게무침'],
+        '볶음': ['꽃게볶음'],
+        '튀김': ['꽃게강정'],
+        '기타(생식)': ['간장게장', '양념게장']
     },
-    "소라": {
-        "구이/볶음": ["구이", "무침"],
-        "날것/절임": ["회"],
-        "기타": ["된장찌개", "초무침"]
+    '새우': {
+        '밥/죽': ['새우볶음밥'],
+        '면류': ['새우크림파스타'],
+        '국/탕': ['새우달걀국', '얼큰새우매운탕'],
+        '조림': ['새우조림'],
+        '찜': ['새우달걀찜'],
+        '무침': ['새우젓'],
+        '볶음': ['건새우볶음'],
+        '부침': ['새우전'],
+        '튀김': ['새우튀김'],
+        '구이': ['새우버터구이'],
+        '기타(생식)': ['간장새우장', '양념새우장']
     },
-    "바지락": {
-        "국물요리": ["국", "칼국수", "찜"],
-        "기타": ["술찜", "파스타", "리조또"]
+    '다슬기': {
+        '면류': ['다슬기수제비'],
+        '국/탕': ['다슬기된장국'],
+        '무침': ['다슬기무침'],
+        '부침': ['다슬기파전']
     },
-    "홍어": {
-        "날것/절임": ["회", "무침"],
-        "국물요리": ["찜", "탕"],
-        "기타": ["전", "애국"]
+    '꼬막': {
+        '밥/죽': ['꼬막비빔밥'],
+        '면류': ['꼬막칼국수'],
+        '국/탕': ['꼬막된장찌개'],
+        '찜': ['꼬막찜'],
+        '무침': ['꼬막무침'],
+        '부침': ['꼬막전'],
+        '구이': ['꼬막떡꼬치구이']
     },
-    "가자미": {
-        "구이/볶음": ["구이", "조림"],
-        "날것/절임": ["회", "무침"],
-        "기타": ["찜", "튀김"]
+    '가리비': {
+        '밥/죽': ['가리비초밥'],
+        '면류': ['가리비칼국수'],
+        '국/탕': ['가리비탕'],
+        '찜': ['가리비찜'],
+        '무침': ['가리비초무침'],
+        '볶음': ['가리비볶음'],
+        '구이': ['가리비버터구이']
     },
-    "멸치": {
-        "구이/볶음": ["볶음", "조림"],
-        "국물요리": ["국수", "쌈장찌개"],
-        "기타": ["무침", "튀김"]
+    '골뱅이': {
+        '밥/죽': ['골뱅이죽'],
+        '면류': ['골뱅이비빔면'],
+        '국/탕': ['골뱅이탕'],
+        '무침': ['골뱅이무침'],
+        '볶음': ['골뱅이볶음'],
+        '튀김': ['골뱅이튀김'],
+        '구이': ['골뱅이꼬치구이'],
+        '기타(생식)': ['골뱅이물회']
     },
-    "장어": {
-        "구이/볶음": ["구이", "양념구이", "데리야끼"],
-        "국물요리": ["탕"],
-        "날것/절임": ["초밥"],
-        "기타": ["덮밥"]
+    '굴': {
+        '밥/죽': ['굴국밥'],
+        '면류': ['굴칼국수', '굴짬뽕'],
+        '국/탕': ['매생이굴국', '굴순두부찌개'],
+        '조림': ['굴조림'],
+        '찜': ['굴찜'],
+        '무침': ['굴무침'],
+        '볶음': ['굴볶음'],
+        '부침': ['굴전'],
+        '튀김': ['굴튀김'],
+        '구이': ['굴구이'],
+        '기타(생식)': ['생굴']
     },
-    "농어": {
-        "구이/볶음": ["구이", "스테이크"],
-        "날것/절임": ["회", "초밥"],
-        "국물요리": ["맑은탕", "찜"],
-        "기타": ["튀김"]
+    '미더덕': {
+        '밥/죽': ['미더덕밥'],
+        '국/탕': ['미더덕된장찌개', '미더덕순두부찌개'],
+        '찜': ['미더덕콩나물찜']
     },
-    "참치": {
-        "구이/볶음": ["구이", "스테이크"],
-        "날것/절임": ["회", "초밥"],
-        "기타": ["김치찌개", "샐러드", "참치마요덮밥"]
+    '바지락': {
+        '밥/죽': ['바지락비빔밥'],
+        '면류': ['바지락칼국수'],
+        '국/탕': ['바지락미역국', '바지락순두부찌개'],
+        '찜': ['바지락찜'],
+        '무침': ['바지락무침'],
+        '볶음': ['바지락볶음', '매콤바지락볶음'],
+        '부침': ['바지락부추전']
     },
-    "우럭": {
-        "구이/볶음": ["구이", "조림"],
-        "국물요리": ["맑은탕", "매운탕"],
-        "날것/절임": ["회"],
-        "기타": ["튀김"]
+    '백합': {
+        '밥/죽': ['백합볶음밥'],
+        '면류': ['백합칼국수'],
+        '국/탕': ['백합탕'],
+        '찜': ['백합찜'],
+        '무침': ['백합무침'],
+        '볶음': ['백합볶음'],
+        '구이': ['백합구이']
     },
-    "광어": {
-        "구이/볶음": ["구이", "조림"],
-        "날것/절임": ["회", "초밥"],
-        "국물요리": ["맑은탕", "매운탕"],
-        "기타": ["튀김", "미역국"]
+    '소라': {
+        '밥/죽': ['참소라야채죽'],
+        '면류': ['소라비빔면'],
+        '국/탕': ['소라된장찌개'],
+        '조림': ['참소라장조림'],
+        '찜': ['소라숙회'],
+        '무침': ['소라무침'],
+        '볶음': ['소라버터볶음'],
+        '튀김': ['소라튀김'],
+        '구이': ['소라구이'],
+        '기타(생식)': ['소라회']
     },
-    "도미": {
-        "구이/볶음": ["구이", "소금구이"],
-        "날것/절임": ["회", "초밥"],
-        "국물요리": ["맑은탕", "찜"],
-        "기타": ["조림", "튀김"]
+    '재첩': {
+        '국/탕': ['재첩국'],
+        '무침': ['재첩무침'],
+        '부침': ['재첩부추전']
     },
-    "조기": {
-        "구이/볶음": ["구이", "조림"],
-        "국물요리": ["찌개", "매운탕"],
-        "날것/절임": ["젓갈"],
-        "기타": ["튀김", "전"]
+    '전복': {
+        '밥/죽': ['전복죽'],
+        '면류': ['전복파스타'],
+        '국/탕': ['전복미역국'],
+        '조림': ['전복장조림'],
+        '찜': ['전복찜'],
+        '무침': ['전복무침'],
+        '볶음': ['전복볶음'],
+        '구이': ['전복구이'],
+        '기타(생식)': ['전복회']
     },
-    "갑오징어": {
-        "구이/볶음": ["볶음", "구이"],
-        "날것/절임": ["회"],
-        "국물요리": ["찌개"],
-        "기타": ["무침", "튀김"]
+    '홍합': {
+        '밥/죽': ['홍합죽'],
+        '면류': ['홍합칼국수', '홍합짬뽕'],
+        '국/탕': ['홍합탕', '홍합된장찌개'],
+        '조림': ['홍합조림'],
+        '찜': ['홍합찜'],
+        '무침': ['홍합무침'],
+        '볶음': ['홍합볶음'],
+        '부침': ['홍합전'],
+        '구이': ['홍합구이']
+    },
+    '가자미': {
+        '국/탕': ['가자미미역국'],
+        '조림': ['가자미조림'],
+        '찜': ['가자미찜'],
+        '부침': ['가자미전'],
+        '튀김': ['가자미튀김'],
+        '구이': ['가자미구이']
+    },
+    '다랑어': {
+        '밥/죽': ['참치김밥'],
+        '국/탕': ['참치김치찌개'],
+        '볶음': ['참치양배추볶음'],
+        '부침': ['참치달걀말이'],
+        '구이': ['참치스테이크'],
+        '생식류/절임류/장류': ['참치회']
+    },
+    '고등어': {
+        '조림': ['고등어조림'],
+        '구이': ['고등어구이']
+    },
+    '갈치': {
+        '조림': ['갈치조림'],
+        '구이': ['갈치구이']
+    },
+    '꽁치': {
+        '국/탕': ['꽁치김치찌개'],
+        '조림': ['꽁치조림'],
+        '구이': ['꽁치구이']
+    },
+    '대구': {
+        '국/탕': ['맑은대구탕', '대구매운탕'],
+        '조림': ['대구조림'],
+        '부침': ['대구전']
+    },
+    '멸치': {
+        '밥/죽': ['멸치김밥'],
+        '볶음': ['멸치볶음']
+    },
+    '명태': {
+        '국/탕': ['황태미역국'],
+        '조림': ['코다리조림'],
+        '찜': ['명태찜'],
+        '무침': ['북어채무침'],
+        '구이': ['코다리구이']
+    },
+    '박대': {
+        '조림': ['박대조림'],
+        '구이': ['박대구이']
+    },
+    '뱅어': {
+        '무침': ['뱅어포무침'],
+        '튀김': ['뱅어포튀김']
+    },
+    '병어': {
+        '조림': ['병어조림'],
+        '구이': ['병어구이']
+    },
+    '삼치': {
+        '조림': ['삼치조림'],
+        '튀김': ['삼치튀김'],
+        '구이': ['삼치구이']
+    },
+    '아귀': {
+        '국/탕': ['아귀탕'],
+        '찜': ['아귀찜']
+    },
+    '연어': {
+        '밥/죽': ['연어덮밥'],
+        '구이': ['연어구이'],
+        '생식류/절임류/장류': ['연어회']
+    },
+    '임연수': {
+        '조림': ['임연수조림'],
+        '구이': ['임연수구이']
+    },
+    '장어': {
+        '밥/죽': ['장어덮밥'],
+        '조림': ['장어조림'],
+        '찜': ['장어찜'],
+        '튀김': ['장어튀김'],
+        '구이': ['장어구이']
+    },
+    '조기': {
+        '조림': ['조기조림'],
+        '찜': ['조기찜'],
+        '구이': ['조기구이']
     }
 }
 
@@ -811,18 +990,57 @@ def show_info_input():
         else:
             st.error("모든 정보를 입력해주세요.")
 
+def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟"):
+    """이미지를 고정 크기로 출력, 없으면 플레이스홀더"""
+    if os.path.exists(img_path):
+        with open(img_path, "rb") as f:
+            img_data = base64.b64encode(f.read()).decode()
+        return f"""
+        <div style="
+            width:{width}px; 
+            height:{height}px; 
+            overflow:hidden; 
+            border-radius:8px; 
+            border:1px solid #ddd; 
+            display:flex; 
+            align-items:center; 
+            justify-content:center; 
+            background:#fff;">
+            <img src="data:image/png;base64,{img_data}" 
+                 style="width:100%; height:100%; object-fit:cover;">
+        </div>
+        """
+    else:
+        return f"""
+        <div style="
+            width:{width}px; 
+            height:{height}px; 
+            background:#f8f9fa; 
+            border:2px dashed #dee2e6; 
+            border-radius:8px; 
+            display:flex; 
+            flex-direction:column;
+            align-items:center; 
+            justify-content:center; 
+            color:#6c757d;">
+            <div style="font-size:1.5em;">{placeholder}</div>
+            <div style="font-size:0.8em;">이미지 준비중</div>
+        </div>
+        """
+        
 def show_ingredient_selection():
     st.subheader("🐟 선호하는 수산물 선택")
     st.info("💡 **최소 3개 이상** 선택해주세요! 다양한 수산물을 선택하실수록 더 좋습니다.")
     
-    # 카테고리별로 수산물 분류 (순서 유지)
+    # 수산물 카테고리별 분류
     categories = {
-        "🐟 생선류": ["고등어", "갈치", "연어", "꽁치", "삼치", "가자미", "멸치", "장어", "농어", "참치", "우럭", "광어", "도미", "조기"],
-        "🦑 연체류": ["오징어", "낙지", "문어", "주꾸미", "한치", "갑오징어"],
-        "🦐 갑각류": ["새우", "꽃게", "대게"],
-        "🦪 패류": ["가리비", "홍합", "굴", "전복", "소라", "바지락"],
-        "🔶 기타": ["홍어"]
-    }
+    '🍤 가공수산물': ['맛살', '어란', '어묵', '쥐포'],
+    '🌿 해조류': ['김', '다시마', '매생이', '미역', '파래', '톳'],
+    '🦑 연체류': ['꼴뚜기', '낙지', '문어', '오징어', '주꾸미'],
+    '🦀 갑각류': ['가재', '게', '새우'],
+    '🐚 패류': ['다슬기', '꼬막', '가리비', '골뱅이', '굴', '미더덕', '바지락', '백합', '소라', '재첩', '전복', '홍합'],
+    '🐟 어류': ['가자미', '다랑어', '고등어', '갈치', '꽁치', '대구', '멸치', '명태', '박대', '뱅어', '병어', '삼치', '아귀', '연어', '임연수', '장어', '조기']
+}
     
     # 이전 선택 복원
     selected = st.session_state.selected_ingredients.copy()
@@ -891,54 +1109,21 @@ def show_ingredient_selection():
 
 @st.cache_data
 def get_menu_image_html(menu):
-    """메뉴 이미지 대신 이모지나 아이콘을 반환"""
-    # 메뉴별 이모지 매핑 (예시)
-    menu_emojis = {
-        # 국물요리
-        "김치찌개": "🍲", "된장찌개": "🍲", "국": "🍜", "찌개": "🍲",
-        "탕": "🍜", "연포탕": "🍜", "매운탕": "🌶️🍜", "맑은탕": "🍜",
-        "칼국수": "🍜", "국수": "🍜", "미역국": "🍜",
-        
-        # 구이/볶음
-        "구이": "🔥", "볶음": "🍳", "조림": "🍖", "스테이크": "🥩",
-        "데리야끼": "🍖", "양념구이": "🔥", "소금구이": "🧂",
-        "버터구이": "🧈", "간장조림": "🍖", "카레": "🍛",
-        
-        # 튀김/전
-        "튀김": "🍤", "강정": "🍗", "전": "🥞",
-        
-        # 날것/절임
-        "회": "🍣", "초밥": "🍣", "숙회": "🦑", "탕탕이": "🔪",
-        "초무침": "🥗", "무침": "🥗", "간장게장": "🦀", "양념게장": "🦀",
-        "젓갈": "🥫",
-        
-        # 찜/죽
-        "찜": "♨️", "샤브샤브": "🥘", "술찜": "🍶", "죽": "🥣",
-        
-        # 기타
-        "무조림": "🥕", "김치조림": "🥬", "순대": "🌭", "호롱이": "🦑",
-        "샐러드": "🥗", "리조또": "🍚", "파스타": "🍝", 
-        "볶음밥": "🍳", "라면": "🍜", "밥": "🍚", "덮밥": "🍱",
-        "참치마요덮밥": "🍱", "장조림": "🍖", "애국": "🍜",
-        "쌈장찌개": "🍲"
-    }
-    
-    # 메뉴에 해당하는 이모지 찾기
-    emoji = "🍴"  # 기본 이모지
-    for key, value in menu_emojis.items():
-        if key in menu:
-            emoji = value
-            break
-    
-    # HTML 생성 (큰 이모지로 표시)
-    html_img = f'<div style="font-size:60px; text-align:center; padding:10px;">{emoji}</div>'
-    
-    return html_img
+    """이미지를 캐시하여 반복 로딩 방지"""
+    png_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.png")
+    jpg_path = os.path.join(MENU_IMAGE_PATH, f"{menu}.jpg")
+
+    if os.path.exists(png_path):
+        return render_image_fixed_size(png_path, width=240, height=180, placeholder="🍽️") 
+    elif os.path.exists(jpg_path):
+        return render_image_fixed_size(jpg_path, width=240, height=180, placeholder="🍽️")
+    else:
+        return render_image_fixed_size("", width=240, height=180, placeholder="🍽️")
 
 def display_menu_optimized(menu, ingredient, is_selected, key):
-    """최적화된 메뉴 표시 함수 - 텍스트와 이모지 사용"""
+    """최적화된 메뉴 표시 함수 - CSS 중복 제거, 이미지 캐싱"""
     
-    # 캐시된 이모지 HTML 사용
+    # 캐시된 이미지 HTML 사용
     html_img = get_menu_image_html(menu)
 
     with st.container():
@@ -948,7 +1133,7 @@ def display_menu_optimized(menu, ingredient, is_selected, key):
             unsafe_allow_html=True
         )
 
-        # 이모지 중앙
+        # 이미지 중앙
         st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
 
         # 체크박스 중앙
@@ -957,6 +1142,135 @@ def display_menu_optimized(menu, ingredient, is_selected, key):
             checkbox_result = st.checkbox("선택", value=is_selected, key=key)
 
         return checkbox_result
+
+
+def show_menu_selection():
+    st.markdown(
+        """
+        <script>
+        setTimeout(function() {
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }, 100);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    st.subheader("🍽️ 선호 메뉴 선택")
+    st.info("**🔸 선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요**\n\n✓ 각 수산물마다 최소 1개 이상의 메뉴를 선택해주세요")
+
+    with st.expander("선택하신 수산물", expanded=True):
+        ingredients_text = " | ".join([f"**{ingredient}**" for ingredient in st.session_state.selected_ingredients])
+        st.markdown(f"🏷️ {ingredients_text}")
+
+    # CSS를 한 번만 적용 (성능 최적화)
+    st.markdown("""
+    <style>
+    /* 메뉴 체크박스 버튼 스타일 */
+    div.stCheckbox {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 6px;
+    }
+    div.stCheckbox > label {
+        background: #f8f9fa;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        padding: 8px 20px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    div.stCheckbox > label:has(input:checked) {
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        border-color: #0096c7;
+        color: white;
+    }
+    div.stCheckbox input[type="checkbox"] {
+        transform: scale(1.5);
+        margin-right: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    all_valid = True
+
+    # 각 수산물별 메뉴 처리 (st.rerun() 제거로 성능 최적화)
+    for ingredient in st.session_state.selected_ingredients:
+        st.markdown(f"### 🐟 {ingredient} 요리")
+
+        if ingredient in MENU_DATA:
+            # 메뉴 리스트 생성
+            all_menus = []
+            for menu_list in MENU_DATA[ingredient].values():
+                all_menus.extend(menu_list)
+
+            # 4개씩 가로 배치
+            for row_start in range(0, len(all_menus), 4):
+                cols = st.columns(4)
+                for col_idx, menu in enumerate(all_menus[row_start:row_start+4]):
+                    with cols[col_idx]:
+                        # 최적화된 메뉴 표시 함수 사용
+                        is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
+                        selected = display_menu_optimized(menu, ingredient, is_selected, f"menu_{ingredient}_{menu}")
+                        
+                        # st.rerun() 없이 상태 업데이트 (즉시 반응하지만 새로고침 없음)
+                        if selected and menu not in st.session_state.selected_menus[ingredient]:
+                            st.session_state.selected_menus[ingredient].append(menu)
+                        elif not selected and menu in st.session_state.selected_menus[ingredient]:
+                            st.session_state.selected_menus[ingredient].remove(menu)
+
+        # 선택 여부 확인
+        menu_count = len(st.session_state.selected_menus.get(ingredient, []))
+        if menu_count == 0:
+            all_valid = False
+            st.warning(f"⚠️ {ingredient}에 대해 최소 1개 이상의 메뉴를 선택해주세요.")
+        else:
+            st.success(f"✅ {ingredient}: {menu_count}개 메뉴 선택됨")
+
+        st.markdown("---")
+
+    # 버튼들 (st.rerun()은 페이지 전환 시에만 사용)
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        if st.button("← 이전 단계", use_container_width=True):
+            st.session_state.step = 'ingredients'
+            st.markdown(
+                """
+                <script>
+                setTimeout(function() {
+                    window.scrollTo({top: 0, behavior: 'smooth'});
+                }, 200);
+                </script>
+                """,
+                unsafe_allow_html=True
+            )
+            st.rerun()
+
+    with col3:
+        if all_valid:
+            if st.button("설문 완료하기", type="primary", use_container_width=True):
+                # ✅ 저장 실행
+                filename, df = save_to_excel(
+                    st.session_state.name,
+                    st.session_state.id_number,
+                    st.session_state.selected_ingredients,
+                    st.session_state.selected_menus
+                )
+    
+                # ✅ 저장 성공 여부에 따라 상태 업데이트
+                if filename is not None or st.session_state.get("google_sheets_success", False):
+                    st.session_state.already_saved = True
+                    st.session_state.filename = filename
+                    st.session_state.survey_data = df
+                    st.session_state.step = 'complete'
+                    st.rerun()   # 🔥 페이지 즉시 전환
+                else:
+                    st.error("❌ 설문 데이터 저장에 실패했습니다. 다시 시도해주세요.")
+        else:
+            st.button("설문 완료하기", disabled=True, use_container_width=True)
 
 def show_menu_selection():
     st.markdown(
