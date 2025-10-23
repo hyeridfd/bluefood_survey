@@ -1064,7 +1064,7 @@ def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟")
 def show_ingredient_selection():
     st.subheader("🐟 선호하는 수산물 선택")
 
-    min_sel, max_sel = 3, 12
+    min_sel, max_sel = 3, 4
     sel = st.session_state.get("selected_ingredients", []).copy()
 
     if len(sel) < min_sel:
