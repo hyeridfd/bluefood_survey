@@ -1054,81 +1054,64 @@ def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟")
         
 def show_ingredient_selection():
     st.subheader("🐟 선호하는 수산물 선택")
-    st.info("💡 **최소 3개 이상** 선택해주세요! 다양한 수산물을 선택하실수록 더 좋습니다.")
-    
-    # 수산물 카테고리별 분류
-    categories = {
-    '🍤 가공수산물': ['맛살', '어란', '어묵', '쥐포'],
-    '🌿 해조류': ['김', '다시마', '매생이', '미역', '파래', '톳'],
-    '🦑 연체류': ['꼴뚜기', '낙지', '문어', '오징어', '주꾸미'],
-    '🦀 갑각류': ['가재', '게', '새우'],
-    '🐚 패류': ['다슬기', '꼬막', '가리비', '골뱅이', '굴', '미더덕', '바지락', '백합', '소라', '재첩', '전복', '홍합'],
-    '🐟 어류': ['가자미', '다랑어', '고등어', '갈치', '꽁치', '대구', '멸치', '명태', '박대', '뱅어', '병어', '삼치', '아귀', '연어', '임연수', '장어', '조기']
-}
-    # 이전 선택 복원
-    selected = st.session_state.selected_ingredients.copy()
-    
-    # 카테고리별로 표시 (텍스트로만 표시)
-    for category, items in categories.items():
-        st.markdown(f"### {category}")
-        
-        # 4개씩 가로 배치 (텍스트 체크박스로 변경)
-        for row_start in range(0, len(items), 4):
-            cols = st.columns(4)
-            for col_idx, item in enumerate(items[row_start:row_start+4]):
-                with cols[col_idx]:
-                    # 텍스트와 체크박스로 표시
-                    st.markdown(f"<div style='text-align:center; font-size:20px; font-weight:bold; padding:10px; background:#f0f8ff; border-radius:10px; margin-bottom:5px;'>{item}</div>", unsafe_allow_html=True)
-                    
-                    # 체크박스 중앙 정렬
-                    col_left, col_center, col_right = st.columns([1, 1, 1])
-                    with col_center:
-                        if st.checkbox("선택", value=(item in selected), key=f"ingredient_{item}"):
-                            if item not in selected:
-                                selected.append(item)
-                        else:
-                            if item in selected:
-                                selected.remove(item)
-    
-    # 선택 상태 업데이트
-    st.session_state.selected_ingredients = selected
-    
-    # 선택 현황 표시
-    st.markdown("---")
-    if selected:
-        st.success(f"✅ 현재 {len(selected)}개 선택됨: {', '.join(selected)}")
+
+    # 가이드(짧게) + 선택 갯수 제한
+    min_sel, max_sel = 3, 12  # 필요 시 9로 바꿔도 됩니다
+    sel = st.session_state.get("selected_ingredients", []).copy()
+
+    if len(sel) < min_sel:
+        st.warning(f"최소 {min_sel}개 이상 선택해주세요. ({min_sel - len(sel)}개 더 필요)")
+    elif len(sel) > max_sel:
+        st.error(f"최대 {max_sel}개까지만 선택할 수 있어요.")
     else:
-        st.warning("⚠️ 수산물을 선택해주세요.")
-    
-    # 버튼들
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col1:
+        st.success(f"현재 {len(sel)}개 선택됨")
+
+    # 카테고리 반복 (전역 INGREDIENT_CATEGORIES 사용)
+    for category, items in INGREDIENT_CATEGORIES.items():
+        st.markdown(f"### {category}")
+        st.markdown("<div class='chip-grid'>", unsafe_allow_html=True)
+
+        # ❗칩 = st.checkbox 라벨 그대로. 라벨 전체가 클릭영역(칩)입니다.
+        for item in items:
+            key = f"ingredient_{item}"
+            picked = item in sel
+            changed = st.checkbox(item, value=picked, key=key)
+
+            # 상태 갱신 + 최대 개수 제한
+            if changed and not picked:
+                if len(sel) < max_sel:
+                    sel.append(item)
+                else:
+                    st.warning(f"최대 {max_sel}개까지만 선택 가능합니다.", icon="⚠️")
+                    st.session_state[key] = False
+            elif (not changed) and picked:
+                sel.remove(item)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("")
+
+    # 선택 상태 저장
+    st.session_state.selected_ingredients = sel
+
+    # 하단 액션
+    st.markdown("---")
+    c1, _, c3 = st.columns([1,1,1])
+    with c1:
         if st.button("← 이전 단계", use_container_width=True):
             st.session_state.step = 'info'
             st.rerun()
-    
-    with col3:
-        if len(selected) >= 3:
-            if st.button("다음 단계로 →", type="primary", use_container_width=True):
-                # 선택된 수산물에 대한 메뉴 초기화
-                for ingredient in selected:
-                    if ingredient not in st.session_state.selected_menus:
-                        st.session_state.selected_menus[ingredient] = []
-                
-                # 선택 해제된 수산물 제거
-                to_remove = []
-                for ingredient in st.session_state.selected_menus:
-                    if ingredient not in selected:
-                        to_remove.append(ingredient)
-                for ingredient in to_remove:
-                    del st.session_state.selected_menus[ingredient]
-                
-                st.session_state.step = 'menu'
-                st.rerun()
-        else:
-            st.button(f"다음 단계로 → (최소 3개 선택)", disabled=True, use_container_width=True)
-            if selected:
-                st.info(f"💡 {3 - len(selected)}개를 더 선택해주세요.")
+
+    ready = (min_sel <= len(sel) <= max_sel)
+    with c3:
+        if st.button("다음 단계로 →", type="primary", use_container_width=True, disabled=not ready):
+            # 메뉴 선택용 상태 정리
+            for ingredient in sel:
+                st.session_state.selected_menus.setdefault(ingredient, [])
+            for k in list(st.session_state.selected_menus.keys()):
+                if k not in sel:
+                    del st.session_state.selected_menus[k]
+            st.session_state.step = 'menu'
+            st.rerun()
 
 @st.cache_data
 def get_menu_image_html(menu):
