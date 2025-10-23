@@ -809,7 +809,14 @@ def main():
         background-color: #45a049;
         transform: scale(1.05);
     }
-    
+    div.stButton > button {
+    background-color: transparent !important;
+    color: inherit !important;
+    border: none !important;
+    padding: 0 !important;
+    height: auto !important;
+    box-shadow: none !important;
+}
     /* 체크박스 라벨 텍스트를 진하게 */
     .stCheckbox > label {
         font-weight: 600;
