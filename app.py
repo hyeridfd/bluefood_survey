@@ -737,71 +737,67 @@ def main():
     # CSS 스타일 (기존 것 전체 교체)
     st.markdown("""
     <style>
-    /* 페이지 최대폭 조금 더 넓게 */
-    .main .block-container{
-      max-width: 1600px !important;
-      padding-left: 2rem; padding-right: 2rem;
+    /* 페이지 폭 넓히기(원하면 1800px/95vw 등으로 조절) */
+    .main .block-container{ max-width: 1600px !important; padding: 0 2rem; }
+    
+    /* ====== '칩' 공통 스타일 — 전부 같은 크기 ====== */
+    :root{
+      --chip-h: 140px;   /* 🔺 네모(칩) 높이 — 크게 키웠음 */
+      --chip-fz: 20px;   /* 🔺 글자 크기 */
+      --chip-gap: 18px;  /* 칩 사이 간격 */
     }
     
-    /* ====== 공용 : 체크박스를 '칩'으로 바꾸기 ====== */
-    div[data-testid="stCheckbox"]{
-      width:100%;
+    /* 한 줄 4칸 그리드 */
+    .chips-row{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--chip-gap);
+      margin: 12px 0 28px;
     }
     
-    /* label 자체를 큰 박스로 만들고 안에서 텍스트/체크 모두 중앙 정렬 */
+    /* 체크박스를 '큰 네모 칩'으로 */
+    div[data-testid="stCheckbox"]{ width:100%; }
     div[data-testid="stCheckbox"] > label{
       display:flex;
-      flex-direction:column;            /* ⬅ 텍스트가 아래로 붙어있어도 라벨 안으로 끌어들임 */
       align-items:center;
       justify-content:center;
-      gap: 8px;
       width:100%;
-      height:120px;                     /* 🔺 칩 높이 */
+      height:var(--chip-h);                 /* 🔒 모두 같은 높이 */
       border:2px solid #d9eaff;
       background:#f0f7ff;
       color:#134b70;
-      border-radius:16px;
-      font-size:20px;                   /* 🔺 텍스트 크게 */
+      border-radius:18px;
+      font-size:var(--chip-fz);
       font-weight:800;
       cursor:pointer;
       user-select:none;
+      padding: 0 14px;
+      text-align:center;
       transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
-      padding: 8px 12px;
-      box-sizing: border-box;
+      box-sizing:border-box;
+      line-height:1.2;                      /* 여러 줄 텍스트도 중앙 정렬 유지 */
     }
     
-    /* 기본 체크박스(작은 사각형)는 숨기고, 눌림 상태는 배경/그림자만으로 표현 */
+    /* 기본 체크박스 아이콘 숨김(접근성 유지) */
     div[data-testid="stCheckbox"] > label > div[role="checkbox"]{ display:none !important; }
     div[data-testid="stCheckbox"] input[type="checkbox"]{
       position:absolute; opacity:0; width:0; height:0; pointer-events:none;
     }
     
-    /* hover/checked */
+    /* hover / checked */
     div[data-testid="stCheckbox"] > label:hover{
-      background:#e6f1ff;
-      transform:translateY(-2px);
-      border-color:#b7daff;
+      background:#e6f1ff; transform:translateY(-2px); border-color:#b7daff;
     }
     div[data-testid="stCheckbox"] > label:has(input:checked){
       background:linear-gradient(135deg,#4facfe,#00f2fe);
-      color:#fff;
-      border:none;
-      box-shadow:0 8px 18px rgba(0,153,255,.22);
+      color:#fff; border:none; box-shadow:0 10px 22px rgba(0,153,255,.22);
     }
     
-    /* ====== ingredients 전용 그리드 ====== */
-    .chips-row{
-      display:grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr)); /* ⬅ 1줄 4칸 */
-      gap:16px;                                         /* 카드 사이 간격 */
-      margin: 12px 0 28px;
-    }
-    
-    /* Streamlit 기본 column 간격이 커서 살짝 줄이기(있으면) */
-    section > div > div > div:has(> [data-testid="column"]) { gap: 12px !important; }
+    /* 반응형(화면 좁아지면 3→2칸) */
+    @media (max-width:1200px){ .chips-row{ grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width:820px){  .chips-row{ grid-template-columns: repeat(2, 1fr); } }
     </style>
     """, unsafe_allow_html=True)
-
 
     
     # 세션 상태 초기화
@@ -1023,31 +1019,26 @@ def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟")
         
 def show_ingredient_selection():
     st.subheader("🐟 선호하는 수산물 선택")
-    st.info("💡 **최소 3개 이상** 선택해주세요! 다양한 수산물을 선택하실수록 더 좋습니다.")
+    st.info("💡 **최소 3개 이상** 선택해주세요!")
 
-    categories = INGREDIENT_CATEGORIES  # 이미 상단에 정의돼 있으니 이걸 사용하세요.
+    categories = INGREDIENT_CATEGORIES
     selected = st.session_state.selected_ingredients.copy()
 
     for category, items in categories.items():
         st.markdown(f"### {category}")
-    
-        # ✅ 4칸 꽉 채우는 그리드 시작
+
+        # ✅ 그리드 시작 (1줄 4칸, 칩 크기 모두 동일)
         st.markdown('<div class="chips-row">', unsafe_allow_html=True)
-    
-        # 각 아이템을 checkbox로 렌더 (칩은 CSS가 만들어 줌)
+
         for item in items:
-            checked = st.checkbox(
-                item,
-                key=f"ingredient_{item}",
-                value=(item in selected)
-            )
+            checked = st.checkbox(item, key=f"ingredient_{item}", value=(item in selected))
             if checked and item not in selected:
                 selected.append(item)
-            if (not checked) and item in selected:
+            elif (not checked) and item in selected:
                 selected.remove(item)
 
-    # ✅ 그리드 종료
-    st.markdown('</div>', unsafe_allow_html=True)
+        # ✅ 그리드 종료
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.session_state.selected_ingredients = selected
 
@@ -1060,24 +1051,16 @@ def show_ingredient_selection():
     c1, _, c3 = st.columns([1,1,1])
     with c1:
         if st.button("← 이전 단계", use_container_width=True):
-            st.session_state.step = 'info'
-            st.rerun()
-
+            st.session_state.step = 'info'; st.rerun()
     with c3:
-        if len(selected) >= 3:
-            if st.button("다음 단계로 →", type="primary", use_container_width=True):
-                # 메뉴 상태 정리
-                for ing in selected:
-                    st.session_state.selected_menus.setdefault(ing, [])
-                for ing in list(st.session_state.selected_menus.keys()):
-                    if ing not in selected:
-                        del st.session_state.selected_menus[ing]
-                st.session_state.step = 'menu'
-                st.rerun()
-        else:
-            st.button("다음 단계로 → (최소 3개 선택)", disabled=True, use_container_width=True)
-            if selected:
-                st.info(f"💡 {3 - len(selected)}개 더 선택해주세요.")
+        ready = len(selected) >= 3
+        if st.button("다음 단계로 →", type="primary", use_container_width=True, disabled=not ready):
+            for ing in selected:
+                st.session_state.selected_menus.setdefault(ing, [])
+            for ing in list(st.session_state.selected_menus.keys()):
+                if ing not in selected:
+                    del st.session_state.selected_menus[ing]
+            st.session_state.step = 'menu'; st.rerun()
 
 
 @st.cache_data
