@@ -1134,64 +1134,58 @@ def main():
         show_completion()
 
 # ---------- 식별번호 검증 유틸 ----------
+# ---------- 화이트리스트 로딩 & 검증 ----------
 @st.cache_data(ttl=300)
-def load_allowed_ids():
-    """허용된 식별번호 목록을 여러 소스에서 로드 (우선순위: secrets -> 로컬파일 -> 구글시트 Whitelist 시트)"""
-    ids = set()
+def load_allowed_name_id_pairs():
+    """
+    Whitelist 워크시트(A: 성함, B: 식별번호)에서 허용된 (이름, 식별번호) 쌍을 읽어온다.
+    모두 대소문자/공백 정리해서 비교 용이하게 저장.
+    """
+    pairs = set()
 
-    # 1) st.secrets 사용 (권장)
-    # 예시: .streamlit/secrets.toml 에
-    # allowed_ids = ["HG001","HG002","HG003"]
-    # 또는 allowed_ids = "HG001,HG002,HG003"
+    # 1) st.secrets 에서도 읽고 싶다면 (선택)
+    # 예) secrets.toml
+    # allowed_pairs = [["홍길동","HG001"], ["김민지","KM002"]]
     try:
-        raw = st.secrets.get("allowed_ids", None)
-        if raw:
-            if isinstance(raw, (list, tuple)):
-                ids.update([str(x).strip().upper() for x in raw if str(x).strip()])
-            elif isinstance(raw, str):
-                ids.update([x.strip().upper() for x in raw.split(",") if x.strip()])
+        raw_pairs = st.secrets.get("allowed_pairs", None)
+        if raw_pairs and isinstance(raw_pairs, (list, tuple)):
+            for item in raw_pairs:
+                if isinstance(item, (list, tuple)) and len(item) >= 2:
+                    nm = str(item[0]).strip()
+                    idv = str(item[1]).strip().upper()
+                    if nm and idv:
+                        pairs.add((nm, idv))
     except Exception:
         pass
 
-    # 2) 로컬 파일 (옵션): allowed_ids.txt (줄바꿈으로 구분)
+    # 2) Google Sheets Whitelist 시트(A:성함, B:식별번호)
     try:
-        if os.path.exists("allowed_ids.txt"):
-            with open("allowed_ids.txt", "r", encoding="utf-8") as f:
-                for line in f:
-                    v = line.strip()
-                    if v:
-                        ids.add(v.upper())
-    except Exception:
-        pass
-
-    # 3) Google Sheets (옵션): 같은 스프레드시트의 "Whitelist" 워크시트의 A열
-    # 첫 행은 헤더라고 가정. A열에 식별번호 나열.
-    try:
-        sheet = get_google_sheet_cached()
+        sheet = get_google_sheet_cached()  # 이미 연결됨
         if sheet is not None:
-            try:
-                # 현재 sheet 는 sheet1 이므로, 같은 문서의 다른 워크시트를 열자
-                workbook = sheet.spreadsheet
-                if "Whitelist" in [ws.title for ws in workbook.worksheets()]:
-                    w = workbook.worksheet("Whitelist")
-                    values = w.col_values(1)  # A열 전부
-                    # 첫 행 헤더 제거
-                    values = [v for v in values[1:] if v and v.strip()]
-                    ids.update([v.strip().upper() for v in values])
-            except Exception:
-                pass
+            workbook = sheet.spreadsheet
+            titles = [ws.title for ws in workbook.worksheets()]
+            if "Whitelist" in titles:
+                w = workbook.worksheet("Whitelist")
+                rows = w.get_all_values()
+                # 첫 행은 헤더라고 가정
+                for r in rows[1:]:
+                    if len(r) >= 2:
+                        nm = str(r[0]).strip()
+                        idv = str(r[1]).strip().upper()
+                        if nm and idv:
+                            pairs.add((nm, idv))
     except Exception:
         pass
 
-    return ids
+    return pairs
 
-def is_valid_id(id_number: str) -> bool:
-    """입력된 식별번호가 허용 리스트에 있는지 검증"""
-    if not id_number:
+def is_valid_name_id(name: str, id_number: str) -> bool:
+    """(이름, 식별번호) 쌍이 허용 리스트에 존재하는지 확인"""
+    if not name or not id_number:
         return False
-    allowed = load_allowed_ids()
-    return id_number.strip().upper() in allowed
-# ---------------------------------------
+    allowed = load_allowed_name_id_pairs()
+    return (name.strip(), id_number.strip().upper()) in allowed
+# ------------------------------------------------
 
 def show_info_form():
     st.markdown(
@@ -1256,10 +1250,10 @@ def show_info_form():
 
         if submitted:
             if name and id_number:
-                # ✅ 식별번호 화이트리스트 검증 추가
-                if not is_valid_id(id_number):
-                    st.error("❌ 유효하지 않은 식별번호입니다. 담당자로부터 받은 올바른 식별번호를 입력해주세요.")
-                    return  # 다음 단계로 넘어가지 않음
+                # ✅ 이름+식별번호 동시 검증
+                if not is_valid_name_id(name, id_number):
+                    st.error("❌ 등록되지 않은 성함/식별번호입니다. 담당자로부터 받은 올바른 정보를 입력해주세요.")
+                    return
 
                 st.session_state.name = name
                 st.session_state.id_number = id_number
@@ -1277,6 +1271,7 @@ def show_info_form():
                 st.rerun()
             else:
                 st.error("성함과 식별번호를 모두 입력해주세요.")
+
 
 
 # 이미지 렌더링 함수
