@@ -210,7 +210,7 @@ def get_google_sheet_cached():
                     creds_dict["private_key"] = original_key.replace("\\n", "\n")
                     #st.write("🟢 [DEBUG] private_key 줄바꿈 변환 완료")
                 else:
-                    #st.write("🟢 [DEBUG] private_key 이미 올바른 형태")
+                    st.write("🟢 [DEBUG] private_key 이미 올바른 형태")
                 
                 #st.write("🟢 [DEBUG] private_key 길이:", len(creds_dict["private_key"]))
                 #st.write("🟢 [DEBUG] private_key 시작:", creds_dict["private_key"][:50] + "...")
