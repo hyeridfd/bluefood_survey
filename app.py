@@ -1,4 +1,3 @@
-# UX 개선된 블루푸드 선호도 조사 앱
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timezone, timedelta
@@ -227,440 +226,941 @@ def get_google_sheet_cached():
 
             # Scope 설정
             scope = [
-                'https://spreadsheets.google.com/feeds',
                 'https://www.googleapis.com/auth/spreadsheets',
                 'https://www.googleapis.com/auth/drive'
             ]
             
-            # 인증 객체 생성 - JSON 형태로 변환
+            # Credentials 생성
             creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-            st.write("🟢 [DEBUG] 인증 객체 생성 성공")
+            st.write("🟢 [DEBUG] Credentials 객체 생성 성공")
             
             # gspread 클라이언트 생성
             client = gspread.authorize(creds)
-            st.write("🟢 [DEBUG] gspread 클라이언트 생성 성공")
+            st.write("🟢 [DEBUG] gspread 클라이언트 인증 성공")
             
-            # Google Sheet 접근 시도 - ID로 접근
-            if sheet_id:
-                try:
-                    sheet = client.open_by_key(sheet_id).sheet1
-                    st.write("🟢 [DEBUG] 시트 ID로 접근 성공")
-                except Exception as e:
-                    st.error(f"❌ [DEBUG] 시트 ID로 접근 실패: {e}")
-                    # 이름으로 시도
-                    if sheet_name:
-                        try:
-                            sheet = client.open(sheet_name).sheet1
-                            st.write("🟢 [DEBUG] 시트 이름으로 접근 성공")
-                        except Exception as e2:
-                            st.error(f"❌ [DEBUG] 시트 이름으로도 접근 실패: {e2}")
-                            return None
-                    else:
-                        return None
-            elif sheet_name:
-                try:
-                    sheet = client.open(sheet_name).sheet1
-                    st.write("🟢 [DEBUG] 시트 이름으로 접근 성공")
-                except Exception as e:
-                    st.error(f"❌ [DEBUG] 시트 접근 실패: {e}")
+            # 구글 시트 열기 시도
+            try:
+                # ID로 열기 시도
+                if sheet_id:
+                    sheet = client.open_by_key(sheet_id)
+                    st.write("🟢 [DEBUG] Sheet ID로 연결 성공:", sheet_id)
+                # 이름으로 열기
+                elif sheet_name:
+                    sheet = client.open(sheet_name)
+                    st.write("🟢 [DEBUG] Sheet 이름으로 연결 성공:", sheet_name)
+                else:
+                    st.error("❌ [DEBUG] Sheet ID와 이름 모두 누락")
                     return None
-            else:
-                st.error("❌ [DEBUG] 시트 이름과 ID 모두 없음")
+                
+                st.success("✅ [DEBUG] Google Sheets 연결 완료!")
+                
+                # 워크시트 정보
+                worksheet = sheet.get_worksheet(0)
+                st.write(f"🟢 [DEBUG] 첫 번째 워크시트: {worksheet.title}")
+                
+                # worksheet만 반환
+                return worksheet
+                
+            except gspread.SpreadsheetNotFound as e:
+                st.error(f"❌ [DEBUG] 시트를 찾을 수 없음: {e}")
+                st.error(f"❌ [DEBUG] 시트 ID: {sheet_id}")
+                st.error(f"❌ [DEBUG] 시트 이름: {sheet_name}")
                 return None
             
-            # 시트 정보 확인
-            rows = sheet.row_count
-            cols = sheet.col_count
-            st.write(f"🟢 [DEBUG] 시트 크기: {rows}행 × {cols}열")
-            
-            # 현재 데이터 확인
-            existing_data = sheet.get_all_records()
-            st.write(f"🟢 [DEBUG] 현재 저장된 데이터: {len(existing_data)}행")
-            
-            # 5초 후 디버깅 정보 제거
-            time.sleep(5)
-            debug_container.empty()
-            
-            return sheet
-            
         except Exception as e:
-            st.error(f"❌ [CRITICAL] Google Sheets 연결 실패")
-            st.error(f"에러 타입: {type(e).__name__}")
-            st.error(f"에러 메시지: {str(e)}")
-            st.error(f"상세 트레이스백:")
-            st.code(traceback.format_exc())
+            st.error(f"❌ [DEBUG] 연결 오류: {type(e).__name__}: {e}")
+            st.error(f"❌ [DEBUG] 전체 스택 트레이스:")
+            st.error(traceback.format_exc())
             return None
-        
+    
 
-def get_google_sheet():
-    """Google Sheets 연결 함수 (캐싱 없음) - 매번 호출 시 실제 연결 시도"""
+def save_to_google_sheets(name, id_number, ingredients, menus):
+    """Google Sheets에 데이터 저장"""
+    success = False
+    timestamp = format_korean_time()
+    
     try:
-        if "gcp_service_account" not in st.secrets:
-            st.error("❌ gcp_service_account 설정이 누락되었습니다.")
-            return None
+        # worksheet 가져오기
+        worksheet = get_google_sheet_cached()
         
-        creds_dict = dict(st.secrets["gcp_service_account"])
+        if worksheet is None:
+            st.error("❌ [DEBUG] Google Sheets worksheet를 가져올 수 없습니다.")
+            return success
         
-        # 줄바꿈 처리
-        if "private_key" in creds_dict:
-            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-        
-        scope = [
-            'https://spreadsheets.google.com/feeds',
-            'https://www.googleapis.com/auth/spreadsheets',
-            'https://www.googleapis.com/auth/drive'
-        ]
-        
-        # 인증
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-        client = gspread.authorize(creds)
-        
-        # 시트 접근
-        google_sheets_config = st.secrets["google_sheets"]
-        sheet_id = google_sheets_config.get("google_sheet_id")
-        sheet_name = google_sheets_config.get("google_sheet_name")
-        
-        if sheet_id:
-            try:
-                return client.open_by_key(sheet_id).sheet1
-            except:
-                if sheet_name:
-                    return client.open(sheet_name).sheet1
-        elif sheet_name:
-            return client.open(sheet_name).sheet1
-        
-        return None
-        
-    except Exception as e:
-        st.error(f"❌ Google Sheets 연결 실패: {e}")
-        return None
-
-def save_to_google_sheet(sheet, name, id_number, ingredients, menus):
-    """Google Sheets에 설문 데이터 저장"""
-    try:
-        # 메뉴를 문자열로 변환
-        menu_str = ""
+        # 메뉴 문자열 생성
+        menu_strings = []
         for ingredient, menu_list in menus.items():
             if menu_list:
-                menu_items = ", ".join(menu_list)
-                menu_str += f"{ingredient}: {menu_items} | "
-        menu_str = menu_str.rstrip(" | ")
+                menu_text = f"{ingredient}: {', '.join(menu_list)}"
+                menu_strings.append(menu_text)
+        menu_string = " | ".join(menu_strings) if menu_strings else ""
         
         # 새 데이터 행
         new_row = [
-            format_korean_time(),
-            name,
-            id_number,
-            ", ".join(ingredients),
-            menu_str
+            timestamp,                        # 설문일시
+            name,                             # 이름
+            id_number,                        # 식별번호
+            ", ".join(ingredients),           # 선택한_수산물
+            menu_string                       # 선택한_메뉴
         ]
         
+        st.write(f"🟡 [DEBUG] 저장할 데이터: {new_row}")
+        
+        # 현재 행 수 확인
+        all_values = worksheet.get_all_values()
+        
         # 헤더가 없으면 추가
-        if sheet.row_count == 0 or not sheet.get_all_records():
-            headers = ['설문일시', '이름', '식별번호', '선택한_수산물', '선택한_메뉴']
-            sheet.append_row(headers)
+        if len(all_values) == 0 or all_values[0] != ["설문일시", "이름", "식별번호", "선택한_수산물", "선택한_메뉴"]:
+            worksheet.insert_row(["설문일시", "이름", "식별번호", "선택한_수산물", "선택한_메뉴"], 1)
+            st.write("🟢 [DEBUG] 헤더 행 추가 완료")
         
         # 데이터 추가
-        sheet.append_row(new_row)
-        
-        st.success("✅ Google Sheets 저장 성공!")
-        return True
+        worksheet.append_row(new_row)
+        st.success(f"✅ [DEBUG] Google Sheets 저장 성공! (행 {len(all_values) + 1})")
+        success = True
         
     except Exception as e:
-        st.error(f"❌ Google Sheets 저장 실패: {e}")
-        return False
+        st.error(f"❌ [DEBUG] Google Sheets 저장 실패: {e}")
+        st.error(f"❌ [DEBUG] 상세 오류:\n{traceback.format_exc()}")
+    
+    return success
+
 
 def save_to_excel(name, id_number, ingredients, menus):
-    """엑셀 파일로 저장하고 Google Sheets에도 저장 시도"""
-    survey_dir = Path("survey_responses")
-    survey_dir.mkdir(exist_ok=True)
+    """설문 결과를 엑셀 파일로 저장"""
+    # 데이터 준비
+    timestamp = format_korean_time()
     
-    filename = survey_dir / f"survey_{datetime.now().strftime('%Y%m%d')}.xlsx"
-    
-    # 메뉴를 문자열로 변환
-    menu_str = ""
+    # 메뉴 문자열 생성
+    menu_strings = []
     for ingredient, menu_list in menus.items():
         if menu_list:
-            menu_items = ", ".join(menu_list)
-            menu_str += f"{ingredient}: {menu_items} | "
-    menu_str = menu_str.rstrip(" | ")
+            menu_text = f"{ingredient}: {', '.join(menu_list)}"
+            menu_strings.append(menu_text)
     
-    # 데이터프레임 생성
-    new_data = pd.DataFrame({
-        '설문일시': [format_korean_time()],
-        '이름': [name],
-        '식별번호': [id_number],
-        '선택한_수산물': [", ".join(ingredients)],
-        '선택한_메뉴': [menu_str]
-    })
+    menu_string = " | ".join(menu_strings) if menu_strings else ""
     
-    # 기존 파일이 있으면 읽어서 추가
+    # 새로운 데이터 행
+    new_data = {
+        "설문일시": timestamp,
+        "이름": name,
+        "식별번호": id_number,
+        "선택한_수산물": ", ".join(ingredients),
+        "선택한_메뉴": menu_string
+    }
+    
+    # 엑셀 파일 경로
+    excel_dir = Path("survey_results")
+    excel_dir.mkdir(exist_ok=True)
+    filename = excel_dir / f"bluefood_survey_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    
+    # 기존 파일이 있으면 불러오기
     if filename.exists():
-        try:
-            existing_data = pd.read_excel(filename)
-            combined_data = pd.concat([existing_data, new_data], ignore_index=True)
-        except:
-            combined_data = new_data
+        df = pd.read_excel(filename)
+        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
     else:
-        combined_data = new_data
-    
-    # 엑셀 파일로 저장
-    try:
-        combined_data.to_excel(filename, index=False)
-        st.success(f"✅ 로컬 백업 파일 저장 성공: {filename}")
-    except Exception as e:
-        st.error(f"❌ 파일 저장 실패: {e}")
-        return None, combined_data
+        df = pd.DataFrame([new_data])
     
     # Google Sheets 저장 시도
-    try:
-        sheet = get_google_sheet()
-        if sheet:
-            success = save_to_google_sheet(sheet, name, id_number, ingredients, menus)
-            st.session_state.google_sheets_success = success
-        else:
-            st.session_state.google_sheets_success = False
-    except Exception as e:
-        st.error(f"❌ Google Sheets 저장 중 오류: {e}")
-        st.session_state.google_sheets_success = False
+    google_sheets_success = save_to_google_sheets(name, id_number, ingredients, menus)
+    st.session_state.google_sheets_success = google_sheets_success
     
-    return filename, combined_data
+    # 로컬 백업 저장
+    df.to_excel(filename, index=False)
+    
+    return str(filename), df
 
-# 수산물 카테고리별 데이터
-SEAFOOD_CATEGORIES = {
-    "🐟 생선류": {
-        "items": ["고등어", "갈치", "조기", "명태", "연어", "참치", "삼치", "대구", "가자미", "광어", "도미", "농어"],
-        "description": "신선한 바다와 민물의 다양한 생선",
-        "icon": "🐟"
-    },
-    "🦐 갑각류": {
-        "items": ["새우", "게", "랍스터", "가재"],
-        "description": "영양 만점 갑각류 해산물",
-        "icon": "🦐"
-    },
-    "🦑 연체류": {
-        "items": ["오징어", "문어", "낙지", "주꾸미", "한치"],
-        "description": "쫄깃한 식감의 연체동물",
-        "icon": "🦑"
-    },
-    "🦪 패류": {
-        "items": ["굴", "전복", "홍합", "바지락", "가리비", "꼬막", "조개", "소라"],
-        "description": "미네랄이 풍부한 조개류",
-        "icon": "🦪"
-    },
-    "🌊 해조류": {
-        "items": ["미역", "다시마", "김", "파래", "톳", "매생이"],
-        "description": "건강한 바다의 채소",
-        "icon": "🌊"
-    },
-    "🐠 기타 수산물": {
-        "items": ["멸치", "꽁치", "정어리", "장어", "미꾸라지", "해삼", "멍게", "성게"],
-        "description": "특별한 맛과 영양의 수산물",
-        "icon": "🐠"
-    }
-}
+# 수산물 목록
+INGREDIENTS = [
+    "고등어", "갈치", "연어", "꽁치", "삼치",
+    "오징어", "낙지", "문어", "주꾸미", "한치",
+    "새우", "꽃게", "대게", "가리비", "홍합",
+    "굴", "전복", "소라", "바지락", "홍어",
+    "가자미", "멸치", "장어", "농어", "참치",
+    "우럭", "광어", "도미", "조기", "갑오징어"
+]
 
 # 메뉴 데이터
 MENU_DATA = {
-    '고등어': {
-        '구이/조림': ['고등어구이', '고등어조림', '고등어김치찜'],
-        '기타': ['고등어무조림', '고등어된장조림']
+    "고등어": {
+        "국물요리": ["김치찌개", "된장찌개"],
+        "구이/볶음": ["구이", "간장조림", "카레", "강정"],
+        "기타": ["무조림", "김치조림"]
     },
-    '갈치': {
-        '구이/조림': ['갈치구이', '갈치조림'],
-        '국/탕': ['갈치국']
+    "갈치": {
+        "국물요리": ["국", "찌개"],
+        "구이/볶음": ["구이", "조림"],
+        "기타": ["튀김", "무조림"]
     },
-    '조기': {
-        '구이': ['조기구이'],
-        '국/탕': ['조깃국']
+    "연어": {
+        "구이/볶음": ["구이", "스테이크", "데리야끼"],
+        "날것/절임": ["초밥", "회"],
+        "기타": ["샐러드", "리조또", "파스타"]
     },
-    '명태': {
-        '국/탕': ['명태국', '동태찌개'],
-        '기타': ['명태전', '황태해장국']
+    "꽁치": {
+        "구이/볶음": ["구이", "조림"],
+        "국물요리": ["김치찌개"],
+        "기타": ["튀김"]
     },
-    '연어': {
-        '구이': ['연어스테이크', '연어구이'],
-        '회/초밥': ['연어회', '연어초밥'],
-        '샐러드': ['연어샐러드']
+    "삼치": {
+        "구이/볶음": ["구이", "조림"],
+        "국물요리": ["찌개"],
+        "기타": ["튀김", "무조림"]
     },
-    '참치': {
-        '회/초밥': ['참치회', '참치초밥'],
-        '구이': ['참치스테이크'],
-        '기타': ['참치김밥', '참치마요덮밥']
+    "오징어": {
+        "구이/볶음": ["볶음", "구이", "튀김"],
+        "국물요리": ["찌개", "국"],
+        "날것/절임": ["회", "젓갈"],
+        "기타": ["무침", "순대"]
     },
-    '삼치': {
-        '구이': ['삼치구이'],
-        '조림': ['삼치조림']
+    "낙지": {
+        "구이/볶음": ["볶음", "꼬치구이"],
+        "국물요리": ["연포탕", "찜"],
+        "날것/절임": ["탕탕이", "회"],
+        "기타": ["호롱이"]
     },
-    '대구': {
-        '국/탕': ['대구탕', '대구지리'],
-        '찜': ['대구뽈찜']
+    "문어": {
+        "구이/볶음": ["숙회", "볶음"],
+        "날것/절임": ["회", "초무침"],
+        "기타": ["샐러드"]
     },
-    '가자미': {
-        '구이': ['가자미구이'],
-        '조림': ['가자미조림'],
-        '회': ['가자미회']
+    "주꾸미": {
+        "구이/볶음": ["볶음", "구이"],
+        "국물요리": ["샤브샤브"],
+        "날것/절임": ["회"],
+        "기타": ["무침"]
     },
-    '광어': {
-        '회': ['광어회', '광어초밥'],
-        '국/탕': ['광어매운탕']
+    "한치": {
+        "구이/볶음": ["구이", "볶음"],
+        "날것/절임": ["회"],
+        "기타": ["무침", "튀김"]
     },
-    '도미': {
-        '구이': ['도미구이'],
-        '찜': ['도미찜'],
-        '회': ['도미회']
+    "새우": {
+        "구이/볶음": ["구이", "튀김", "볶음"],
+        "국물요리": ["찜"],
+        "날것/절임": ["초밥", "회"],
+        "기타": ["샐러드", "볶음밥", "파스타"]
     },
-    '농어': {
-        '회': ['농어회'],
-        '구이': ['농어구이'],
-        '찜': ['농어찜']
+    "꽃게": {
+        "국물요리": ["찜", "탕", "된장찌개"],
+        "날것/절임": ["간장게장", "양념게장"],
+        "기타": ["볶음", "라면"]
     },
-    '새우': {
-        '구이': ['새우구이', '대하구이'],
-        '튀김': ['새우튀김', '새우천부라'],
-        '볶음': ['새우볶음밥'],
-        '기타': ['새우장', '새우깡']
+    "대게": {
+        "국물요리": ["찜", "탕"],
+        "날것/절임": ["회"],
+        "기타": ["구이", "버터구이"]
     },
-    '게': {
-        '찜': ['꽃게찜', '대게찜'],
-        '탕': ['꽃게탕', '게장탕'],
-        '기타': ['간장게장', '양념게장']
+    "가리비": {
+        "구이/볶음": ["구이", "버터구이"],
+        "국물요리": ["찜"],
+        "날것/절임": ["회"],
+        "기타": ["파스타", "리조또"]
     },
-    '랍스터': {
-        '구이': ['랍스터구이', '버터랍스터'],
-        '찜': ['랍스터찜']
+    "홍합": {
+        "국물요리": ["국", "탕", "찜"],
+        "기타": ["볶음", "파스타", "리조또"]
     },
-    '가재': {
-        '구이': ['가재구이'],
-        '국/탕': ['가재미역국']
+    "굴": {
+        "국물요리": ["국", "찌개"],
+        "구이/볶음": ["전", "튀김", "구이"],
+        "날것/절임": ["회"],
+        "기타": ["무침", "밥", "파스타"]
     },
-    '오징어': {
-        '볶음': ['오징어볶음', '오징어덮밥'],
-        '회': ['오징어회'],
-        '튀김': ['오징어튀김'],
-        '기타': ['오징어순대', '오징어무국']
+    "전복": {
+        "구이/볶음": ["구이", "버터구이"],
+        "국물요리": ["죽", "찜"],
+        "날것/절임": ["회"],
+        "기타": ["장조림"]
     },
-    '문어': {
-        '숙회': ['문어숙회'],
-        '볶음': ['문어볶음'],
-        '기타': ['타코야키']
+    "소라": {
+        "구이/볶음": ["구이", "무침"],
+        "날것/절임": ["회"],
+        "기타": ["된장찌개", "초무침"]
     },
-    '낙지': {
-        '볶음': ['낙지볶음', '낙곱새'],
-        '탕': ['낙지연포탕'],
-        '회': ['산낙지']
+    "바지락": {
+        "국물요리": ["국", "칼국수", "찜"],
+        "기타": ["술찜", "파스타", "리조또"]
     },
-    '주꾸미': {
-        '볶음': ['주꾸미볶음'],
-        '삼겹살': ['주꾸미삼겹살'],
-        '샤브샤브': ['주꾸미샤브샤브']
+    "홍어": {
+        "날것/절임": ["회", "무침"],
+        "국물요리": ["찜", "탕"],
+        "기타": ["전", "애국"]
     },
-    '한치': {
-        '회': ['한치회'],
-        '구이': ['한치구이'],
-        '볶음': ['한치볶음']
+    "가자미": {
+        "구이/볶음": ["구이", "조림"],
+        "날것/절임": ["회", "무침"],
+        "기타": ["찜", "튀김"]
     },
-    '굴': {
-        '전': ['굴전'],
-        '국': ['굴국밥'],
-        '무침': ['굴무침'],
-        '튀김': ['굴튀김']
+    "멸치": {
+        "구이/볶음": ["볶음", "조림"],
+        "국물요리": ["국수", "쌈장찌개"],
+        "기타": ["무침", "튀김"]
     },
-    '전복': {
-        '죽': ['전복죽'],
-        '구이': ['전복버터구이'],
-        '찜': ['전복찜'],
-        '회': ['전복회']
+    "장어": {
+        "구이/볶음": ["구이", "양념구이", "데리야끼"],
+        "국물요리": ["탕"],
+        "날것/절임": ["초밥"],
+        "기타": ["덮밥"]
     },
-    '홍합': {
-        '탕': ['홍합탕'],
-        '찜': ['홍합찜'],
-        '파스타': ['홍합파스타']
+    "농어": {
+        "구이/볶음": ["구이", "스테이크"],
+        "날것/절임": ["회", "초밥"],
+        "국물요리": ["맑은탕", "찜"],
+        "기타": ["튀김"]
     },
-    '바지락': {
-        '국': ['바지락칼국수', '바지락된장국'],
-        '술찜': ['바지락술찜'],
-        '파스타': ['봉골레파스타']
+    "참치": {
+        "구이/볶음": ["구이", "스테이크"],
+        "날것/절임": ["회", "초밥"],
+        "기타": ["김치찌개", "샐러드", "참치마요덮밥"]
     },
-    '가리비': {
-        '구이': ['가리비구이'],
-        '찜': ['가리비찜'],
-        '버터구이': ['가리비버터구이']
+    "우럭": {
+        "구이/볶음": ["구이", "조림"],
+        "국물요리": ["맑은탕", "매운탕"],
+        "날것/절임": ["회"],
+        "기타": ["튀김"]
     },
-    '꼬막': {
-        '무침': ['꼬막무침'],
-        '비빔밥': ['꼬막비빔밥'],
-        '전': ['꼬막전']
+    "광어": {
+        "구이/볶음": ["구이", "조림"],
+        "날것/절임": ["회", "초밥"],
+        "국물요리": ["맑은탕", "매운탕"],
+        "기타": ["튀김", "미역국"]
     },
-    '조개': {
-        '구이': ['조개구이'],
-        '탕': ['조개탕'],
-        '찜': ['조개찜']
+    "도미": {
+        "구이/볶음": ["구이", "소금구이"],
+        "날것/절임": ["회", "초밥"],
+        "국물요리": ["맑은탕", "찜"],
+        "기타": ["조림", "튀김"]
     },
-    '소라': {
-        '무침': ['소라무침'],
-        '구이': ['소라구이'],
-        '숙회': ['소라숙회']
+    "조기": {
+        "구이/볶음": ["구이", "조림"],
+        "국물요리": ["찌개", "매운탕"],
+        "날것/절임": ["젓갈"],
+        "기타": ["튀김", "전"]
     },
-    '미역': {
-        '국': ['미역국', '산모미역국'],
-        '무침': ['미역무침'],
-        '냉국': ['미역냉국']
-    },
-    '다시마': {
-        '육수': ['다시마육수'],
-        '무침': ['다시마무침'],
-        '튀각': ['다시마튀각']
-    },
-    '김': {
-        '구이': ['김구이'],
-        '무침': ['김무침'],
-        '김밥': ['김밥']
-    },
-    '파래': {
-        '무침': ['파래무침'],
-        '전': ['파래전'],
-        '김': ['파래김']
-    },
-    '톳': {
-        '무침': ['톳무침'],
-        '볶음': ['톳볶음']
-    },
-    '매생이': {
-        '국': ['매생이국'],
-        '전': ['매생이전']
-    },
-    '멸치': {
-        '볶음': ['멸치볶음'],
-        '국물': ['멸치국수', '멸치육수'],
-        '조림': ['멸치조림']
-    },
-    '꽁치': {
-        '구이': ['꽁치구이'],
-        '조림': ['꽁치조림'],
-        '김치찌개': ['꽁치김치찌개']
-    },
-    '정어리': {
-        '구이': ['정어리구이'],
-        '조림': ['정어리조림']
-    },
-    '장어': {
-        '구이': ['장어구이', '장어소금구이'],
-        '탕': ['장어탕'],
-        '덮밥': ['장어덮밥']
-    },
-    '미꾸라지': {
-        '탕': ['추어탕', '미꾸라지매운탕'],
-        '튀김': ['미꾸라지튀김']
-    },
-    '해삼': {
-        '회': ['해삼회'],
-        '초무침': ['해삼초무침']
-    },
-    '멍게': {
-        '회': ['멍게회'],
-        '비빔밥': ['멍게비빔밥']
-    },
-    '성게': {
-        '비빔밥': ['성게비빔밥'],
-        '초밥': ['성게초밥
+    "갑오징어": {
+        "구이/볶음": ["볶음", "구이"],
+        "날것/절임": ["회"],
+        "국물요리": ["찌개"],
+        "기타": ["무침", "튀김"]
+    }
+}
+
+def main():
+    # 페이지 기본 설정
+    st.set_page_config(
+        page_title="블루푸드 선호도 조사",
+        page_icon="🐟",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+    
+    # CSS 스타일
+    st.markdown("""
+    <style>
+    /* 기본 여백 조정 */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    
+    /* 헤더 스타일 */
+    .main-header {
+        text-align: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+    
+    /* 버튼 스타일 */
+    .stButton > button {
+        background-color: #4CAF50;
+        color: white;
+        border-radius: 5px;
+        border: none;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+        transition: all 0.3s;
+    }
+    
+    .stButton > button:hover {
+        background-color: #45a049;
+        transform: scale(1.05);
+    }
+    
+    /* 체크박스 라벨 텍스트를 진하게 */
+    .stCheckbox > label {
+        font-weight: 600;
+        font-size: 16px;
+    }
+    
+    /* 진행 상황 표시 스타일 */
+    .progress-container {
+        display: flex;
+        justify-content: center;
+        margin: 2rem 0;
+    }
+    
+    .progress-step {
+        padding: 0.5rem 1rem;
+        margin: 0 0.5rem;
+        border-radius: 20px;
+        background: #e0e0e0;
+        font-weight: bold;
+    }
+    
+    .progress-step.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    /* 수산물/메뉴 선택 체크박스 컨테이너 */
+    div[data-testid="column"] > div > div > div > div[data-testid="stCheckbox"] {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 10px;
+        transition: all 0.3s;
+    }
+    
+    div[data-testid="column"] > div > div > div > div[data-testid="stCheckbox"]:hover {
+        background-color: #e9ecef;
+        transform: translateX(5px);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # 세션 상태 초기화
+    if 'step' not in st.session_state:
+        st.session_state.step = 'info'
+    if 'name' not in st.session_state:
+        st.session_state.name = ''
+    if 'id_number' not in st.session_state:
+        st.session_state.id_number = ''
+    if 'selected_ingredients' not in st.session_state:
+        st.session_state.selected_ingredients = []
+    if 'selected_menus' not in st.session_state:
+        st.session_state.selected_menus = {}
+    if 'is_admin' not in st.session_state:
+        st.session_state.is_admin = False
+    if 'show_admin_login' not in st.session_state:
+        st.session_state.show_admin_login = False
+    if 'already_saved' not in st.session_state:
+        st.session_state.already_saved = False
+    
+    # 메인 헤더
+    st.markdown("""
+    <div class="main-header">
+        <h1>🐟 블루푸드 선호도 조사 🐟</h1>
+        <p>맛있고 건강한 수산물 요리, 당신의 선택은?</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 진행 상황 표시
+    steps = {
+        'info': '개인정보 입력',
+        'ingredients': '수산물 선택',
+        'menu': '메뉴 선택',
+        'complete': '완료'
+    }
+    
+    progress_html = '<div class="progress-container">'
+    for key, label in steps.items():
+        active_class = 'active' if key == st.session_state.step else ''
+        progress_html += f'<div class="progress-step {active_class}">{label}</div>'
+    progress_html += '</div>'
+    st.markdown(progress_html, unsafe_allow_html=True)
+    
+    # 사이드바 - 관리자 로그인
+    with st.sidebar:
+        st.markdown("### 🔐 관리자 모드")
+        
+        # 관리자 로그인 토글
+        if st.button("관리자 로그인" if not st.session_state.is_admin else "관리자 로그아웃"):
+            st.session_state.show_admin_login = not st.session_state.show_admin_login
+            if st.session_state.is_admin:  # 로그아웃
+                st.session_state.is_admin = False
+                st.rerun()
+        
+        # 로그인 폼
+        if st.session_state.show_admin_login and not st.session_state.is_admin:
+            password = st.text_input("패스워드", type="password")
+            if st.button("로그인"):
+                if password == ADMIN_PASSWORD:
+                    st.session_state.is_admin = True
+                    st.success("✅ 관리자 로그인 성공!")
+                    st.rerun()
+                else:
+                    st.error("❌ 패스워드가 틀렸습니다.")
+        
+        # 관리자 메뉴
+        if st.session_state.is_admin:
+            st.success("🔓 관리자 모드 활성화")
+            
+            if st.button("📊 대시보드 보기"):
+                st.session_state.step = 'admin_dashboard'
+                st.rerun()
+            
+            if st.button("📥 응답 데이터 보기"):
+                st.session_state.step = 'admin_responses'
+                st.rerun()
+            
+            if st.button("🏠 메인으로 돌아가기"):
+                st.session_state.step = 'info'
+                st.rerun()
+    
+    # 관리자 대시보드 표시
+    if st.session_state.is_admin and st.session_state.step == 'admin_dashboard':
+        # Google Sheets에서 데이터 가져오기
+        worksheet = get_google_sheet_cached()
+        
+        if worksheet:
+            try:
+                all_data = worksheet.get_all_values()
+                if len(all_data) > 1:
+                    df = pd.DataFrame(all_data[1:], columns=all_data[0])
+                    show_admin_dashboard(df)
+                else:
+                    st.warning("아직 응답 데이터가 없습니다.")
+            except Exception as e:
+                st.error(f"데이터 로드 실패: {e}")
+        else:
+            # 로컬 파일에서 데이터 로드 시도
+            excel_dir = Path("survey_results")
+            if excel_dir.exists():
+                excel_files = list(excel_dir.glob("*.xlsx"))
+                if excel_files:
+                    all_data = []
+                    for file in excel_files:
+                        df = pd.read_excel(file)
+                        all_data.append(df)
+                    if all_data:
+                        combined_df = pd.concat(all_data, ignore_index=True)
+                        show_admin_dashboard(combined_df)
+                else:
+                    st.warning("아직 응답 데이터가 없습니다.")
+    
+    # 관리자 응답 데이터 보기
+    elif st.session_state.is_admin and st.session_state.step == 'admin_responses':
+        st.subheader("📥 전체 응답 데이터")
+        
+        # Google Sheets에서 데이터 가져오기
+        worksheet = get_google_sheet_cached()
+        
+        if worksheet:
+            try:
+                all_data = worksheet.get_all_values()
+                if len(all_data) > 1:
+                    df = pd.DataFrame(all_data[1:], columns=all_data[0])
+                    st.dataframe(df, use_container_width=True)
+                    
+                    # 엑셀 다운로드
+                    csv = df.to_csv(index=False).encode('utf-8-sig')
+                    st.download_button(
+                        "📥 CSV로 다운로드",
+                        csv,
+                        f"survey_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        "text/csv",
+                        key='download-csv'
+                    )
+                else:
+                    st.warning("아직 응답 데이터가 없습니다.")
+            except Exception as e:
+                st.error(f"데이터 로드 실패: {e}")
+        else:
+            st.warning("Google Sheets 연결 실패. 로컬 백업 파일을 확인하세요.")
+    
+    # 일반 사용자 플로우
+    elif st.session_state.step == 'info':
+        show_info_input()
+    elif st.session_state.step == 'ingredients':
+        show_ingredient_selection()
+    elif st.session_state.step == 'menu':
+        show_menu_selection()
+    elif st.session_state.step == 'complete':
+        show_completion()
+
+def show_info_input():
+    st.subheader("📝 참여자 정보 입력")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        name = st.text_input("이름", value=st.session_state.name)
+    with col2:
+        id_number = st.text_input("식별번호 (예: 학번, 사원번호 등)", value=st.session_state.id_number)
+    
+    # Google Sheets 연결 상태 표시
+    st.markdown("---")
+    st.markdown("#### 🔗 데이터베이스 연결 상태")
+    worksheet = get_google_sheet_cached()
+    if worksheet:
+        st.success("✅ Google Sheets 연결 성공! 실시간 데이터 저장이 가능합니다.")
+    else:
+        st.warning("⚠️ Google Sheets 연결 실패. 데이터는 로컬 백업 파일에 저장됩니다.")
+    
+    st.markdown("---")
+    
+    if st.button("다음 단계로 →", type="primary", use_container_width=True):
+        if name and id_number:
+            st.session_state.name = name
+            st.session_state.id_number = id_number
+            st.session_state.step = 'ingredients'
+            st.rerun()
+        else:
+            st.error("모든 정보를 입력해주세요.")
+
+def show_ingredient_selection():
+    st.subheader("🐟 선호하는 수산물 선택")
+    st.info("💡 **최소 3개 이상** 선택해주세요! 다양한 수산물을 선택하실수록 더 좋습니다.")
+    
+    # 카테고리별로 수산물 분류 (순서 유지)
+    categories = {
+        "🐟 생선류": ["고등어", "갈치", "연어", "꽁치", "삼치", "가자미", "멸치", "장어", "농어", "참치", "우럭", "광어", "도미", "조기"],
+        "🦑 연체류": ["오징어", "낙지", "문어", "주꾸미", "한치", "갑오징어"],
+        "🦐 갑각류": ["새우", "꽃게", "대게"],
+        "🦪 패류": ["가리비", "홍합", "굴", "전복", "소라", "바지락"],
+        "🔶 기타": ["홍어"]
+    }
+    
+    # 이전 선택 복원
+    selected = st.session_state.selected_ingredients.copy()
+    
+    # 카테고리별로 표시 (텍스트로만 표시)
+    for category, items in categories.items():
+        st.markdown(f"### {category}")
+        
+        # 4개씩 가로 배치 (텍스트 체크박스로 변경)
+        for row_start in range(0, len(items), 4):
+            cols = st.columns(4)
+            for col_idx, item in enumerate(items[row_start:row_start+4]):
+                with cols[col_idx]:
+                    # 텍스트와 체크박스로 표시
+                    st.markdown(f"<div style='text-align:center; font-size:20px; font-weight:bold; padding:10px; background:#f0f8ff; border-radius:10px; margin-bottom:5px;'>{item}</div>", unsafe_allow_html=True)
+                    
+                    # 체크박스 중앙 정렬
+                    col_left, col_center, col_right = st.columns([1, 2, 1])
+                    with col_center:
+                        if st.checkbox("선택", value=(item in selected), key=f"ingredient_{item}"):
+                            if item not in selected:
+                                selected.append(item)
+                        else:
+                            if item in selected:
+                                selected.remove(item)
+    
+    # 선택 상태 업데이트
+    st.session_state.selected_ingredients = selected
+    
+    # 선택 현황 표시
+    st.markdown("---")
+    if selected:
+        st.success(f"✅ 현재 {len(selected)}개 선택됨: {', '.join(selected)}")
+    else:
+        st.warning("⚠️ 수산물을 선택해주세요.")
+    
+    # 버튼들
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        if st.button("← 이전 단계", use_container_width=True):
+            st.session_state.step = 'info'
+            st.rerun()
+    
+    with col3:
+        if len(selected) >= 3:
+            if st.button("다음 단계로 →", type="primary", use_container_width=True):
+                # 선택된 수산물에 대한 메뉴 초기화
+                for ingredient in selected:
+                    if ingredient not in st.session_state.selected_menus:
+                        st.session_state.selected_menus[ingredient] = []
+                
+                # 선택 해제된 수산물 제거
+                to_remove = []
+                for ingredient in st.session_state.selected_menus:
+                    if ingredient not in selected:
+                        to_remove.append(ingredient)
+                for ingredient in to_remove:
+                    del st.session_state.selected_menus[ingredient]
+                
+                st.session_state.step = 'menu'
+                st.rerun()
+        else:
+            st.button(f"다음 단계로 → (최소 3개 선택)", disabled=True, use_container_width=True)
+            if selected:
+                st.info(f"💡 {3 - len(selected)}개를 더 선택해주세요.")
+
+@st.cache_data
+def get_menu_image_html(menu):
+    """메뉴 이미지 대신 이모지나 아이콘을 반환"""
+    # 메뉴별 이모지 매핑 (예시)
+    menu_emojis = {
+        # 국물요리
+        "김치찌개": "🍲", "된장찌개": "🍲", "국": "🍜", "찌개": "🍲",
+        "탕": "🍜", "연포탕": "🍜", "매운탕": "🌶️🍜", "맑은탕": "🍜",
+        "칼국수": "🍜", "국수": "🍜", "미역국": "🍜",
+        
+        # 구이/볶음
+        "구이": "🔥", "볶음": "🍳", "조림": "🍖", "스테이크": "🥩",
+        "데리야끼": "🍖", "양념구이": "🔥", "소금구이": "🧂",
+        "버터구이": "🧈", "간장조림": "🍖", "카레": "🍛",
+        
+        # 튀김/전
+        "튀김": "🍤", "강정": "🍗", "전": "🥞",
+        
+        # 날것/절임
+        "회": "🍣", "초밥": "🍣", "숙회": "🦑", "탕탕이": "🔪",
+        "초무침": "🥗", "무침": "🥗", "간장게장": "🦀", "양념게장": "🦀",
+        "젓갈": "🥫",
+        
+        # 찜/죽
+        "찜": "♨️", "샤브샤브": "🥘", "술찜": "🍶", "죽": "🥣",
+        
+        # 기타
+        "무조림": "🥕", "김치조림": "🥬", "순대": "🌭", "호롱이": "🦑",
+        "샐러드": "🥗", "리조또": "🍚", "파스타": "🍝", 
+        "볶음밥": "🍳", "라면": "🍜", "밥": "🍚", "덮밥": "🍱",
+        "참치마요덮밥": "🍱", "장조림": "🍖", "애국": "🍜",
+        "쌈장찌개": "🍲"
+    }
+    
+    # 메뉴에 해당하는 이모지 찾기
+    emoji = "🍴"  # 기본 이모지
+    for key, value in menu_emojis.items():
+        if key in menu:
+            emoji = value
+            break
+    
+    # HTML 생성 (큰 이모지로 표시)
+    html_img = f'<div style="font-size:60px; text-align:center; padding:10px;">{emoji}</div>'
+    
+    return html_img
+
+def display_menu_optimized(menu, ingredient, is_selected, key):
+    """최적화된 메뉴 표시 함수 - 텍스트와 이모지 사용"""
+    
+    # 캐시된 이모지 HTML 사용
+    html_img = get_menu_image_html(menu)
+
+    with st.container():
+        # 메뉴명 중앙 정렬
+        st.markdown(
+            f"<div style='text-align:center; margin-bottom:5px;'><strong style='font-size:18px;'>{menu}</strong></div>",
+            unsafe_allow_html=True
+        )
+
+        # 이모지 중앙
+        st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
+
+        # 체크박스 중앙
+        col_left, col_center, col_right = st.columns([1, 2, 1])
+        with col_center:
+            checkbox_result = st.checkbox("선택", value=is_selected, key=key)
+
+        return checkbox_result
+
+def show_menu_selection():
+    st.markdown(
+        """
+        <script>
+        setTimeout(function() {
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }, 100);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    st.subheader("🍽️ 선호 메뉴 선택")
+    st.info("**🔸 선택하신 수산물로 만든 요리 중 선호하는 메뉴를 선택해주세요**\n\n✓ 각 수산물마다 최소 1개 이상의 메뉴를 선택해주세요")
+
+    with st.expander("선택하신 수산물", expanded=True):
+        ingredients_text = " | ".join([f"**{ingredient}**" for ingredient in st.session_state.selected_ingredients])
+        st.markdown(f"🏷️ {ingredients_text}")
+
+    # CSS를 한 번만 적용 (성능 최적화)
+    st.markdown("""
+    <style>
+    /* 메뉴 체크박스 버튼 스타일 */
+    div.stCheckbox {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 6px;
+    }
+    div.stCheckbox > label {
+        background: #f8f9fa;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        padding: 8px 20px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    div.stCheckbox > label:has(input:checked) {
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        border-color: #0096c7;
+        color: white;
+    }
+    div.stCheckbox input[type="checkbox"] {
+        transform: scale(1.5);
+        margin-right: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    all_valid = True
+
+    # 각 수산물별 메뉴 처리 (st.rerun() 제거로 성능 최적화)
+    for ingredient in st.session_state.selected_ingredients:
+        st.markdown(f"### 🐟 {ingredient} 요리")
+
+        if ingredient in MENU_DATA:
+            # 메뉴 리스트 생성
+            all_menus = []
+            for menu_list in MENU_DATA[ingredient].values():
+                all_menus.extend(menu_list)
+
+            # 4개씩 가로 배치
+            for row_start in range(0, len(all_menus), 4):
+                cols = st.columns(4)
+                for col_idx, menu in enumerate(all_menus[row_start:row_start+4]):
+                    with cols[col_idx]:
+                        # 최적화된 메뉴 표시 함수 사용
+                        is_selected = menu in st.session_state.selected_menus.get(ingredient, [])
+                        selected = display_menu_optimized(menu, ingredient, is_selected, f"menu_{ingredient}_{menu}")
+                        
+                        # st.rerun() 없이 상태 업데이트 (즉시 반응하지만 새로고침 없음)
+                        if selected and menu not in st.session_state.selected_menus[ingredient]:
+                            st.session_state.selected_menus[ingredient].append(menu)
+                        elif not selected and menu in st.session_state.selected_menus[ingredient]:
+                            st.session_state.selected_menus[ingredient].remove(menu)
+
+        # 선택 여부 확인
+        menu_count = len(st.session_state.selected_menus.get(ingredient, []))
+        if menu_count == 0:
+            all_valid = False
+            st.warning(f"⚠️ {ingredient}에 대해 최소 1개 이상의 메뉴를 선택해주세요.")
+        else:
+            st.success(f"✅ {ingredient}: {menu_count}개 메뉴 선택됨")
+
+        st.markdown("---")
+
+    # 버튼들 (st.rerun()은 페이지 전환 시에만 사용)
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        if st.button("← 이전 단계", use_container_width=True):
+            st.session_state.step = 'ingredients'
+            st.markdown(
+                """
+                <script>
+                setTimeout(function() {
+                    window.scrollTo({top: 0, behavior: 'smooth'});
+                }, 200);
+                </script>
+                """,
+                unsafe_allow_html=True
+            )
+            st.rerun()
+
+    with col3:
+        if all_valid:
+            if st.button("설문 완료하기", type="primary", use_container_width=True):
+                # ✅ 저장 실행
+                filename, df = save_to_excel(
+                    st.session_state.name,
+                    st.session_state.id_number,
+                    st.session_state.selected_ingredients,
+                    st.session_state.selected_menus
+                )
+    
+                # ✅ 저장 성공 여부에 따라 상태 업데이트
+                if filename is not None or st.session_state.get("google_sheets_success", False):
+                    st.session_state.already_saved = True
+                    st.session_state.filename = filename
+                    st.session_state.survey_data = df
+                    st.session_state.step = 'complete'
+                    st.rerun()   # 🔥 페이지 즉시 전환
+                else:
+                    st.error("❌ 설문 데이터 저장에 실패했습니다. 다시 시도해주세요.")
+        else:
+            st.button("설문 완료하기", disabled=True, use_container_width=True)
+
+def show_completion():
+    # 스크롤 상단 이동
+    st.markdown(
+        """
+        <script>
+        setTimeout(function() {
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }, 100);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.balloons()
+    st.success("🎉 설문이 완료되었습니다! 소중한 의견을 주셔서 감사합니다")
+    
+    # Google Sheets 연동 결과 표시
+    if hasattr(st.session_state, 'google_sheets_success') and st.session_state.google_sheets_success:
+        st.success("✅ 데이터가 Google Sheets에 성공적으로 저장되었습니다!")
+    else:
+        st.warning("⚠️ Google Sheets 연결에 문제가 있어 로컬 백업 파일에 저장되었습니다.")
+    
+    # 결과 요약 표시
+    with st.expander("📊 설문 결과 요약", expanded=True):
+        st.markdown(f"**참여자:** {st.session_state.name}")
+        st.markdown(f"**식별번호:** {st.session_state.id_number}")
+        st.markdown(f"**설문 완료 시간:** {format_korean_time()}")
+        
+        st.markdown("### 선택하신 수산물")
+        ingredients_text = " | ".join(st.session_state.selected_ingredients)
+        st.markdown(f"🏷️ {ingredients_text}")
+        
+        st.markdown("### 선호하시는 메뉴")
+        for ingredient, menus in st.session_state.selected_menus.items():
+            if menus:
+                menu_text = ", ".join(menus)
+                st.markdown(f"**{ingredient}:** {menu_text}")
+    
+    # 관리자만 다운로드 버튼 표시
+    if st.session_state.is_admin and 'filename' in st.session_state and st.session_state.filename:
+        st.markdown("---")
+        st.markdown("### 🔐 관리자 전용")
+        
+        if os.path.exists(st.session_state.filename):
+            with open(st.session_state.filename, 'rb') as file:
+                st.download_button(
+                    label="📥 백업 파일 다운로드",
+                    data=file.read(),
+                    file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    type="primary",
+                    use_container_width=True
+                )
+    
+    # 새 설문 시작 버튼
+    if st.button("🔄 새 설문 시작하기", use_container_width=True):
+        # 세션 상태 초기화 (관리자 상태는 유지)
+        admin_status = st.session_state.is_admin
+        admin_login_status = st.session_state.show_admin_login
+        
+        # 모든 키 삭제 후 필요한 것만 복원
+        keys_to_keep = ['is_admin', 'show_admin_login']
+        for key in list(st.session_state.keys()):
+            if key not in keys_to_keep:
+                del st.session_state[key]
+        
+        # 기본 상태 재설정
+        st.session_state.is_admin = admin_status
+        st.session_state.show_admin_login = admin_login_status
+        st.session_state.step = 'info'
+        st.session_state.selected_ingredients = []
+        st.session_state.selected_menus = {}
+        st.session_state.already_saved = False
+        
+        st.rerun()
+
+if __name__ == "__main__":
+    main()
