@@ -354,7 +354,7 @@ def setup_sheet_headers(sheet):
             sheet.append_row(headers)
             #st.write("✅ [DEBUG] 헤더 추가 완료")
         else:
-            #st.write("🟢 [DEBUG] 기존 헤더 사용")
+            st.write("🟢 [DEBUG] 기존 헤더 사용")
             
     except Exception as e:
         st.warning(f"⚠️ [DEBUG] 헤더 설정 중 오류: {e}")
