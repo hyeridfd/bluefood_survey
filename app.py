@@ -737,48 +737,46 @@ def main():
     # CSS 스타일 (기존 것 전체 교체)
     st.markdown("""
     <style>
-    /* ✅ 메인 컨테이너를 더 넓게 (wide 모드 + 실제 최대폭 확장) */
+    /* 페이지 최대폭 조금 더 넓게 */
     .main .block-container{
       max-width: 1600px !important;
-      padding-left: 2rem;
-      padding-right: 2rem;
+      padding-left: 2rem; padding-right: 2rem;
     }
     
-    /* ✅ 한 줄 4칸: column 간격을 줄이고, 칩이 칼럼 폭을 가득 채우게 */
-    [data-testid="column"]{
-      padding-right: 12px;
-    }
-    section > div > div > div:has(> [data-testid="column"]) {
-      gap: 12px !important;
-    }
-    
-    /* ✅ 체크박스를 '큰 칩 버튼'처럼 — 가로 100% + 높이 크게 + 체크박스 아이콘 숨김 */
+    /* ====== 공용 : 체크박스를 '칩'으로 바꾸기 ====== */
     div[data-testid="stCheckbox"]{
       width:100%;
     }
+    
+    /* label 자체를 큰 박스로 만들고 안에서 텍스트/체크 모두 중앙 정렬 */
     div[data-testid="stCheckbox"] > label{
       display:flex;
+      flex-direction:column;            /* ⬅ 텍스트가 아래로 붙어있어도 라벨 안으로 끌어들임 */
       align-items:center;
       justify-content:center;
+      gap: 8px;
       width:100%;
-      height:110px;
+      height:120px;                     /* 🔺 칩 높이 */
       border:2px solid #d9eaff;
       background:#f0f7ff;
       color:#134b70;
       border-radius:16px;
-      font-size:22px;
+      font-size:20px;                   /* 🔺 텍스트 크게 */
       font-weight:800;
       cursor:pointer;
       user-select:none;
       transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
+      padding: 8px 12px;
+      box-sizing: border-box;
     }
     
-    /* 기본 체크박스(작은 사각형) 숨김 */
-    div[data-testid="stCheckbox"] > label > div[role="checkbox"]{
-      display:none !important;
+    /* 기본 체크박스(작은 사각형)는 숨기고, 눌림 상태는 배경/그림자만으로 표현 */
+    div[data-testid="stCheckbox"] > label > div[role="checkbox"]{ display:none !important; }
+    div[data-testid="stCheckbox"] input[type="checkbox"]{
+      position:absolute; opacity:0; width:0; height:0; pointer-events:none;
     }
     
-    /* hover/checked 상태 */
+    /* hover/checked */
     div[data-testid="stCheckbox"] > label:hover{
       background:#e6f1ff;
       transform:translateY(-2px);
@@ -791,12 +789,19 @@ def main():
       box-shadow:0 8px 18px rgba(0,153,255,.22);
     }
     
-    /* 실제 input(접근성 유지) 숨김 */
-    div[data-testid="stCheckbox"] input[type="checkbox"]{
-      position:absolute; opacity:0; width:0; height:0; pointer-events:none;
+    /* ====== ingredients 전용 그리드 ====== */
+    .chips-row{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr)); /* ⬅ 1줄 4칸 */
+      gap:16px;                                         /* 카드 사이 간격 */
+      margin: 12px 0 28px;
     }
+    
+    /* Streamlit 기본 column 간격이 커서 살짝 줄이기(있으면) */
+    section > div > div > div:has(> [data-testid="column"]) { gap: 12px !important; }
     </style>
     """, unsafe_allow_html=True)
+
 
     
     # 세션 상태 초기화
@@ -1025,24 +1030,24 @@ def show_ingredient_selection():
 
     for category, items in categories.items():
         st.markdown(f"### {category}")
+    
+        # ✅ 4칸 꽉 채우는 그리드 시작
+        st.markdown('<div class="chips-row">', unsafe_allow_html=True)
+    
+        # 각 아이템을 checkbox로 렌더 (칩은 CSS가 만들어 줌)
+        for item in items:
+            checked = st.checkbox(
+                item,
+                key=f"ingredient_{item}",
+                value=(item in selected)
+            )
+            if checked and item not in selected:
+                selected.append(item)
+            if (not checked) and item in selected:
+                selected.remove(item)
 
-        # ✅ 4개씩 가로 배치 (넘치면 다음 줄로 자동 줄바꿈)
-        for start in range(0, len(items), 4):
-            row_items = items[start:start+4]
-            cols = st.columns(4, gap="small")
-            for c, item in enumerate(row_items):
-                with cols[c]:
-                    checked = st.checkbox(
-                        item,
-                        key=f"ingredient_{item}",
-                        value=(item in selected)
-                    )
-                    if checked and item not in selected:
-                        selected.append(item)
-                    if (not checked) and item in selected:
-                        selected.remove(item)
-
-        st.markdown("")  # 카테고리 간 여백
+    # ✅ 그리드 종료
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.session_state.selected_ingredients = selected
 
