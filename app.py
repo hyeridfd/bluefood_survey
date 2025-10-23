@@ -1030,70 +1030,81 @@ def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟")
         
 def show_ingredient_selection():
     st.subheader("🐟 선호하는 수산물 선택")
-
-    # 가이드(짧게)
-    min_sel, max_sel = 3, 9
-    sel = st.session_state.selected_ingredients.copy()
-    if len(sel) < min_sel:
-        st.warning(f"최소 {min_sel}개 이상 선택해주세요. ({min_sel - len(sel)}개 더 필요)")
-    elif len(sel) > max_sel:
-        st.error(f"최대 {max_sel}개까지만 선택할 수 있어요.")
-    else:
-        st.success(f"현재 {len(sel)}개 선택됨")
-
-    # 카테고리 반복
-    for category, items in INGREDIENT_CATEGORIES.items():
-        icon = category.split()[0]
-        title = category.replace(icon, "").strip()
-
-        st.markdown(f"<div class='h-section'>{icon} {title}</div>", unsafe_allow_html=True)
-        st.markdown("<div class='category-card'>", unsafe_allow_html=True)
-        st.markdown("<div class='chip-grid'>", unsafe_allow_html=True)
-
-        # 칩(=체크박스) 6열 그리드
-        for item in items:
-            with st.container():
-                key = f"ingredient_{item}"
-                picked = item in sel
-                changed = st.checkbox(item, value=picked, key=key)  # 라벨 = 재료명 (별도 파란 박스 제거)
-
-                # 상태 갱신 + 최대 개수 제한
-                if changed and not picked:
-                    if len(sel) < max_sel:
-                        sel.append(item)
-                    else:
-                        st.warning(f"최대 {max_sel}개까지만 선택 가능합니다.", icon="⚠️")
-                        st.session_state[key] = False
-                elif (not changed) and picked:
-                    sel.remove(item)
-
-        st.markdown("</div>", unsafe_allow_html=True)   # chip-grid
-        st.markdown("</div>", unsafe_allow_html=True)   # category-card
-        st.markdown("")
-
-    # 선택 상태 저장
-    st.session_state.selected_ingredients = sel
-
-    # 하단 액션
+    st.info("💡 **최소 3개 이상** 선택해주세요! 다양한 수산물을 선택하실수록 더 좋습니다.")
+    
+    # 수산물 카테고리별 분류
+    categories = {
+    '🍤 가공수산물': ['맛살', '어란', '어묵', '쥐포'],
+    '🌿 해조류': ['김', '다시마', '매생이', '미역', '파래', '톳'],
+    '🦑 연체류': ['꼴뚜기', '낙지', '문어', '오징어', '주꾸미'],
+    '🦀 갑각류': ['가재', '게', '새우'],
+    '🐚 패류': ['다슬기', '꼬막', '가리비', '골뱅이', '굴', '미더덕', '바지락', '백합', '소라', '재첩', '전복', '홍합'],
+    '🐟 어류': ['가자미', '다랑어', '고등어', '갈치', '꽁치', '대구', '멸치', '명태', '박대', '뱅어', '병어', '삼치', '아귀', '연어', '임연수', '장어', '조기']
+}
+    # 이전 선택 복원
+    selected = st.session_state.selected_ingredients.copy()
+    
+    # 카테고리별로 표시 (텍스트로만 표시)
+    for category, items in categories.items():
+        st.markdown(f"### {category}")
+        
+        # 4개씩 가로 배치 (텍스트 체크박스로 변경)
+        for row_start in range(0, len(items), 4):
+            cols = st.columns(4)
+            for col_idx, item in enumerate(items[row_start:row_start+4]):
+                with cols[col_idx]:
+                    # 텍스트와 체크박스로 표시
+                    st.markdown(f"<div style='text-align:center; font-size:20px; font-weight:bold; padding:10px; background:#f0f8ff; border-radius:10px; margin-bottom:5px;'>{item}</div>", unsafe_allow_html=True)
+                    
+                    # 체크박스 중앙 정렬
+                    col_left, col_center, col_right = st.columns([1, 2, 1])
+                    with col_center:
+                        if st.checkbox("선택", value=(item in selected), key=f"ingredient_{item}"):
+                            if item not in selected:
+                                selected.append(item)
+                        else:
+                            if item in selected:
+                                selected.remove(item)
+    
+    # 선택 상태 업데이트
+    st.session_state.selected_ingredients = selected
+    
+    # 선택 현황 표시
     st.markdown("---")
-    c1, c2, c3 = st.columns([1,1,1])
-    with c1:
+    if selected:
+        st.success(f"✅ 현재 {len(selected)}개 선택됨: {', '.join(selected)}")
+    else:
+        st.warning("⚠️ 수산물을 선택해주세요.")
+    
+    # 버튼들
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
         if st.button("← 이전 단계", use_container_width=True):
             st.session_state.step = 'info'
             st.rerun()
-
-    ready = (min_sel <= len(sel) <= max_sel)
-    with c3:
-        if st.button("다음 단계로 →", type="primary", use_container_width=True, disabled=not ready):
-            # 메뉴 선택용 상태 정리
-            for ingredient in sel:
-                st.session_state.selected_menus.setdefault(ingredient, [])
-            for k in list(st.session_state.selected_menus.keys()):
-                if k not in sel:
-                    del st.session_state.selected_menus[k]
-            st.session_state.step = 'menu'
-            st.rerun()
-
+    
+    with col3:
+        if len(selected) >= 3:
+            if st.button("다음 단계로 →", type="primary", use_container_width=True):
+                # 선택된 수산물에 대한 메뉴 초기화
+                for ingredient in selected:
+                    if ingredient not in st.session_state.selected_menus:
+                        st.session_state.selected_menus[ingredient] = []
+                
+                # 선택 해제된 수산물 제거
+                to_remove = []
+                for ingredient in st.session_state.selected_menus:
+                    if ingredient not in selected:
+                        to_remove.append(ingredient)
+                for ingredient in to_remove:
+                    del st.session_state.selected_menus[ingredient]
+                
+                st.session_state.step = 'menu'
+                st.rerun()
+        else:
+            st.button(f"다음 단계로 → (최소 3개 선택)", disabled=True, use_container_width=True)
+            if selected:
+                st.info(f"💡 {3 - len(selected)}개를 더 선택해주세요.")
 
 @st.cache_data
 def get_menu_image_html(menu):
@@ -1281,63 +1292,35 @@ def show_menu_selection():
 
     # CSS를 한 번만 적용 (성능 최적화)
     st.markdown("""
-<style>
-/* 페이지 여백 */
-.block-container { padding-top: 1.25rem; padding-bottom: 1.25rem; }
-
-/* 배너(보라 네모) 컴팩트 */
-.main-header {
-  text-align:center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color:white;
-  padding: 1rem;         /* ↓ 2rem → 1rem 로 줄임 */
-  border-radius: 14px;
-  margin-bottom: 1.25rem;/* ↓ 2rem → 1.25rem */
-}
-.main-header h1 { margin: 0 0 .25rem 0; font-size: 26px; }
-.main-header p { margin: 0; font-size: 14px; }
-
-/* 진행 스텝 */
-.progress-container{display:flex;justify-content:center;margin:1rem 0 .75rem;}
-.progress-step{padding:.35rem .8rem;margin:0 .35rem;border-radius:999px;background:#eef1f6;font-weight:700;font-size:13px}
-.progress-step.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
-
-/* 카테고리 타이틀 */
-.h-section{font-size:18px;font-weight:800;margin:6px 0 8px;display:flex;gap:6px;align-items:center}
-
-/* 카테고리 카드 */
-.category-card{
-  border:1px solid #e9eef5;border-radius:12px;padding:10px 12px;margin:10px 0 16px;background:#fff;
-  box-shadow:0 2px 8px rgba(0,0,0,.03);
-}
-
-/* 칩 그리드: 스크롤 최소화(6열) */
-.chip-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
-@media (max-width:1360px){.chip-grid{grid-template-columns:repeat(5,1fr)}}
-@media (max-width:1180px){.chip-grid{grid-template-columns:repeat(4,1fr)}}
-@media (max-width:980px){.chip-grid{grid-template-columns:repeat(3,1fr)}}
-@media (max-width:720px){.chip-grid{grid-template-columns:repeat(2,1fr)}}
-
-/* 체크박스를 '칩 버튼'처럼 보이게 */
-div[data-testid="stCheckbox"] > label{
-  width:100%;min-height:42px;display:flex;justify-content:center;align-items:center;gap:10px;
-  border:1.6px solid #e7f1ff;background:#f7fbff;color:#134b70;
-  padding:8px 10px;border-radius:12px;font-weight:800;font-size:16px;
-  transition:.12s ease; box-shadow:0 1px 0 rgba(0,0,0,.02);
-}
-div[data-testid="stCheckbox"] > label:hover{transform:translateY(-1px);border-color:#cfe5ff;background:#f2f8ff}
-div[data-testid="stCheckbox"] > label:has(input:checked){
-  background:linear-gradient(135deg,#4facfe,#00f2fe);color:#fff;border-color:transparent;
-  box-shadow:0 4px 12px rgba(0,153,255,.20);
-}
-
-/* 체크박스 아이콘 크게 */
-div[data-testid="stCheckbox"] input[type="checkbox"]{transform:scale(1.6)}
-
-/* 메뉴 체크박스도 동일 스타일 적용을 원하면 아래 두 줄 유지 */
-div.stCheckbox{display:flex;justify-content:center;align-items:center;margin-top:6px}
-</style>
-""", unsafe_allow_html=True)
+    <style>
+    /* 메뉴 체크박스 버튼 스타일 */
+    div.stCheckbox {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 6px;
+    }
+    div.stCheckbox > label {
+        background: #f8f9fa;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        padding: 8px 20px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    div.stCheckbox > label:has(input:checked) {
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        border-color: #0096c7;
+        color: white;
+    }
+    div.stCheckbox input[type="checkbox"] {
+        transform: scale(1.5);
+        margin-right: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     all_valid = True
 
