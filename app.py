@@ -1266,28 +1266,20 @@ def get_ingredient_image_html(ingredient):
     else:
         return render_image_fixed_size("", width=240, height=180, placeholder="🍽️")
 
-def display_ingredient_optimized(ingredient, is_selected, key):
-    """최적화된 재료 표시 함수 - CSS 중복 제거, 이미지 캐싱"""
-    
-    # 캐시된 이미지 HTML 사용
-    html_img = get_ingredient_image_html(ingredient)
-
+# ✅ (NEW) 원재료 텍스트만 표시하는 함수
+def display_ingredient_text_only(ingredient, is_selected, key):
     with st.container():
-        # 식재료 이름 (가운데)
+        # 이름만 중앙 정렬로 크게
         st.markdown(
-            f"<div style='text-align:center; margin-bottom:5px;'><strong style='font-size:20px;'>{ingredient}</strong></div>",
+            f"<div style='text-align:center; margin-bottom:6px;'><strong style='font-size:20px;'>{ingredient}</strong></div>",
             unsafe_allow_html=True
         )
-
-        # 이미지 가운데 정렬
-        st.markdown(f"<div style='display:flex; justify-content:center;'>{html_img}</div>", unsafe_allow_html=True)
-
-        # 체크박스도 중앙
+        # 체크박스도 중앙 정렬
         col_left, col_center, col_right = st.columns([1, 2, 1])
         with col_center:
             checkbox_result = st.checkbox("선택", value=is_selected, key=key)
-
         return checkbox_result
+
 
 def show_ingredient_selection():
     st.markdown(
@@ -1360,7 +1352,7 @@ def show_ingredient_selection():
                 is_selected = ingredient in st.session_state.selected_ingredients
                 
                 # 최적화된 재료 표시 함수 사용
-                selected = display_ingredient_optimized(ingredient, is_selected, f"ingredient_{ingredient}")
+                selected = display_ingredient_text_only(ingredient, is_selected, f"ingredient_{ingredient}")
                 
                 # st.rerun() 없이 상태 업데이트
                 if selected and ingredient not in st.session_state.selected_ingredients:
