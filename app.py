@@ -1064,75 +1064,30 @@ def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟")
 def show_ingredient_selection():
     st.subheader("🐟 선호하는 수산물 선택")
     st.info("💡 **최소 3개 이상** 선택해주세요! 다양한 수산물을 선택하실수록 더 좋습니다.")
-    
-    categories = {
-        '🍤 가공수산물': ['맛살', '어란', '어묵', '쥐포'],
-        '🌿 해조류': ['김', '다시마', '매생이', '미역', '파래', '톳'],
-        '🦑 연체류': ['꼴뚜기', '낙지', '문어', '오징어', '주꾸미'],
-        '🦀 갑각류': ['가재', '게', '새우'],
-        '🐚 패류': ['다슬기', '꼬막', '가리비', '골뱅이', '굴', '미더덕', '바지락', '백합', '소라', '재첩', '전복', '홍합'],
-        '🐟 어류': ['가자미', '다랑어', '고등어', '갈치', '꽁치', '대구', '멸치', '명태', '박대', '뱅어', '병어', '삼치', '아귀', '연어', '임연수', '장어', '조기']
-    }
 
+    categories = INGREDIENT_CATEGORIES  # 이미 상단에 정의돼 있으니 이걸 사용하세요.
     selected = st.session_state.selected_ingredients.copy()
-
-    # ✅ CSS (가로 정렬 + 칩 크기 확대)
-    st.markdown("""
-    <style>
-    .chip-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 14px;
-        margin-top: 10px;
-        margin-bottom: 25px;
-    }
-    div[data-testid="stCheckbox"] > label {
-        width: 100%;
-        min-height: 65px;  /* ✅ 칩 높이 키움 */
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border: 2px solid #d9eaff;
-        background: #f0f7ff;
-        color: #134b70;
-        padding: 12px 16px;
-        border-radius: 14px;
-        font-weight: 700;
-        font-size: 18px;   /* ✅ 글씨 크기 키움 */
-        cursor: pointer;
-        transition: all 0.15s ease;
-        user-select: none;
-    }
-    div[data-testid="stCheckbox"] > label:hover {
-        background: #e4f1ff;
-        transform: translateY(-2px);
-        border-color: #c6e0ff;
-    }
-    div[data-testid="stCheckbox"] > label:has(input:checked) {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-        color: white;
-        border: none;
-        box-shadow: 0 4px 14px rgba(0,153,255,0.25);
-    }
-    div[data-testid="stCheckbox"] input[type="checkbox"] {
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-    </style>
-    """, unsafe_allow_html=True)
 
     for category, items in categories.items():
         st.markdown(f"### {category}")
-        st.markdown('<div class="chip-grid">', unsafe_allow_html=True)
-        for item in items:
-            checked = st.checkbox(item, key=f"ingredient_{item}", value=item in selected)
-            if checked and item not in selected:
-                selected.append(item)
-            elif not checked and item in selected:
-                selected.remove(item)
-        st.markdown('</div>', unsafe_allow_html=True)
+
+        # ✅ 4개씩 가로 배치 (넘치면 다음 줄로 자동 줄바꿈)
+        for start in range(0, len(items), 4):
+            row_items = items[start:start+4]
+            cols = st.columns(4, gap="small")
+            for c, item in enumerate(row_items):
+                with cols[c]:
+                    checked = st.checkbox(
+                        item,
+                        key=f"ingredient_{item}",
+                        value=(item in selected)
+                    )
+                    if checked and item not in selected:
+                        selected.append(item)
+                    if (not checked) and item in selected:
+                        selected.remove(item)
+
+        st.markdown("")  # 카테고리 간 여백
 
     st.session_state.selected_ingredients = selected
 
@@ -1141,28 +1096,29 @@ def show_ingredient_selection():
         st.success(f"✅ 현재 {len(selected)}개 선택됨: {', '.join(selected)}")
     else:
         st.warning("⚠️ 수산물을 선택해주세요.")
-    
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col1:
+
+    c1, _, c3 = st.columns([1,1,1])
+    with c1:
         if st.button("← 이전 단계", use_container_width=True):
             st.session_state.step = 'info'
             st.rerun()
-    
-    with col3:
+
+    with c3:
         if len(selected) >= 3:
             if st.button("다음 단계로 →", type="primary", use_container_width=True):
-                for ingredient in selected:
-                    if ingredient not in st.session_state.selected_menus:
-                        st.session_state.selected_menus[ingredient] = []
-                for ingredient in list(st.session_state.selected_menus.keys()):
-                    if ingredient not in selected:
-                        del st.session_state.selected_menus[ingredient]
+                # 메뉴 상태 정리
+                for ing in selected:
+                    st.session_state.selected_menus.setdefault(ing, [])
+                for ing in list(st.session_state.selected_menus.keys()):
+                    if ing not in selected:
+                        del st.session_state.selected_menus[ing]
                 st.session_state.step = 'menu'
                 st.rerun()
         else:
-            st.button(f"다음 단계로 → (최소 3개 선택)", disabled=True, use_container_width=True)
+            st.button("다음 단계로 → (최소 3개 선택)", disabled=True, use_container_width=True)
             if selected:
-                st.info(f"💡 {3 - len(selected)}개를 더 선택해주세요.")
+                st.info(f"💡 {3 - len(selected)}개 더 선택해주세요.")
+
 
 @st.cache_data
 def get_menu_image_html(menu):
