@@ -1057,9 +1057,9 @@ def show_ingredient_selection():
                     st.markdown(f"<div style='text-align:center; font-size:20px; font-weight:bold; padding:10px; background:#f0f8ff; border-radius:10px; margin-bottom:5px;'>{item}</div>", unsafe_allow_html=True)
                     
                     # 체크박스 중앙 정렬
-                    col_left, col_center, col_right = st.columns([1, 1, 1])
+                    col_left, col_center, col_right = st.columns([1, 2, 1])
                     with col_center:
-                        if st.checkbox("선택", value=(item in selected), key=f"ingredient_{item}"):
+                        if st.checkbox("", value=(item in selected), key=f"ingredient_{item}"):
                             if item not in selected:
                                 selected.append(item)
                         else:
