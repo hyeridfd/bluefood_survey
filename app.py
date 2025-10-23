@@ -1164,8 +1164,8 @@ def load_allowed_name_id_pairs():
         if sheet is not None:
             workbook = sheet.spreadsheet
             titles = [ws.title for ws in workbook.worksheets()]
-            if "Whitelist" in titles:
-                w = workbook.worksheet("Whitelist")
+            if "참여자_명단" in titles:
+                w = workbook.worksheet("참여자_명단")
                 rows = w.get_all_values()
                 # 첫 행은 헤더라고 가정
                 for r in rows[1:]:
