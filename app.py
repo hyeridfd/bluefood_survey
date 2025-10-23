@@ -1055,8 +1055,7 @@ def render_image_fixed_size(img_path, width=180, height=120, placeholder="🐟")
 def show_ingredient_selection():
     st.subheader("🐟 선호하는 수산물 선택")
 
-    # 가이드(짧게) + 선택 갯수 제한
-    min_sel, max_sel = 3, 12  # 필요 시 9로 바꿔도 됩니다
+    min_sel, max_sel = 3, 12
     sel = st.session_state.get("selected_ingredients", []).copy()
 
     if len(sel) < min_sel:
@@ -1066,31 +1065,35 @@ def show_ingredient_selection():
     else:
         st.success(f"현재 {len(sel)}개 선택됨")
 
-    # 카테고리 반복 (전역 INGREDIENT_CATEGORIES 사용)
+    # ✅ 전역 INGREDIENT_CATEGORIES 사용
+    PER_ROW = 6  # 한 줄에 몇 개씩 보여줄지 (원하면 5/4로 바꾸세요)
+
     for category, items in INGREDIENT_CATEGORIES.items():
         st.markdown(f"### {category}")
-        st.markdown("<div class='chip-grid'>", unsafe_allow_html=True)
 
-        # ❗칩 = st.checkbox 라벨 그대로. 라벨 전체가 클릭영역(칩)입니다.
-        for item in items:
-            key = f"ingredient_{item}"
-            picked = item in sel
-            changed = st.checkbox(item, value=picked, key=key)
+        # ── 가로 그리드 배치 ─────────────────────────
+        for i in range(0, len(items), PER_ROW):
+            row_items = items[i:i+PER_ROW]
+            cols = st.columns(len(row_items), gap="small")
+            for c, item in zip(cols, row_items):
+                with c:
+                    key = f"ingredient_{item}"
+                    picked = item in sel
+                    changed = st.checkbox(item, value=picked, key=key)
 
-            # 상태 갱신 + 최대 개수 제한
-            if changed and not picked:
-                if len(sel) < max_sel:
-                    sel.append(item)
-                else:
-                    st.warning(f"최대 {max_sel}개까지만 선택 가능합니다.", icon="⚠️")
-                    st.session_state[key] = False
-            elif (not changed) and picked:
-                sel.remove(item)
-
-        st.markdown("</div>", unsafe_allow_html=True)
+                    # 상태 갱신 + 최대 개수 제한
+                    if changed and not picked:
+                        if len(sel) < max_sel:
+                            sel.append(item)
+                        else:
+                            st.warning(f"최대 {max_sel}개까지만 선택 가능합니다.", icon="⚠️")
+                            st.session_state[key] = False
+                    elif (not changed) and picked:
+                        sel.remove(item)
+        # 구분선 약간
         st.markdown("")
 
-    # 선택 상태 저장
+    # 상태 저장
     st.session_state.selected_ingredients = sel
 
     # 하단 액션
@@ -1104,7 +1107,6 @@ def show_ingredient_selection():
     ready = (min_sel <= len(sel) <= max_sel)
     with c3:
         if st.button("다음 단계로 →", type="primary", use_container_width=True, disabled=not ready):
-            # 메뉴 선택용 상태 정리
             for ingredient in sel:
                 st.session_state.selected_menus.setdefault(ingredient, [])
             for k in list(st.session_state.selected_menus.keys()):
