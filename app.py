@@ -1321,7 +1321,9 @@ def show_ingredient_selection():
         background: #f8f9fa;
         border: 2px solid #ccc;
         border-radius: 10px;
-        padding: 8px 20px;
+        padding: 12px 24px;
+        min-width: 100px;
+        min-height: 45px;
         cursor: pointer;
         font-size: 18px;
         font-weight: bold;
