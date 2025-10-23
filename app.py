@@ -734,130 +734,70 @@ def main():
         initial_sidebar_state="collapsed"
     )
     
-    # CSS 스타일
+    # CSS 스타일 (기존 것 전체 교체)
     st.markdown("""
     <style>
-    /* 기본 여백 조정 */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
+    /* ✅ 메인 컨테이너를 더 넓게 (wide 모드 + 실제 최대폭 확장) */
+    .main .block-container{
+      max-width: 1600px !important;
+      padding-left: 2rem;
+      padding-right: 2rem;
     }
     
-    /* 헤더 스타일 */
-    .main-header {
-        text-align: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem;
-        border-radius: 10px;
-        margin-bottom: 2rem;
+    /* ✅ 한 줄 4칸: column 간격을 줄이고, 칩이 칼럼 폭을 가득 채우게 */
+    [data-testid="column"]{
+      padding-right: 12px;
+    }
+    section > div > div > div:has(> [data-testid="column"]) {
+      gap: 12px !important;
     }
     
-    /* 버튼 스타일 */
-    .stButton > button {
-        background-color: #4CAF50;
-        color: white;
-        border-radius: 5px;
-        border: none;
-        padding: 0.5rem 1rem;
-        font-weight: bold;
-        transition: all 0.3s;
+    /* ✅ 체크박스를 '큰 칩 버튼'처럼 — 가로 100% + 높이 크게 + 체크박스 아이콘 숨김 */
+    div[data-testid="stCheckbox"]{
+      width:100%;
+    }
+    div[data-testid="stCheckbox"] > label{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:100%;
+      height:110px;
+      border:2px solid #d9eaff;
+      background:#f0f7ff;
+      color:#134b70;
+      border-radius:16px;
+      font-size:22px;
+      font-weight:800;
+      cursor:pointer;
+      user-select:none;
+      transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
     }
     
-    .stButton > button:hover {
-        background-color: #45a049;
-        transform: scale(1.05);
+    /* 기본 체크박스(작은 사각형) 숨김 */
+    div[data-testid="stCheckbox"] > label > div[role="checkbox"]{
+      display:none !important;
     }
     
-    /* 체크박스 라벨 텍스트를 진하게 */
-    .stCheckbox > label {
-        font-weight: 600;
-        font-size: 16px;
+    /* hover/checked 상태 */
+    div[data-testid="stCheckbox"] > label:hover{
+      background:#e6f1ff;
+      transform:translateY(-2px);
+      border-color:#b7daff;
+    }
+    div[data-testid="stCheckbox"] > label:has(input:checked){
+      background:linear-gradient(135deg,#4facfe,#00f2fe);
+      color:#fff;
+      border:none;
+      box-shadow:0 8px 18px rgba(0,153,255,.22);
     }
     
-    /* 진행 상황 표시 스타일 */
-    .progress-container {
-        display: flex;
-        justify-content: center;
-        margin: 2rem 0;
-    }
-    
-    .progress-step {
-        padding: 0.5rem 1rem;
-        margin: 0 0.5rem;
-        border-radius: 20px;
-        background: #e0e0e0;
-        font-weight: bold;
-    }
-    
-    .progress-step.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    
-    /* 수산물/메뉴 선택 체크박스 컨테이너 */
-    div[data-testid="column"] > div > div > div > div[data-testid="stCheckbox"] {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        padding: 10px;
-        margin-bottom: 10px;
-        transition: all 0.3s;
-    }
-    
-    div[data-testid="column"] > div > div > div > div[data-testid="stCheckbox"]:hover {
-        background-color: #e9ecef;
-        transform: translateX(5px);
-    }
-
-    /* ✅ 한 줄에 4칸씩 맞추기 (그리드로 처리하면 균등 분할 + 꽉 찬 칩 가능) */
-    .chip-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 18px;
-        margin-top: 12px;
-        margin-bottom: 24px;
-    }
-    
-    /* ✅ 체크박스를 '칩 버튼'으로 만들기 (가로 꽉 채우기) */
-    div[data-testid="stCheckbox"] {
-        width: 100%;
-    }
-    div[data-testid="stCheckbox"] > label {
-        display: block;              /* flex → block 으로 변경 */
-        width: 100%;                 /* 칼럼 너비 전부 사용 */
-        height: 90px;                /* ✅ 높이 늘려서 시각적으로 꽉 차게 */
-        text-align: center;          /* 텍스트 가운데 정렬 */
-        line-height: 90px;           /* 텍스트 수직 가운데 */
-        border: 2px solid #d9eaff;
-        background: #f0f7ff;
-        color: #134b70;
-        border-radius: 16px;
-        font-size: 20px;
-        font-weight: 800;
-        transition: all .15s ease;
-        cursor: pointer;
-        user-select: none;
-    }
-    div[data-testid="stCheckbox"] > label:hover {
-        background: #e6f1ff;
-        transform: translateY(-3px);
-        border-color: #b7daff;
-    }
-    div[data-testid="stCheckbox"] > label:has(input:checked) {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-        color: #fff;
-        border: none;
-        box-shadow: 0 8px 20px rgba(0,153,255,.25);
-    }
-    /* ✅ 체크박스 숨김 */
-    div[data-testid="stCheckbox"] input[type="checkbox"] {
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
+    /* 실제 input(접근성 유지) 숨김 */
+    div[data-testid="stCheckbox"] input[type="checkbox"]{
+      position:absolute; opacity:0; width:0; height:0; pointer-events:none;
     }
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+
     
     # 세션 상태 초기화
     if 'step' not in st.session_state:
