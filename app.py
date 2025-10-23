@@ -725,6 +725,47 @@ MENU_DATA = {
     }
 }
 
+# 카드 스타일 (선택/미선택 색상)
+st.markdown("""
+<style>
+.card-wrap { padding: 6px; }
+.card-btn {
+  width: 100%;
+  border: 2px solid #cfe2ff;
+  background: #f4f8ff;
+  color: #1b3a6b;
+  font-weight: 700;
+  padding: 12px 10px;
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.card-btn:hover { transform: translateY(-1px); }
+.card-btn.selected {
+  background: #0d6efd;
+  border-color: #0d6efd;
+  color: #fff;
+}
+</style>
+""", unsafe_allow_html=True)
+
+def card_select(label: str, selected: bool, key: str) -> bool:
+    """
+    텍스트 카드 전체를 클릭해서 선택/해제되도록 만드는 토글 버튼.
+    반환값: 클릭되었으면 True(=상태 토글), 아니면 False
+    """
+    # 래핑 div로 감싸 클래스 주기 (선택/미선택에 따라 클래스 변경)
+    st.markdown(
+        f"<div class='card-wrap'><div class='card-btn {'selected' if selected else ''}'>",
+        unsafe_allow_html=True
+    )
+    # 버튼 자체는 투명 라벨(공백)로 두고, 카드 전체가 클릭 영역이 되도록
+    clicked = st.button(label, key=key, use_container_width=True)
+    st.markdown("</div></div>", unsafe_allow_html=True)
+    return clicked
+
+
 def main():
     # 페이지 기본 설정
     st.set_page_config(
@@ -1059,12 +1100,13 @@ def show_ingredient_selection():
                     # 체크박스 중앙 정렬
                     col_left, col_center, col_right = st.columns([1, 2, 1])
                     with col_center:
-                        if st.checkbox("선택", value=(item in selected), key=f"ingredient_{item}"):
-                            if item not in selected:
-                                selected.append(item)
-                        else:
-                            if item in selected:
+                        is_selected = item in selected
+                        # 카드 클릭 시 True 반환 → 상태 토글
+                        if card_select(item, is_selected, key=f"ingredient_card_{item}"):
+                            if is_selected:
                                 selected.remove(item)
+                            else:
+                                selected.append(item)
     
     # 선택 상태 업데이트
     st.session_state.selected_ingredients = selected
