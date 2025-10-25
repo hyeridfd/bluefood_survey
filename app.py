@@ -933,8 +933,6 @@ def show_ingredient_selection():
             ingredients = INGREDIENT_CATEGORIES[category]
 
             # 반응형 그리드: 데스크톱 4열, 모바일 2열
-            import streamlit as st
-            # 모바일 감지 위해 CSS로 처리
             cols = st.columns(4)
             for i, ingredient in enumerate(ingredients):
                 with cols[i % 4]:
