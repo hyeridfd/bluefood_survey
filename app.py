@@ -77,7 +77,7 @@ def show_admin_dashboard(df):
             top_ing = all_ingredients.value_counts().head(5)
 
             if not top_ing.empty:
-                fig1, ax1 = plt.subplots()
+                fig1, ax1 = plt.subplots(figsize=(8, 5))
                 sns.barplot(
                     x=top_ing.values,
                     y=top_ing.index,
@@ -96,7 +96,8 @@ def show_admin_dashboard(df):
                 except NameError:
                     ax1.set_title("선호 수산물 TOP5")
 
-                st.pyplot(fig1)
+                fig1.tight_layout()
+                st.pyplot(fig1, use_container_width=True)
             else:
                 st.info("📌 수산물 데이터가 없습니다.")
         except Exception as e:
@@ -120,7 +121,7 @@ def show_admin_dashboard(df):
                 menu_series = pd.Series(menu_list)
                 top_menu = menu_series.value_counts().head(5)
 
-                fig2, ax2 = plt.subplots()
+                fig2, ax2 = plt.subplots(figsize=(8, 5))
                 sns.barplot(
                     x=top_menu.values,
                     y=top_menu.index,
@@ -135,7 +136,8 @@ def show_admin_dashboard(df):
                 for label in ax2.get_xticklabels():
                     label.set_fontproperties(fontprop)
 
-                st.pyplot(fig2)
+                fig2.tight_layout()
+                st.pyplot(fig2, use_container_width=True)
             else:
                 st.info("📌 메뉴 데이터가 없습니다.")
         except Exception as e:
@@ -151,17 +153,16 @@ def show_admin_dashboard(df):
             daily_count = df.groupby('설문일자').size().reset_index(name='응답수')
 
             if not daily_count.empty:
-                fig3, ax3 = plt.subplots()
+                fig3, ax3 = plt.subplots(figsize=(8, 5))
                 ax3.plot(daily_count['설문일자'], daily_count['응답수'], marker='o')
-                ax3.set_ylabel("응답 수")
-                ax3.set_xlabel("날짜")
                 ax3.set_title("날짜별 응답 추이", fontproperties=fontprop)
                 ax3.set_xlabel("날짜", fontproperties=fontprop)
                 ax3.set_ylabel("응답 수", fontproperties=fontprop)
 
                 ax3.grid(True, linestyle="--", alpha=0.5)
                 fig3.autofmt_xdate()
-                st.pyplot(fig3)
+                fig3.tight_layout()
+                st.pyplot(fig3, use_container_width=True)
             else:
                 st.info("📌 날짜별 데이터가 없습니다.")
         except Exception as e:
@@ -869,18 +870,20 @@ def display_ingredient_option(ingredient, is_selected, key):
     <div style="
         border: 2px solid {'#0096c7' if is_selected else '#ccc'};
         border-radius: 12px;
-        padding: 16px;
+        padding: 12px;
         margin-bottom: 8px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.05);
         background: {'linear-gradient(135deg, #4facfe, #00f2fe)' if is_selected else '#ffffff'};
         color: {'#ffffff' if is_selected else '#000000'};
         text-align: center;
-        font-size: 20px;
+        font-size: 18px;
         font-weight: bold;
-        min-height: 100px;
+        min-height: 80px;
         display: flex;
         align-items: center;
         justify-content: center;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     ">
         {ingredient}
     </div>
@@ -929,7 +932,9 @@ def show_ingredient_selection():
             st.markdown(f"### {category}")
             ingredients = INGREDIENT_CATEGORIES[category]
 
-            # 4열 그리드
+            # 반응형 그리드: 데스크톱 4열, 모바일 2열
+            import streamlit as st
+            # 모바일 감지 위해 CSS로 처리
             cols = st.columns(4)
             for i, ingredient in enumerate(ingredients):
                 with cols[i % 4]:
@@ -1008,18 +1013,20 @@ def display_menu_option(menu, ingredient, is_selected, key):
     <div style="
         border: 2px solid {'#0096c7' if is_selected else '#ccc'};
         border-radius: 12px;
-        padding: 12px;
+        padding: 10px;
         margin-bottom: 6px;
         background: {'#00b4d8' if is_selected else '#ffffff'};
         color: {'#ffffff' if is_selected else '#000000'};
         box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-        min-height: 80px;
+        min-height: 70px;
         display:flex;
         align-items:center;
         justify-content:center;
         text-align:center;
-        font-size:18px;
+        font-size:16px;
         font-weight:600;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     ">
         {menu}
     </div>
@@ -1219,10 +1226,11 @@ def main():
         unsafe_allow_html=True
     )
 
-    # 사이드바 스타일 크게 유지 (노인 대상 가독성)
+    # 모바일 최적화 CSS
     st.markdown(
         """
         <style>
+        /* ===== 데스크톱 (기본) ===== */
         section[data-testid="stSidebar"] * {
             font-size: 22px !important;
         }
@@ -1235,6 +1243,144 @@ def main():
         section[data-testid="stSidebar"] p, 
         section[data-testid="stSidebar"] li {
             font-size: 22px !important;
+        }
+        
+        /* 메인 컨텐츠 최적화 */
+        .main {
+            max-width: 100%;
+            padding: 0 10px;
+        }
+        
+        /* ===== 모바일 반응형 (768px 이하) ===== */
+        @media (max-width: 768px) {
+            /* 사이드바 폰트 크기 줄이기 */
+            section[data-testid="stSidebar"] * {
+                font-size: 16px !important;
+            }
+            section[data-testid="stSidebar"] h2 {
+                font-size: 20px !important;
+            }
+            section[data-testid="stSidebar"] h3 {
+                font-size: 16px !important;
+            }
+            section[data-testid="stSidebar"] p, 
+            section[data-testid="stSidebar"] li {
+                font-size: 16px !important;
+            }
+            
+            /* 메인 제목 */
+            h1 {
+                font-size: 24px !important;
+                margin: 10px 0 !important;
+            }
+            
+            h2 {
+                font-size: 18px !important;
+                margin: 8px 0 !important;
+            }
+            
+            h3 {
+                font-size: 16px !important;
+                margin: 6px 0 !important;
+            }
+            
+            /* 버튼 최적화 */
+            button {
+                font-size: 14px !important;
+                padding: 10px !important;
+                min-height: 45px !important;
+            }
+            
+            /* 입력 필드 */
+            input, select, textarea {
+                font-size: 16px !important;
+                padding: 10px !important;
+                min-height: 40px !important;
+            }
+            
+            /* 체크박스/라디오 버튼 크기 */
+            [role="radio"], [role="checkbox"] {
+                width: 20px !important;
+                height: 20px !important;
+            }
+            
+            /* 패딩 조정 */
+            .stButton > button {
+                width: 100% !important;
+            }
+            
+            /* 컨테이너 패딩 */
+            [data-testid="stVerticalBlock"] {
+                padding: 5px 0 !important;
+            }
+            
+            /* 마진 줄이기 */
+            [data-testid="stMarkdownContainer"] {
+                margin: 5px 0 !important;
+            }
+            
+            /* 이미지/차트 반응형 */
+            img {
+                max-width: 100% !important;
+                height: auto !important;
+            }
+            
+            canvas {
+                max-width: 100% !important;
+            }
+        }
+        
+        /* ===== 초소형 모바일 (480px 이하) ===== */
+        @media (max-width: 480px) {
+            section[data-testid="stSidebar"] * {
+                font-size: 14px !important;
+            }
+            section[data-testid="stSidebar"] h2 {
+                font-size: 16px !important;
+            }
+            
+            h1 {
+                font-size: 20px !important;
+            }
+            
+            h2 {
+                font-size: 16px !important;
+            }
+            
+            h3 {
+                font-size: 14px !important;
+            }
+            
+            button {
+                font-size: 12px !important;
+                min-height: 40px !important;
+            }
+            
+            input, select, textarea {
+                font-size: 14px !important;
+                min-height: 35px !important;
+            }
+            
+            /* 테이블 스크롤 */
+            .stDataFrame {
+                font-size: 12px !important;
+            }
+        }
+        
+        /* 일반적인 모바일 최적화 */
+        body {
+            overflow-x: hidden;
+        }
+        
+        /* expander 최적화 */
+        [data-testid="stExpander"] {
+            margin: 5px 0 !important;
+        }
+        
+        /* 카드 스타일 최적화 */
+        [style*="background"] {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         </style>
         """,
