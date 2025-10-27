@@ -1012,11 +1012,42 @@ def show_category_step():
             chosen_cnt = len(st.session_state.selected_menus.get(ing_name, []))
             if chosen_cnt == 0:
                 all_valid_this_cat = False
-                st.warning(f"{ing_name}: 최소 1개 이상의 메뉴를 선택해주세요.")
+                st.markdown(
+                    f"""
+                    <div style="
+                        background-color:#fff8cd;
+                        border:1px solid #ffe69c;
+                        color:#664d03;
+                        font-size:15px;
+                        font-weight:500;
+                        border-radius:8px;
+                        padding:10px 14px;
+                        margin:8px 0;
+                    ">
+                        ⚠️ <strong>{ing_name}</strong>: 최소 1개 이상의 메뉴를 선택해주세요.
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             else:
-                st.success(f"{ing_name}: {chosen_cnt}개 메뉴 선택됨")
+                st.markdown(
+                    f"""
+                    <div style="
+                        background-color:#d1e7dd;
+                        border:1px solid #badbcc;
+                        color:#0f5132;
+                        font-size:15px;
+                        font-weight:500;
+                        border-radius:8px;
+                        padding:10px 14px;
+                        margin:8px 0;
+                    ">
+                        ✅ <strong>{ing_name}</strong>: {chosen_cnt}개 메뉴 선택됨
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-            st.markdown("<hr>", unsafe_allow_html=True)
 
     # ---------- (2.5) 이 카테고리 요약 섹션 (NEW) ----------
     # 항상 보여줄 거야. 단, 아무 것도 고른 게 없으면 “선택 없음”만 보여주자.
