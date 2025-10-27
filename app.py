@@ -426,41 +426,46 @@ def show_ingredient_selection():
         card_class = "card-box selected" if is_selected else "card-box"
         checkbox_key = f"ingredient_{idx}_{ingredient}"
         
-        grid_html += f'''
-        <div class="{card_class}" data-checkbox-id="{checkbox_key}" style="cursor:pointer; user-select: none;">
-            {ingredient}
-        </div>
-        '''
+        grid_html += f'<div class="{card_class}" data-checkbox-id="{checkbox_key}" style="cursor:pointer;user-select:none;">{ingredient}</div>'
     
     grid_html += '</div>'
     
     # HTML 렌더링
     st.markdown(grid_html, unsafe_allow_html=True)
     
-    # JavaScript로 클릭 이벤트 처리
+    # JavaScript로 클릭 이벤트 처리 (한 번만)
     st.markdown(
         """
         <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('[data-checkbox-id]');
-            cards.forEach(card => {
-                card.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const checkboxId = this.getAttribute('data-checkbox-id');
-                    // label 찾기
-                    const label = document.querySelector(`label[for="${checkboxId}"]`);
-                    if (label) {
-                        label.click();
-                    } else {
-                        // input checkbox 직접 찾기
-                        const input = document.querySelector(`input[id="${checkboxId}"]`);
-                        if (input) {
-                            input.click();
-                        }
+        if (!window.checkboxClickHandlerLoaded) {
+            window.checkboxClickHandlerLoaded = true;
+            document.addEventListener('DOMContentLoaded', attachCheckboxHandlers);
+            
+            function attachCheckboxHandlers() {
+                const cards = document.querySelectorAll('[data-checkbox-id]');
+                cards.forEach(card => {
+                    if (!card.dataset.handlerAttached) {
+                        card.dataset.handlerAttached = 'true';
+                        card.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const checkboxId = this.getAttribute('data-checkbox-id');
+                            const label = document.querySelector(`label[for="${checkboxId}"]`);
+                            if (label) {
+                                label.click();
+                            }
+                        });
                     }
                 });
-            });
-        });
+            }
+            
+            // 초기 로드 시에도 실행
+            attachCheckboxHandlers();
+            
+            // Streamlit 리렌더링 후에도 실행
+            if (window.streamlit) {
+                window.streamlit.setComponentValue(null);
+            }
+        }
         </script>
         """,
         unsafe_allow_html=True
@@ -543,11 +548,7 @@ def show_menu_selection():
             card_class = "menu-card-box selected" if is_selected else "menu-card-box"
             checkbox_key = f"menu_{ing_idx}_{menu_idx}_{ing_name}_{menu_name}"
             
-            grid_html += f'''
-            <div class="{card_class}" data-checkbox-id="{checkbox_key}" style="cursor:pointer; user-select: none;">
-                {menu_name}
-            </div>
-            '''
+            grid_html += f'<div class="{card_class}" data-checkbox-id="{checkbox_key}" style="cursor:pointer;user-select:none;">{menu_name}</div>'
         
         grid_html += '</div>'
         
@@ -556,28 +557,32 @@ def show_menu_selection():
         
         # JavaScript로 클릭 이벤트 처리
         st.markdown(
-            f"""
+            """
             <script>
-            document.addEventListener('DOMContentLoaded', function() {{
-                const cards = document.querySelectorAll('[data-checkbox-id]');
-                cards.forEach(card => {{
-                    card.addEventListener('click', function(e) {{
-                        e.stopPropagation();
-                        const checkboxId = this.getAttribute('data-checkbox-id');
-                        // label 찾기
-                        const label = document.querySelector(`label[for="${{checkboxId}}"]`);
-                        if (label) {{
-                            label.click();
-                        }} else {{
-                            // input checkbox 직접 찾기
-                            const input = document.querySelector(`input[id="${{checkboxId}}"]`);
-                            if (input) {{
-                                input.click();
-                            }}
-                        }}
-                    }});
-                }});
-            }});
+            if (!window.checkboxClickHandlerLoaded) {
+                window.checkboxClickHandlerLoaded = true;
+                document.addEventListener('DOMContentLoaded', attachCheckboxHandlers);
+                
+                function attachCheckboxHandlers() {
+                    const cards = document.querySelectorAll('[data-checkbox-id]');
+                    cards.forEach(card => {
+                        if (!card.dataset.handlerAttached) {
+                            card.dataset.handlerAttached = 'true';
+                            card.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                const checkboxId = this.getAttribute('data-checkbox-id');
+                                const label = document.querySelector(`label[for="${checkboxId}"]`);
+                                if (label) {
+                                    label.click();
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                // 초기 로드 시에도 실행
+                attachCheckboxHandlers();
+            }
             </script>
             """,
             unsafe_allow_html=True
