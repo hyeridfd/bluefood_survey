@@ -17,6 +17,20 @@ import json
 
 LIGHT_FORCE_CSS = """
 <style>
+/* OS가 다크모드여도 늘 라이트 팔레트로 해석하게 강제 */
+:root {
+    color-scheme: light !important;
+}
+
+/* 다크모드일 때 Streamlit이 어둡게 칠하려고 해도 다시 흰색/검정으로 덮어쓰기 */
+@media (prefers-color-scheme: dark) {
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data-testid="stApp"] {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+}
+
+/* 기존 너 코드 그대로 ↓ */
 html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data-testid="stApp"] {
     background-color: #ffffff !important;
     color: #000000 !important;
@@ -93,37 +107,6 @@ st.set_page_config(
     layout="wide"
 )
 st.markdown(LIGHT_FORCE_CSS, unsafe_allow_html=True)
-
-# 라이트 모드 강제 (CSS로 다크모드 무시)
-st.markdown("""
-    <style>
-        /* 라이트 모드 강제 */
-        .stApp {
-            background-color: #ffffff;
-            color: #262730;
-        }
-        
-        /* 다크모드 변수 오버라이드 */
-        :root {
-            --background-color: #ffffff;
-            --secondary-background-color: #f0f2f6;
-            --text-color: #262730;
-        }
-        
-        /* 모든 텍스트 요소 색상 고정 */
-        .stMarkdown, p, span, div {
-            color: #262730 !important;
-        }
-        
-        /* 입력 필드 배경색 */
-        .stTextInput > div > div > input,
-        .stSelectbox > div > div > select {
-            background-color: white !important;
-            color: #262730 !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
 st.markdown(JS_PATCH, unsafe_allow_html=True)
 
 # ===================== 폰트(한글 깨짐 방지) =====================
