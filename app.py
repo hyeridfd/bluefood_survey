@@ -620,7 +620,7 @@ def show_category_step():
     idx = st.session_state.category_index
     cat_label, ing_list = INGREDIENT_CATEGORIES[idx]
 
-    st.markdown("# 🐟 블루푸드 선호도 조사")
+    st.markdown("# 블루푸드 선호도 조사")
     st.markdown(f"## 2단계: {cat_label} 선호도 조사")
     st.markdown(
         """
@@ -636,7 +636,7 @@ def show_category_step():
     )
 
     # ---------- (1) 이 카테고리의 수산물 선택 영역 ----------
-    st.markdown("### ✅ 선호 수산물 선택")
+    st.markdown("###🐟 선호 수산물 선택")
 
     num_cols = 3
     cols = st.columns([1,1,1])
@@ -645,7 +645,7 @@ def show_category_step():
         col = cols[i % num_cols]
         with col:
             is_selected_globally = ing_name in st.session_state.selected_ingredients
-            label = f"✅ {ing_name}" if is_selected_globally else ing_name
+            label = f"👍{ing_name}" if is_selected_globally else ing_name
             btn_type = "primary" if is_selected_globally else "secondary"
 
             if st.button(
@@ -704,7 +704,7 @@ def show_category_step():
 
     if picked_any_here:
         # 👉 재료를 골랐을 때만 메뉴 영역을 그린다
-        st.markdown("### 🍽️ 선호 메뉴 선택")
+        st.markdown("### 🐟 선호 메뉴 선택")
         st.markdown(
             """
             <p style="font-size:15px; line-height:1.5; color:#333; margin-top:-8px;">
@@ -721,7 +721,7 @@ def show_category_step():
                 f"""
                 <h4 style="margin-top:16px; margin-bottom:12px;
                            font-size:18px; font-weight:700; color:#000;">
-                    🐟 {ing_name} 메뉴
+                    🍽️ {ing_name} 메뉴
                 </h4>
                 """,
                 unsafe_allow_html=True
