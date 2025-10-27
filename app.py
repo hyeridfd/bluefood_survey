@@ -963,7 +963,7 @@ def show_ingredient_selection():
                 is_selected = ing_name in st.session_state.selected_ingredients
 
                 # 카드 + 숨은 체크박스 렌더
-                new_val = ingredient_card_block_html(
+                new_val = ingredient_card_block(
                     ingredient_name=ing_name,
                     is_selected=is_selected,
                     idx=idx
