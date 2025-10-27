@@ -17,49 +17,38 @@ import json
 
 LIGHT_FORCE_CSS = """
 <style>
-html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data-testid="stApp"] {
+/* ✅ 라이트모드 강제 고정 (모바일/데스크탑 모두 적용) */
+:root {
+    color-scheme: light !important;
+}
+
+/* 전체 앱 배경 흰색으로 고정 */
+html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data-testid="stApp"], [data-testid="stHeader"], [data-testid="stToolbar"] {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
-.block-container {
-    color: #000000 !important;
-}
-hr {
-    border-color: #cccccc !important;
-}
 
-/* 3열 그리드 강제 */
-[data-testid="stHorizontalBlock"] {
-    display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 8px !important;
-    width: 100% !important;
-}
-[data-testid="stHorizontalBlock"] > div {
-    min-width: 0 !important;
-}
-[data-testid="stColumn"] {
-    width: 100% !important;
-    flex: 1 1 auto !important;
-}
-
-/* 모바일에서도 동일하게 3열 유지 */
-@media (max-width: 768px) {
-    [data-testid="stHorizontalBlock"] {
-        grid-template-columns: repeat(3, 1fr) !important;
+/* 다크모드 감지시에도 무시하도록 오버라이드 */
+@media (prefers-color-scheme: dark) {
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data-testid="stApp"], [data-testid="stHeader"], [data-testid="stToolbar"] {
+        background-color: #ffffff !important;
+        color: #000000 !important;
     }
 }
 
-/* 선택 버튼 스타일 */
-button[kind="secondary"], button[kind="primary"] {
-    width: 100% !important;
-    padding: 10px 8px !important;
-    white-space: normal !important;
-    word-break: break-word !important;
-    font-size: 14px !important;
-    line-height: 1.3 !important;
-    border-radius: 10px !important;
+/* 버튼 색상도 라이트모드 기준으로 고정 */
+div.stButton > button {
+    background-color: #0078FF !important;
+    color: #ffffff !important;
     font-weight: 600 !important;
+    border: none !important;
+    border-radius: 8px !important;
+}
+
+/* 경고/알림 박스 등 배경이 어둡게 렌더되는 요소들도 흰색 계열로 변경 */
+[data-baseweb="toast"] {
+    background-color: #ffffff !important;
+    color: #000000 !important;
 }
 </style>
 """
