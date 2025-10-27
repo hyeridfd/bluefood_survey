@@ -890,7 +890,7 @@ def show_category_step():
         # 마지막 제출 시에는 전체 수산물 최소 3개 이상
         global_ready = (len(st.session_state.selected_ingredients) >= 3)
 
-        next_btn_label = "설문 완료하기 ✅" if is_last_category else "다음 카테고리 →"
+        next_btn_label = "설문 완료하기 ✅" if is_last_category else "다음 →"
 
         if is_last_category:
             final_disabled = not (cat_ready and global_ready)
