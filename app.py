@@ -726,30 +726,28 @@ def show_info_form():
                 st.error("성함과 식별번호를 모두 입력해주세요.")
 
 
-def ingredient_card_block_html(ingredient_name: str, is_selected: bool, idx: int):
+def ingredient_card_block(ingredient_name: str, is_selected: bool, key_suffix: str):
     """
-    한 개의 식재료 카드를 그리드 셀로 렌더링.
-    - 카드 자체만 보이고
-    - 내부적으로 hidden checkbox 로 state 유지
-    - 카드 터치 시 checkbox 토글
+    한 개 재료 카드 + 숨은 체크박스 (단일 셀용)
+    Streamlit column 안에서 호출되는 버전
     """
     card_class = "card-box selected" if is_selected else "card-box"
-    card_id = f"card_{ingredient_name}_{idx}"
+    card_id = f"card_{key_suffix}"
 
-    # 카드 HTML (클릭하면 숨겨진 체크박스를 클릭시키는 방식)
+    # 카드 HTML
     st.markdown(
         f"""
         <div id="{card_id}"
              class="{card_class}"
              onclick="document.getElementById('{card_id}_chk').click();"
-             style="cursor:pointer;">
+             style="cursor:pointer; width:100%; height:100%;">
             <div class="card-label">{ingredient_name}</div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    # 실제 상태를 위한 체크박스는 화면에서 숨김
+    # 실제 체크박스 (state 유지용)
     new_val = st.checkbox(
         "선택",
         value=is_selected,
@@ -757,7 +755,7 @@ def ingredient_card_block_html(ingredient_name: str, is_selected: bool, idx: int
         label_visibility="collapsed"
     )
 
-    # 체크박스 DOM 숨기기 (streamlit이 checkbox를 div로 감싸 렌더하므로 CSS로 처리)
+    # 체크박스 숨기기
     st.markdown(
         f"""
         <style>
@@ -771,6 +769,131 @@ def ingredient_card_block_html(ingredient_name: str, is_selected: bool, idx: int
 
     return new_val
 
+
+def show_ingredient_selection():
+    st.title("🐟 블루푸드 선호도 조사")
+    st.subheader("🐟 수산물 원재료 선호도")
+    st.markdown(
+        """
+        <p style="font-size:16px; line-height:1.5; color:#333;">
+        최소 3개 이상, 최대 9개까지 선택해주세요.
+        </p>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # 선택 개수 상태 박스
+    selected_count = len(st.session_state.selected_ingredients)
+    if selected_count < 3:
+        status_msg = f"현재 {selected_count}개 선택됨 · 최소 3개 이상 선택해주세요"
+        status_class = "background-color:#fff3cd;border:1px solid #ffe69c;color:#664d03;"
+    elif selected_count > 9:
+        status_msg = f"현재 {selected_count}개 선택됨 · 최대 9개까지만 가능합니다"
+        status_class = "background-color:#f8d7da;border:1px solid #f5c2c7;color:#842029;"
+    else:
+        status_msg = f"현재 {selected_count}개 선택됨"
+        status_class = "background-color:#d1e7dd;border:1px solid #badbcc;color:#0f5132;"
+
+    st.markdown(
+        f"""
+        <div style="
+            {status_class}
+            border-radius:8px;
+            padding:12px 16px;
+            font-size:16px;
+            font-weight:500;
+            margin-bottom:16px;">
+            {status_msg}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # 카테고리 탭
+    category_names = list(INGREDIENT_CATEGORIES.keys())
+    tabs = st.tabs(category_names)
+
+    for tab, category in zip(tabs, category_names):
+        with tab:
+            st.markdown(
+                f"""
+                <h3 style="margin-top:8px; margin-bottom:12px;
+                           font-size:20px; font-weight:700; color:#000;">
+                    {category}
+                </h3>
+                """,
+                unsafe_allow_html=True
+            )
+
+            ingredients = INGREDIENT_CATEGORIES[category]
+
+            # 이 탭에서 바뀐 값들 임시 저장
+            local_updates = {}
+
+            # 4개씩 한 줄
+            for row_start in range(0, len(ingredients), 4):
+                row_items = ingredients[row_start:row_start+4]
+
+                cols = st.columns(len(row_items))
+                for col, ing_name in zip(cols, row_items):
+                    with col:
+                        is_selected = ing_name in st.session_state.selected_ingredients
+
+                        new_val = ingredient_card_block(
+                            ingredient_name=ing_name,
+                            is_selected=is_selected,
+                            key_suffix=f"{category}_{ing_name}"
+                        )
+
+                        local_updates[ing_name] = new_val
+
+            # 세션 상태에 반영
+            for ing_name, new_val in local_updates.items():
+                already = ing_name in st.session_state.selected_ingredients
+
+                if new_val and not already:
+                    if len(st.session_state.selected_ingredients) < 9:
+                        st.session_state.selected_ingredients.append(ing_name)
+                        if ing_name not in st.session_state.selected_menus:
+                            st.session_state.selected_menus[ing_name] = []
+                    else:
+                        st.warning("최대 9개까지만 선택할 수 있습니다.")
+                elif (not new_val) and already:
+                    st.session_state.selected_ingredients.remove(ing_name)
+                    # 선택 해제 시 연관 메뉴도 지울 거면 여기서 지워도 됨
+
+            # 카테고리 내 요약
+            cat_selected = [
+                x for x in st.session_state.selected_ingredients if x in ingredients
+            ]
+            if len(cat_selected) == 0:
+                st.info("이 카테고리에서 아직 선택한 항목이 없습니다.")
+            else:
+                st.success("이 카테고리에서 선택됨: " + " / ".join(cat_selected))
+
+    st.markdown("<hr style='margin-top:24px;margin-bottom:16px;'>", unsafe_allow_html=True)
+
+    col_left, col_mid, col_right = st.columns([1,1,1])
+
+    with col_left:
+        if st.button("선택 초기화", use_container_width=True):
+            st.session_state.selected_ingredients = []
+            st.session_state.selected_menus = {}
+            st.rerun()
+
+    with col_mid:
+        st.write(f"현재 {len(st.session_state.selected_ingredients)}개")
+
+    with col_right:
+        can_go_next = (3 <= len(st.session_state.selected_ingredients) <= 9)
+        if st.button("다음 단계 →", use_container_width=True, disabled=not can_go_next):
+            if can_go_next:
+                st.session_state.selected_menus = {
+                    ing: st.session_state.selected_menus.get(ing, [])
+                    for ing in st.session_state.selected_ingredients
+                }
+                st.session_state.step = 'menus'
+                st.rerun()
 
 
 def show_ingredient_selection():
