@@ -619,8 +619,11 @@ def show_info_form():
 
 # ===================== 화면 =====================
 def show_overall_guide():
-    st.markdown("# 🐟 블루푸드 선호도 조사")
-    
+    st.markdown(
+    "<h1>🐟 블루푸드<br>선호도 조사</h1>",
+    unsafe_allow_html=True
+)
+
     # 헤더
     st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 15px; margin-bottom: 30px;">
@@ -674,7 +677,11 @@ def show_category_step():
     idx = st.session_state.category_index
     cat_label, ing_list = INGREDIENT_CATEGORIES[idx]
 
-    st.markdown("# 블루푸드 선호도 조사")
+    st.markdown(
+    "<h1>🐟 블루푸드<br>선호도 조사</h1>",
+    unsafe_allow_html=True
+)
+
     st.markdown(f"## 2단계: {cat_label} 선호도 조사")
     st.markdown(
         """
