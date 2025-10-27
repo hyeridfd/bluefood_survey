@@ -870,7 +870,7 @@ def show_ingredient_selection():
             
                 # 각 카드는 독립 컨테이너가 필요하니까 st.container()로 하나씩 감싸서 넣어주자
                 with st.container():
-                    new_val = ingredient_card_block_raw(
+                    new_val = ingredient_card_block(
                         ingredient_name=ing_name,
                         is_selected=is_selected,
                         key_suffix=f"{category}_{ing_name}"
