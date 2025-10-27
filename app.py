@@ -621,15 +621,15 @@ def show_category_step():
     idx = st.session_state.category_index
     cat_label, ing_list = INGREDIENT_CATEGORIES[idx]
 
-    st.markdown("# 🐟 블루푸드 선호도 조사")
+    st.markdown("# 블루푸드 선호도 조사")
     st.markdown(f"## 2단계: {cat_label} 선호도 조사")
     st.markdown(
         """
         <p style="font-size:16px; line-height:1.5; color:#333;">
-        1) 아래 수산물(원재료) 중에서 선호하시는 것을 모두 선택해주세요.<br>
+        1) 아래 수산물(원재료) 중에서 <strong>선호하시는 것</strong>을 모두 선택해주세요.<br>
         (선호하시는 식재료가 없다면 아무 것도 선택하지 않으셔도 됩니다.)<br>
         <strong>※ 전체 설문 기준으로는 최소 3개 이상 수산물을 선택 부탁드립니다.</strong><br><br>
-        2) 선택하신 재료가 있다면, 각각에 대해 즐겨 드시는 메뉴를 골라주세요.<br>
+        2) 선택하신 재료가 있다면, 각각에 대해 <strong>즐겨 드시는 메뉴</strong>를 골라주세요.<br>
         <br>
         </p>
         """,
@@ -637,7 +637,7 @@ def show_category_step():
     )
 
     # --- 1) 이 카테고리의 재료 선택 ---------------------------------
-    st.markdown("### ✅ 선호 수산물 선택")
+    st.markdown("### 🐟 선호 수산물 선택")
 
     num_cols = 3
     cols = st.columns([1,1,1])
@@ -695,7 +695,7 @@ def show_category_step():
 
     # --- 2) (선택한 재료가 있는 경우에만) 메뉴 선택 -----------------
 
-    st.markdown("### 🍽️ 선호 메뉴 선택")
+    st.markdown("### 선호 메뉴 선택")
     st.markdown(
         """
         <p style="font-size:15px; line-height:1.5; color:#333; margin-top:-8px;">
@@ -722,7 +722,7 @@ def show_category_step():
             f"""
             <h4 style="margin-top:16px; margin-bottom:12px;
                        font-size:18px; font-weight:700; color:#000;">
-                🐟 {ing_name} 메뉴
+                🍽️ {ing_name} 메뉴
             </h4>
             """,
             unsafe_allow_html=True
