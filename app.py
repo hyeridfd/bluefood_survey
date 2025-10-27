@@ -624,9 +624,9 @@ def show_overall_guide():
         <div style="font-size:16px; line-height:1.6; color:#333;">
         <p><strong>2단계 진행 방법</strong></p>
         <p>
-        1. 아래 수산물(원재료) 중에서 좋아하시는 것을 모두 선택해주세요.<br>
-        (각 카테고리는 아무 것도 선택하지 않으셔도 됩니다.)<br><br>
-        2. 선택하신 재료가 있다면, 각각에 대해 선호하시는 메뉴를 골라주세요.<br><br>
+        1. 아래 수산물(원재료) 중에서 <strong>좋아하시는 것</strong>을 모두 선택해주세요.<br>
+        <strong>(각 카테고리는 아무 것도 선택하지 않으셔도 됩니다.)</strong><br><br>
+        2. 선택하신 재료가 있다면, <strong>각각에 대해 선호하시는 메뉴</strong>를 골라주세요.<br><br>
 
         ※ 전체 설문 기준으로는 <strong>최소 3개 이상</strong> 수산물을 선택 부탁드립니다.
         </p>
