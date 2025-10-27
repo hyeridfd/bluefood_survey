@@ -832,11 +832,15 @@ def show_category_step():
     col_prev, col_mid, col_next = st.columns([1,1,1])
 
     with col_prev:
-        disable_prev = (idx == 0)
-        if st.button("← 이전", use_container_width=True, disabled=disable_prev):
+        if st.button("← 이전", use_container_width=True):
             if idx > 0:
+                # 이전 카테고리로 이동
                 st.session_state.category_index -= 1
-                st.rerun()
+            else:
+                # 첫 번째 카테고리일 때는 안내 화면(guide)으로 이동
+                st.session_state.step = "guide"
+            st.rerun()
+
 
     with col_mid:
         if st.button("현재 카테고리 선택 초기화", use_container_width=True):
