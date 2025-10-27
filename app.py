@@ -78,9 +78,14 @@ hr {
     color: #ffffff;
 }
 
-/* 체크박스는 화면에서 숨김 (state만 유지) */
+/* 체크박스는 화면에서 완전히 숨김 (state만 유지) */
 .hidden-check {
-    display:none;
+    display: none !important;
+}
+
+/* Streamlit 체크박스 전체 숨김 */
+[data-testid="stCheckbox"] {
+    display: none !important;
 }
 
 /* 메뉴 카드 (2단계 화면) */
@@ -108,7 +113,23 @@ hr {
 
 /* 체크박스 래퍼 숨기기 */
 .hidden-check-wrapper {
-    display:none;
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+}
+
+/* Streamlit 라벨 숨김 */
+.hidden-check-wrapper label {
+    display: none !important;
+}
+
+/* Streamlit 컬럼 내 요소 숨김 */
+.hidden-check-wrapper [data-baseweb="checkbox"] {
+    display: none !important;
 }
 </style>
 """
@@ -368,10 +389,14 @@ def show_ingredient_selection():
         "김밥", "김무침", "김부각", "김자반"
     ]
 
-    # 먼저 체크박스 상태 업데이트 (숨겨진 컨테이너에서)
-    st.markdown('<div class="hidden-check-wrapper">', unsafe_allow_html=True)
+    # 1단계: 맨 위에서 모든 체크박스를 한번에 처리 (완전히 숨김)
+    st.markdown(
+        """
+        <div style="display:none;width:0;height:0;overflow:hidden;">
+        """,
+        unsafe_allow_html=True
+    )
     
-    checkbox_states = {}
     cols = st.columns(len(ingredients))
     for idx, ingredient in enumerate(ingredients):
         checkbox_key = f"ingredient_{idx}_{ingredient}"
@@ -384,7 +409,6 @@ def show_ingredient_selection():
                 key=checkbox_key,
                 label_visibility="collapsed"
             )
-            checkbox_states[ingredient] = new_state
             
             # 상태 변경 감지
             if new_state and ingredient not in st.session_state.selected_ingredients:
@@ -392,9 +416,9 @@ def show_ingredient_selection():
             elif not new_state and ingredient in st.session_state.selected_ingredients:
                 st.session_state.selected_ingredients.remove(ingredient)
     
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    # 그리드 HTML 생성 - 4열
+    # 2단계: 그리드 HTML 생성 - 4열
     grid_html = '<div class="ingredient-grid">'
     
     for idx, ingredient in enumerate(ingredients):
@@ -458,8 +482,13 @@ def show_menu_selection():
 
         menus = menu_data.get(ing_name, [])
 
-        # 먼저 체크박스 상태 업데이트 (숨겨진 컨테이너에서)
-        st.markdown('<div class="hidden-check-wrapper">', unsafe_allow_html=True)
+        # 1단계: 체크박스를 완전히 숨긴 컨테이너에서 처리
+        st.markdown(
+            """
+            <div style="display:none;width:0;height:0;overflow:hidden;">
+            """,
+            unsafe_allow_html=True
+        )
         
         cols = st.columns(len(menus))
         local_updates = {}
@@ -477,9 +506,9 @@ def show_menu_selection():
                 )
                 local_updates[menu_name] = new_val
         
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        # 메뉴 그리드 HTML 생성 - 4열
+        # 2단계: 메뉴 그리드 HTML 생성 - 4열
         grid_html = '<div class="menu-grid">'
         
         for menu_idx, menu_name in enumerate(menus):
