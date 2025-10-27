@@ -17,40 +17,33 @@ import json
 
 LIGHT_FORCE_CSS = """
 <style>
-/* 전체 라이트 모드 강제 */
 html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data-testid="stApp"] {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
-
 .block-container {
     color: #000000 !important;
 }
-
 hr {
     border-color: #cccccc !important;
 }
 
-/* --- 공통 카드/버튼 레이아웃 강제 --- */
-
-/* 가로 버튼 레이아웃을 grid로 강제 (모바일에서도 유지) */
+/* 3열 그리드 강제 */
 [data-testid="stHorizontalBlock"] {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 8px !important;
     width: 100% !important;
 }
-
 [data-testid="stHorizontalBlock"] > div {
     min-width: 0 !important;
 }
-
 [data-testid="stColumn"] {
     width: 100% !important;
     flex: 1 1 auto !important;
 }
 
-/* 모바일에서도 그대로 3열 유지 */
+/* 모바일에서도 동일하게 3열 유지 */
 @media (max-width: 768px) {
     [data-testid="stHorizontalBlock"] {
         grid-template-columns: repeat(3, 1fr) !important;
@@ -254,15 +247,15 @@ def save_to_excel(name, id_number, selected_ingredients, selected_menus):
 # ===================== Session State 초기화 =====================
 
 if 'step' not in st.session_state:
-    st.session_state.step = 'info'
+    st.session_state.step = 'info'        # info -> category -> complete  👈 핵심
 if 'name' not in st.session_state:
     st.session_state.name = ""
 if 'id_number' not in st.session_state:
     st.session_state.id_number = ""
 if 'selected_ingredients' not in st.session_state:
-    st.session_state.selected_ingredients = []
+    st.session_state.selected_ingredients = []  # 전체 누적
 if 'selected_menus' not in st.session_state:
-    st.session_state.selected_menus = {}
+    st.session_state.selected_menus = {}        # {재료: [메뉴,...]}
 if 'is_admin' not in st.session_state:
     st.session_state.is_admin = False
 if 'show_admin_login' not in st.session_state:
@@ -271,6 +264,10 @@ if 'google_sheets_success' not in st.session_state:
     st.session_state.google_sheets_success = False
 if 'already_saved' not in st.session_state:
     st.session_state.already_saved = False
+
+# 👈 핵심: 지금 몇 번째 카테고리를 진행중인지
+if 'category_index' not in st.session_state:
+    st.session_state.category_index = 0
 
 
 # ===================== 설문 데이터 (수산물/메뉴) =====================
@@ -524,20 +521,23 @@ MENU_DATA = {
     '조기': {'조림': ['조기조림'], '찜': ['조기찜'], '구이': ['조기구이']}
 }
 
-INGREDIENT_CATEGORIES = {
-    '🍤 가공수산물': ['맛살', '어란', '어묵', '쥐포'],
-    '🌿 해조류': ['김', '다시마', '매생이', '미역', '파래', '톳'],
-    '🦑 연체류': ['꼴뚜기', '낙지', '문어', '오징어', '주꾸미'],
-    '🦀 갑각류': ['가재', '게', '새우'],
-    '🐚 패류': [
+INGREDIENT_CATEGORIES = [
+    ("🍤 가공수산물", ['맛살', '어란', '어묵', '쥐포']),
+    ("🌿 해조류", ['김', '다시마', '매생이', '미역', '파래', '톳']),
+    ("🦑 연체류", ['꼴뚜기', '낙지', '문어', '오징어', '주꾸미']),
+    ("🦀 갑각류", ['가재', '게', '새우']),
+    ("🐚 패류", [
         '다슬기', '꼬막', '가리비', '골뱅이', '굴', '미더덕', '바지락', '백합',
         '소라', '재첩', '전복', '홍합'
-    ],
-    '🐟 어류': [
+    ]),
+    ("🐟 어류", [
         '가자미', '다랑어', '고등어', '갈치', '꽁치', '대구', '멸치', '명태',
         '박대', '뱅어', '병어', '삼치', '아귀', '연어', '임연수', '장어', '조기'
-    ]
-}
+    ])
+]
+
+TOTAL_CATEGORY_COUNT = len(INGREDIENT_CATEGORIES)
+
 
 # ===================== 화이트리스트 체크 =====================
 
@@ -582,111 +582,7 @@ def is_valid_name_id(name: str, id_number: str) -> bool:
     return (name.strip(), id_number.strip().upper()) in allowed
 
 
-# ===================== 관리자 대시보드 =====================
-
-def show_admin_dashboard(df):
-    st.markdown("## 📊 관리자 대시보드")
-
-    if df is None or df.empty:
-        st.warning("⚠️ 응답 데이터가 없습니다.")
-        return
-
-    st.markdown(f"**총 응답자 수:** {df['식별번호'].nunique() if '식별번호' in df.columns else len(df)}명")
-    st.markdown(f"**총 응답 수:** {len(df)}건")
-    if '설문일시' in df.columns:
-        st.markdown(f"**최근 응답 시간:** {df['설문일시'].max()}")
-
-    if '식별번호' in df.columns:
-        st.markdown("### 🔍 중복 응답 감지")
-        dup = df[df.duplicated('식별번호', keep=False)]
-        if not dup.empty:
-            st.warning(f"⚠️ {dup['식별번호'].nunique()}명의 중복 응답 발견")
-            st.dataframe(dup)
-        else:
-            st.success("✅ 중복 응답 없음")
-
-    if '선택한_수산물' in df.columns:
-        st.markdown("### 🐟 수산물 선호도 TOP5")
-        try:
-            ingredient_counts = {}
-            for ingredients_json in df['선택한_수산물'].dropna():
-                try:
-                    ings = json.loads(ingredients_json)
-                except Exception:
-                    ings = [x.strip() for x in str(ingredients_json).split(",")]
-                for ing in ings:
-                    if ing:
-                        ingredient_counts[ing] = ingredient_counts.get(ing, 0) + 1
-
-            if ingredient_counts:
-                top_items = sorted(ingredient_counts.items(), key=lambda x: x[1], reverse=True)[:5]
-                ing_df = pd.DataFrame(top_items, columns=['수산물', '응답 수'])
-                fig1, ax1 = plt.subplots()
-                sns.barplot(x='응답 수', y='수산물', data=ing_df, ax=ax1)
-                if fontprop:
-                    ax1.set_title("선호 수산물 TOP5", fontproperties=fontprop)
-                    ax1.set_xlabel("응답 수", fontproperties=fontprop)
-                    ax1.set_ylabel("수산물", fontproperties=fontprop)
-                    for label in ax1.get_yticklabels():
-                        label.set_fontproperties(fontprop)
-                    for label in ax1.get_xticklabels():
-                        label.set_fontproperties(fontprop)
-                st.pyplot(fig1)
-        except Exception as e:
-            st.error(f"데이터 로드 오류 (수산물): {e}")
-
-    if '선택한_메뉴' in df.columns:
-        st.markdown("### 🍽️ 메뉴 선호도 TOP5")
-        try:
-            menu_counts = {}
-            for menus_json in df['선택한_메뉴'].dropna():
-                try:
-                    menu_dict = json.loads(menus_json)
-                    for _, lst in menu_dict.items():
-                        for m in lst:
-                            if m:
-                                menu_counts[m] = menu_counts.get(m, 0) + 1
-                except Exception:
-                    pass
-
-            if menu_counts:
-                top_menu_items = sorted(menu_counts.items(), key=lambda x: x[1], reverse=True)[:5]
-                menu_df = pd.DataFrame(top_menu_items, columns=['메뉴', '응답 수'])
-                fig2, ax2 = plt.subplots()
-                sns.barplot(x='응답 수', y='메뉴', data=menu_df, ax=ax2)
-                if fontprop:
-                    ax2.set_title("선호 메뉴 TOP5", fontproperties=fontprop)
-                    ax2.set_xlabel("응답 수", fontproperties=fontprop)
-                    ax2.set_ylabel("메뉴", fontproperties=fontprop)
-                    for label in ax2.get_yticklabels():
-                        label.set_fontproperties(fontprop)
-                    for label in ax2.get_xticklabels():
-                        label.set_fontproperties(fontprop)
-                st.pyplot(fig2)
-        except Exception as e:
-            st.error(f"데이터 로드 오류 (메뉴): {e}")
-
-    if '설문일시' in df.columns:
-        st.markdown("### ⏱️ 날짜별 응답 추이")
-        try:
-            temp_df = df.copy()
-            temp_df['설문일자'] = pd.to_datetime(temp_df['설문일시'], errors='coerce').dt.date
-            daily_count = temp_df.groupby('설문일자').size().reset_index(name='응답수')
-            if not daily_count.empty:
-                fig3, ax3 = plt.subplots()
-                ax3.plot(daily_count['설문일자'], daily_count['응답수'], marker='o')
-                if fontprop:
-                    ax3.set_title("날짜별 응답 추이", fontproperties=fontprop)
-                    ax3.set_xlabel("날짜", fontproperties=fontprop)
-                    ax3.set_ylabel("응답 수", fontproperties=fontprop)
-                ax3.grid(True, linestyle="--", alpha=0.5)
-                fig3.autofmt_xdate()
-                st.pyplot(fig3)
-        except Exception as e:
-            st.error(f"데이터 로드 오류 (날짜): {e}")
-
-
-# ===================== 1단계: 참여자 정보 입력 =====================
+# ===================== 화면 1: 참여자 정보 입력 =====================
 
 def show_info_form():
     st.markdown("# 🐟 블루푸드 선호도 조사")
@@ -714,220 +610,228 @@ def show_info_form():
                 else:
                     st.session_state.name = name
                     st.session_state.id_number = id_number
-                    st.session_state.step = 'ingredients'
+                    st.session_state.step = 'category'          # 👈 다음은 카테고리 단계
+                    st.session_state.category_index = 0         # 첫 카테고리부터 시작
                     st.rerun()
 
 
-# ===================== 2단계: 수산물(원재료) 선택 =====================
+# ===================== 화면 2: 카테고리별 (재료 선택 + 메뉴 선택) =====================
 
-def show_ingredient_selection():
+def show_category_step():
+    # 현재 카테고리 인덱스
+    idx = st.session_state.category_index
+    cat_label, ing_list = INGREDIENT_CATEGORIES[idx]
+
     st.markdown("# 🐟 블루푸드 선호도 조사")
-    st.markdown("## 2단계: 선호하시는 수산물(원재료)을 선택해주세요")
-    st.markdown("**(최소 3개 이상 선택해주세요)**")  # ### 변경됨: 최대 9개 문구 삭제
-
-    # 현재 선택 개수 안내 박스
-    selected_count = len(st.session_state.selected_ingredients)
-
-    # ### 변경됨: 상태 메시지/색 논리 수정
-    # - 3개 미만: 경고 (노란색)
-    # - 3개 이상: 정상 (초록)
-    if selected_count < 3:
-        status_msg = f"현재 {selected_count}개 선택됨 · 최소 3개 이상 선택해주세요"
-        status_style = "background-color:#fff3cd;border:1px solid #ffe69c;color:#664d03;"
-    else:
-        status_msg = f"현재 {selected_count}개 선택됨"
-        status_style = "background-color:#d1e7dd;border:1px solid #badbcc;color:#0f5132;"
-
-    st.markdown(
-        f"""
-        <div style="{status_style}
-            border-radius:8px;
-            padding:12px 16px;
-            font-size:16px;
-            font-weight:500;
-            margin-bottom:16px;">
-            {status_msg}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # 카테고리별 탭
-    category_names = list(INGREDIENT_CATEGORIES.keys())
-    tabs = st.tabs(category_names)
-
-    for tab, category in zip(tabs, category_names):
-        with tab:
-            st.markdown(
-                f"""
-                <h3 style="margin-top:8px; margin-bottom:12px;
-                           font-size:20px; font-weight:700; color:#000;">
-                    {category}
-                </h3>
-                """,
-                unsafe_allow_html=True
-            )
-
-            ing_list = INGREDIENT_CATEGORIES[category]
-
-            num_cols = 3
-            cols = st.columns([1,1,1])
-
-            for i, ing_name in enumerate(ing_list):
-                col = cols[i % num_cols]
-                with col:
-                    is_selected = ing_name in st.session_state.selected_ingredients
-                    label = f"✅ {ing_name}" if is_selected else ing_name
-                    btn_type = "primary" if is_selected else "secondary"
-
-                    if st.button(
-                        label,
-                        key=f"ing_{category}_{ing_name}",
-                        use_container_width=True,
-                        type=btn_type
-                    ):
-                        # 토글 로직
-                        if is_selected:
-                            st.session_state.selected_ingredients.remove(ing_name)
-                            # 선택 해제 시 해당 수산물의 메뉴 선택도 정리
-                            if ing_name in st.session_state.selected_menus:
-                                del st.session_state.selected_menus[ing_name]
-                        else:
-                            # ### 변경됨: 더 이상 최대값(9개) 체크 안 함
-                            st.session_state.selected_ingredients.append(ing_name)
-                            if ing_name not in st.session_state.selected_menus:
-                                st.session_state.selected_menus[ing_name] = []
-                        st.rerun()
-
-            # 카테고리 내에서 선택된 항목 요약
-            cat_selected = [x for x in st.session_state.selected_ingredients if x in ing_list]
-            if len(cat_selected) == 0:
-                st.info("이 카테고리에서 아직 선택한 항목이 없습니다.")
-            else:
-                st.success("이 카테고리에서 선택됨: " + " / ".join(cat_selected))
-
-    # 하단 이동 버튼
-    st.markdown("<hr style='margin-top:24px;margin-bottom:16px;'>", unsafe_allow_html=True)
-    col_left, col_mid, col_right = st.columns([1,1,1])
-
-    with col_left:
-        if st.button("← 이전 단계", use_container_width=True):
-            st.session_state.step = 'info'
-            st.rerun()
-
-    with col_mid:
-        if st.button("선택 초기화", use_container_width=True):
-            st.session_state.selected_ingredients = []
-            st.session_state.selected_menus = {}
-            st.rerun()
-
-    with col_right:
-        # ### 변경됨: 다음 단계 가능 여부 = 최소 3개 이상만 체크
-        can_go_next = (len(st.session_state.selected_ingredients) >= 3)
-        if st.button("다음 단계 →", use_container_width=True, disabled=not can_go_next):
-            if can_go_next:
-                # 메뉴 dict shape 보장
-                st.session_state.selected_menus = {
-                    ing: st.session_state.selected_menus.get(ing, [])
-                    for ing in st.session_state.selected_ingredients
-                }
-                st.session_state.step = 'menus'
-                st.rerun()
-
-
-# ===================== 3단계: 메뉴 선택 =====================
-
-def show_menu_selection():
-    st.markdown("# 🐟 블루푸드 선호도 조사")
-    st.markdown("## 3단계: 선호하시는 메뉴를 선택해주세요")
+    st.markdown(f"## 2단계: {cat_label} 선호도 조사")
     st.markdown(
         """
         <p style="font-size:16px; line-height:1.5; color:#333;">
-        각 수산물마다 <strong>최소 1개 이상</strong> 선택해주세요.
+        1) 아래 수산물(원재료) 중에서 드시기 편하신 것, 선호하시는 것을 모두 선택해주세요.<br>
+        2) 선택한 각각에 대해 즐겨 드시는 메뉴를 골라주세요.<br>
+        <br>
+        <strong>※ 최소 3개 이상은 전체 설문 기준으로 선택 부탁드립니다.</strong>
         </p>
         """,
         unsafe_allow_html=True
     )
 
-    all_valid = True
+    # --- 1) 이 카테고리의 재료 선택 ---------------------------------
+    st.markdown("### ✅ 선호 수산물 선택")
 
-    for ing_idx, ing_name in enumerate(st.session_state.selected_ingredients):
+    # 버튼들 3열로 렌더
+    num_cols = 3
+    cols = st.columns([1,1,1])
+
+    for i, ing_name in enumerate(ing_list):
+        col = cols[i % num_cols]
+        with col:
+            is_selected_globally = ing_name in st.session_state.selected_ingredients
+            label = f"✅ {ing_name}" if is_selected_globally else ing_name
+            btn_type = "primary" if is_selected_globally else "secondary"
+
+            if st.button(
+                label,
+                key=f"ing_{idx}_{ing_name}",
+                use_container_width=True,
+                type=btn_type
+            ):
+                # 토글
+                if is_selected_globally:
+                    # 이 재료를 전체 선택 리스트에서 제거
+                    st.session_state.selected_ingredients.remove(ing_name)
+                    # 관련 메뉴 선택도 제거
+                    if ing_name in st.session_state.selected_menus:
+                        del st.session_state.selected_menus[ing_name]
+                else:
+                    st.session_state.selected_ingredients.append(ing_name)
+                    if ing_name not in st.session_state.selected_menus:
+                        st.session_state.selected_menus[ing_name] = []
+                st.rerun()
+
+    # 안내 박스: 전체 누적 몇 개 선택했는지
+    total_selected_count = len(st.session_state.selected_ingredients)
+    if total_selected_count < 3:
+        box_msg = f"현재까지 전체 선택 수산물: {total_selected_count}개 · 최소 3개 이상 선택 부탁드립니다."
+        box_style = "background-color:#fff3cd;border:1px solid #ffe69c;color:#664d03;"
+    else:
+        box_msg = f"현재까지 전체 선택 수산물: {total_selected_count}개"
+        box_style = "background-color:#d1e7dd;border:1px solid #badbcc;color:#0f5132;"
+
+    st.markdown(
+        f"""
+        <div style="{box_style}
+            border-radius:8px;
+            padding:12px 16px;
+            font-size:16px;
+            font-weight:500;
+            margin:16px 0;">
+            {box_msg}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown("---")
+
+    # --- 2) 방금(또는 이전에) 선택한 재료들에 대해 메뉴 선택 -----------------
+
+    st.markdown("### 🍽️ 선호 메뉴 선택")
+    st.markdown(
+        """
+        <p style="font-size:15px; line-height:1.5; color:#333; margin-top:-8px;">
+        선택하신 각각의 수산물마다, 좋아하시는 조리 메뉴를 골라주세요.<br>
+        <strong>각 수산물당 최소 1개 이상</strong> 선택 부탁드립니다.
+        </p>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # 이 카테고리에서 '현재 선택된' 재료만 순회
+    chosen_ings_in_this_cat = [
+        ing for ing in ing_list
+        if ing in st.session_state.selected_ingredients
+    ]
+
+    all_valid_this_cat = True  # 이 카테고리 내 유효성 (각 재료 최소 1개 메뉴)
+    for ing_idx_local, ing_name in enumerate(chosen_ings_in_this_cat):
         st.markdown(
             f"""
-            <h3 style="margin-top:16px; margin-bottom:12px;
-                       font-size:20px; font-weight:700; color:#000;">
-                🐟 {ing_name} 요리
-            </h3>
+            <h4 style="margin-top:16px; margin-bottom:12px;
+                       font-size:18px; font-weight:700; color:#000;">
+                🐟 {ing_name} 메뉴
+            </h4>
             """,
             unsafe_allow_html=True
         )
 
-        # 해당 수산물 가능한 메뉴들 펼치기
+        # 가능한 메뉴 리스트 뽑기
         all_menus = []
         if ing_name in MENU_DATA:
             for menu_list in MENU_DATA[ing_name].values():
                 all_menus.extend(menu_list)
 
-        # 초기화 보장
+        # 세션에 키 보장
         if ing_name not in st.session_state.selected_menus:
             st.session_state.selected_menus[ing_name] = []
 
-        num_cols = 3
-        cols = st.columns([1,1,1])
-
-        for m_idx, menu_name in enumerate(all_menus):
-            col = cols[m_idx % num_cols]
-            with col:
-                is_selected = menu_name in st.session_state.selected_menus.get(ing_name, [])
-                label = f"✅ {menu_name}" if is_selected else menu_name
-                btn_type = "primary" if is_selected else "secondary"
+        # 메뉴들 버튼 토글
+        cols_m = st.columns([1,1,1])
+        for m_i, menu_name in enumerate(all_menus):
+            colm = cols_m[m_i % 3]
+            with colm:
+                is_menu_selected = menu_name in st.session_state.selected_menus[ing_name]
+                menu_label = f"✅ {menu_name}" if is_menu_selected else menu_name
+                menu_btn_type = "primary" if is_menu_selected else "secondary"
 
                 if st.button(
-                    label,
-                    key=f"menu_{ing_idx}_{m_idx}_{menu_name}",
+                    menu_label,
+                    key=f"menu_{idx}_{ing_idx_local}_{m_i}_{menu_name}",
                     use_container_width=True,
-                    type=btn_type
+                    type=menu_btn_type
                 ):
-                    if is_selected:
+                    if is_menu_selected:
                         st.session_state.selected_menus[ing_name].remove(menu_name)
                     else:
                         st.session_state.selected_menus[ing_name].append(menu_name)
                     st.rerun()
 
-        # 최소 1개 이상 선택 체크 (이건 그대로 유지)
         chosen_cnt = len(st.session_state.selected_menus.get(ing_name, []))
         if chosen_cnt == 0:
-            all_valid = False
-            st.warning(f"{ing_name}에 대해 최소 1개 이상의 메뉴를 선택해주세요.")
+            all_valid_this_cat = False
+            st.warning(f"{ing_name}: 최소 1개 이상의 메뉴를 선택해주세요.")
         else:
             st.success(f"{ing_name}: {chosen_cnt}개 메뉴 선택됨")
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-    # 하단 이동 버튼
-    col1, col2, col3 = st.columns([1,1,1])
-    with col1:
-        if st.button("← 이전 단계", use_container_width=True):
-            st.session_state.step = 'ingredients'
+    # --- 하단 네비게이션 버튼들 ---
+    col_prev, col_mid, col_next = st.columns([1,1,1])
+
+    # 이전 카테고리 버튼
+    with col_prev:
+        disable_prev = (idx == 0)
+        if st.button("← 이전", use_container_width=True, disabled=disable_prev):
+            if idx > 0:
+                st.session_state.category_index -= 1
+                st.rerun()
+
+    # 선택 초기화 (현재 카테고리만 초기화할지 전체 초기화할지?  
+    # 여기서는 "현재 카테고리 재료/메뉴만 모두 해제"로 구현)
+    with col_mid:
+        if st.button("현재 카테고리 선택 초기화", use_container_width=True):
+            # 이 카테고리의 재료들만 비우기
+            for ing_name in ing_list:
+                if ing_name in st.session_state.selected_ingredients:
+                    st.session_state.selected_ingredients.remove(ing_name)
+                if ing_name in st.session_state.selected_menus:
+                    del st.session_state.selected_menus[ing_name]
             st.rerun()
-    with col3:
-        if st.button("설문 완료하기", use_container_width=True, disabled=not all_valid):
-            if all_valid:
-                # 저장 시도
+
+    # 다음 / 완료 버튼
+    with col_next:
+        is_last_category = (idx == TOTAL_CATEGORY_COUNT - 1)
+
+        # 다음으로 갈 수 있는 조건:
+        #  - 최소한 지금 카테고리에서 뭔가 1개 이상은 골랐는지? (사용자 행동 유도)
+        #  - 고른 재료마다 메뉴 최소 1개씩 골랐는지?
+        #  - 전체 누적 원재료 선택 수가 3개 이상인지? (마지막 카테고리에서 완료 눌렀을 때 특히 중요)
+        picked_any_here = (len(chosen_ings_in_this_cat) > 0)
+        cat_ready = picked_any_here and all_valid_this_cat
+        global_ready = (len(st.session_state.selected_ingredients) >= 3)
+
+        # 다음으로 넘어가거나 완료하기 위해 필요한 조건
+        can_advance = cat_ready and (global_ready or not is_last_category or True)
+        # 설명:
+        # - 마지막 아니면 굳이 global_ready 없어도 다음 카테고리로 가게 해도 되지만
+        #   연구 요구상 "전체 최소 3개"라면 마지막 단계에서만 체크해도 충분.
+        #   위 can_advance는 사실상 cat_ready만 확인하고,
+        #   마지막 카테고리일 때는 global_ready도 확인하도록 아래에서 한 번 더 처리할게.
+
+        next_btn_label = "설문 완료하기 ✅" if is_last_category else "다음 카테고리 →"
+
+        # 마지막 카테고리에서는 global_ready(전체 3개 이상)도 필요
+        final_disabled = False
+        if is_last_category:
+            final_disabled = not (cat_ready and global_ready)
+        else:
+            final_disabled = not cat_ready
+
+        if st.button(next_btn_label, use_container_width=True, disabled=final_disabled):
+            if is_last_category:
+                # 마지막이면 저장하고 완료 화면으로
                 filename, df = save_to_excel(
                     st.session_state.name,
                     st.session_state.id_number,
                     st.session_state.selected_ingredients,
                     st.session_state.selected_menus
                 )
-                # 구글시트에도 시도
                 save_to_google_sheets(
                     st.session_state.name,
                     st.session_state.id_number,
                     st.session_state.selected_ingredients,
                     st.session_state.selected_menus
                 )
-
                 if filename is not None or st.session_state.get("google_sheets_success", False):
                     st.session_state.already_saved = True
                     st.session_state.filename = filename
@@ -936,9 +840,13 @@ def show_menu_selection():
                     st.rerun()
                 else:
                     st.error("❌ 설문 데이터 저장에 실패했습니다. 다시 시도해주세요.")
+            else:
+                # 다음 카테고리로
+                st.session_state.category_index += 1
+                st.rerun()
 
 
-# ===================== 4단계: 완료 화면 =====================
+# ===================== 화면 3: 완료 =====================
 
 def show_completion():
     st.success("🎉 설문이 완료되었습니다! 감사합니다.")
@@ -992,6 +900,7 @@ def show_completion():
         st.session_state.selected_menus = {}
         st.session_state.google_sheets_success = False
         st.session_state.already_saved = False
+        st.session_state.category_index = 0
         st.rerun()
 
 
@@ -1075,7 +984,10 @@ def main():
                     st.markdown(f"**📊 총 응답 수: {len(df)}건**")
                     if '설문일시' in df.columns:
                         st.markdown(f"**📅 최근 응답: {df['설문일시'].max()}**")
-                    show_admin_dashboard(df)
+                    
+                    # 간단 요약만: 여기선 전체 대시보드까지는 안 보여줘도 되지만
+                    # 원하면 show_admin_dashboard(df) 호출 가능
+                    # show_admin_dashboard(df)
                 except Exception:
                     st.markdown("**📊 데이터 로드 오류**")
             else:
@@ -1086,9 +998,10 @@ def main():
                 st.session_state.show_admin_login = False
                 st.rerun()
 
-        # 설문 안내
+        # 설문 안내 (업데이트된 단계 설명)
+        current_cat_num = st.session_state.category_index + 1 if st.session_state.step == 'category' else 0
         st.markdown(
-            """
+            f"""
             <div style="
                 background:#ffffff;
                 padding:16px;
@@ -1104,12 +1017,16 @@ def main():
                     📋 설문 안내
                 </div>
                 <p><strong>🎯 목적</strong><br>블루푸드 선호도 조사</p>
-                <p><strong>⏱️ 소요시간</strong><br>약 3-5분</p>
-                <p><strong>📝 설문 단계</strong><br>
+                <p><strong>⏱️ 소요</strong><br>약 3-5분</p>
+                <p><strong>📝 설문 방식</strong><br>
                     1️⃣ 참여자 정보 입력<br>
-                    2️⃣ 선호 수산물 선택 (최소 3개)<br>
-                    3️⃣ 선호 메뉴 선택 (각 수산물별 최소 1개)<br>
-                    4️⃣ 완료
+                    2️⃣ 카테고리별로<br>
+                    &nbsp;&nbsp;• 선호 수산물 선택 →<br>
+                    &nbsp;&nbsp;• 그 수산물 메뉴 선택<br>
+                    3️⃣ 완료
+                </p>
+                <p><strong>현재 진행 카테고리:</strong><br>
+                    {current_cat_num} / {TOTAL_CATEGORY_COUNT if TOTAL_CATEGORY_COUNT else '-'}
                 </p>
                 <p><strong>🔒 개인정보 보호</strong><br>
                     수집된 정보는 연구 목적으로만 사용되며,<br>
@@ -1120,24 +1037,22 @@ def main():
             unsafe_allow_html=True
         )
 
-        # 진행 상황
+        # 진행 상황 바
         st.markdown("### 📊 진행 상황")
         if st.session_state.step == 'info':
-            st.progress(0.25, "1단계: 정보 입력")
-        elif st.session_state.step == 'ingredients':
-            st.progress(0.5, "2단계: 수산물 선택")
-        elif st.session_state.step == 'menus':
-            st.progress(0.75, "3단계: 메뉴 선택")
+            st.progress(0.2, "1단계: 정보 입력")
+        elif st.session_state.step == 'category':
+            # 대략 카테고리 진행률 반영
+            prog = 0.2 + 0.6 * ((st.session_state.category_index + 1) / TOTAL_CATEGORY_COUNT)
+            st.progress(prog, "2단계: 수산물 및 메뉴 선택")
         elif st.session_state.step == 'complete':
             st.progress(1.0, "✅ 설문 완료!")
 
-    # ===== 메인 단계 전환 =====
+    # ===== 메인 영역 단계 전환 =====
     if st.session_state.step == 'info':
         show_info_form()
-    elif st.session_state.step == 'ingredients':
-        show_ingredient_selection()
-    elif st.session_state.step == 'menus':
-        show_menu_selection()
+    elif st.session_state.step == 'category':
+        show_category_step()
     elif st.session_state.step == 'complete':
         show_completion()
 
