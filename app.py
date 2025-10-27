@@ -828,25 +828,63 @@ def show_ingredient_selection():
                 """,
                 unsafe_allow_html=True
             )
-
+    
             ingredients = INGREDIENT_CATEGORIES[category]
-
-            # 그리드 컨테이너 시작
-            st.markdown('<div class="ingredient-grid">', unsafe_allow_html=True)
-
-            local_updates = {}
+    
+            # --- 1) 현재 선택 상태 불러오기 ---
+            selected_now = set(st.session_state.selected_ingredients)
+    
+            # --- 2) 그리드 안의 카드들을 미리 HTML로 구성 ---
+            cards_html_parts = []
             for idx, ing_name in enumerate(ingredients):
-                is_selected = ing_name in st.session_state.selected_ingredients
-            
-                # grid cell 직접 넣기 (container 안 쓰고 markdown만 반복)
-                new_val = ingredient_card_block_html(
-                    ingredient_name=ing_name,
-                    is_selected=is_selected,
-                    idx=idx
-                )
-                local_updates[ing_name] = new_val
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+                is_selected = ing_name in selected_now
+    
+                card_class = "card-box selected" if is_selected else "card-box"
+    
+                # 각 카드+체크박스를 하나의 grid cell로 구성
+                cell_html = f"""
+                <div class="ingredient-cell" style="cursor:pointer;"
+                     onclick="const cb=document.getElementById('ing_chk_{category}_{idx}');
+                              cb.checked=!cb.checked;
+                              cb.dispatchEvent(new Event('change'));">
+    
+                    <div class="{card_class}" id="card_{category}_{idx}">
+                        {ing_name}
+                    </div>
+    
+                    <input type="checkbox"
+                           id="ing_chk_{category}_{idx}"
+                           name="ing_{category}"
+                           value="{ing_name}"
+                           {'checked' if is_selected else '' }
+                           style="display:none;" />
+                </div>
+                """
+                cards_html_parts.append(cell_html)
+    
+            grid_html = (
+                '<div class="ingredient-grid">'
+                + "\n".join(cards_html_parts) +
+                "</div>"
+            )
+    
+            # --- 3) grid HTML 실제 렌더 ---
+            st.markdown(grid_html, unsafe_allow_html=True)
+    
+            # --- 4) 브라우저에서 바뀐 체크 상태를 Streamlit으로 sync하는 작은 JS ---
+            # Streamlit에 값을 다시 보내려면, st.session_state를 직접 건드릴 수 없으니까
+            # 우리는 form + st.form_submit_button 을 이용해서 roundtrip 시점에 값을 읽는다.
+            # 즉 "다음 단계" 누를 때 sync하도록 할 거야.
+            #
+            # 그래서 여기서는 당장 세션 업데이트를 안 하고,
+            # 아래에서 "다음 단계" 버튼을 눌렀을 때 hidden field를 통해 넘겨줄 거야.
+    
+            # 카테고리 내 요약
+            cat_selected = [x for x in st.session_state.selected_ingredients if x in ingredients]
+            if len(cat_selected) == 0:
+                st.info("이 카테고리에서 아직 선택한 항목이 없습니다.")
+            else:
+                st.success("이 카테고리에서 선택됨: " + " / ".join(cat_selected))
 
 
             # 상태 업데이트
@@ -876,30 +914,82 @@ def show_ingredient_selection():
 
     st.markdown("<hr style='margin-top:24px;margin-bottom:16px;'>", unsafe_allow_html=True)
 
-    # 하단 버튼
-    col_left, col_mid, col_right = st.columns([1,1,1])
-
-    with col_left:
-        if st.button("선택 초기화", use_container_width=True):
+    with st.form("ingredient_submit_form"):
+        col_left, col_mid, col_right = st.columns([1,1,1])
+    
+        with col_left:
+            reset_clicked = st.form_submit_button("선택 초기화", use_container_width=True)
+        with col_mid:
+            st.write(f"현재 {len(st.session_state.selected_ingredients)}개")
+        with col_right:
+            next_clicked = st.form_submit_button("다음 단계 →", use_container_width=True)
+    
+        # 🔥 핵심: hidden field. (streamlit text_input으로 받기)
+        # JS가 선택된 재료들을 콤마구분 문자열로 채워넣도록 할 거야.
+        chosen_raw = st.text_input("CHOSEN_INGREDIENTS_SYNC", value=",".join(st.session_state.selected_ingredients), label_visibility="collapsed")
+    
+        # 폼이 제출되었으면 chosen_raw를 파싱해서 session_state.selected_ingredients 갱신
+        if reset_clicked:
             st.session_state.selected_ingredients = []
             st.session_state.selected_menus = {}
             st.experimental_rerun()
-
-    with col_mid:
-        st.write(f"현재 {len(st.session_state.selected_ingredients)}개")
-
-    with col_right:
-        can_go_next = (3 <= len(st.session_state.selected_ingredients) <= 9)
-        if st.button("다음 단계 →", use_container_width=True, disabled=not can_go_next):
-            if can_go_next:
-                # 메뉴 dict 보장
+    
+        if next_clicked:
+            # 사용자가 실제로 화면에서 클릭한 결과를 chosen_raw로 받았다고 가정
+            chosen_list = [x.strip() for x in chosen_raw.split(",") if x.strip()]
+            # 3~9 개 제약 확인
+            if len(chosen_list) < 3:
+                st.warning("최소 3개 이상 선택해주세요.")
+            elif len(chosen_list) > 9:
+                st.warning("최대 9개까지만 선택할 수 있습니다.")
+            else:
+                st.session_state.selected_ingredients = chosen_list
+                # 메뉴 딕셔너리 초기화/보존
                 st.session_state.selected_menus = {
                     ing: st.session_state.selected_menus.get(ing, [])
-                    for ing in st.session_state.selected_ingredients
+                    for ing in chosen_list
                 }
                 st.session_state.step = 'menus'
                 st.rerun()
 
+st.markdown(
+    """
+    <script>
+    // 폼 submit 직전에 선택값을 hidden필드에 반영
+    // Streamlit의 form_submit_button은 실제로 <button type="submit">라서
+    // 'click' 이벤트를 가로채는 식으로 넣을 수 있다.
+    document.addEventListener("click", function(e){
+        // "선택 초기화" 또는 "다음 단계 →" 눌렀을 때만 실행되면 충분
+        if(e.target && e.target.innerText && (e.target.innerText.includes("다음 단계") || e.target.innerText.includes("선택 초기화"))){
+            // 1. 현재 체크된 재료들 전부 수집
+            const checkedVals = [];
+            document.querySelectorAll('input[id^="ing_chk_"]').forEach(cb => {
+                if(cb.checked){
+                    checkedVals.push(cb.value);
+                }
+            });
+
+            // 2. hidden text_input DOM 찾아서 값 업데이트
+            // Streamlit은 text_input을 <input> 으로 렌더하니까 라벨 텍스트로 못 찾고
+            // placeholder도 없으니 name 속성을 못 믿는다.
+            // 우리는 'CHOSEN_INGREDIENTS_SYNC' 라는 value가 들어있는 input을 찾아서 업데이트하는 식으로 간단하게 처리한다.
+            const candidates = Array.from(document.querySelectorAll('input'));
+            const target = candidates.find(el => el.value === "%s");
+            if(target){
+                target.value = checkedVals.join(",");
+            } else {
+                // fallback: text_input의 aria-label 사용 시도
+                const ariaTarget = candidates.find(el => el.getAttribute("aria-label")==="CHOSEN_INGREDIENTS_SYNC");
+                if(ariaTarget){
+                    ariaTarget.value = checkedVals.join(",");
+                }
+            }
+        }
+    });
+    </script>
+    """ % (",".join(st.session_state.selected_ingredients)),
+    unsafe_allow_html=True
+)
 
 def menu_card_block_html(menu_name: str, is_selected: bool, idx: int, ing_name: str):
     """
