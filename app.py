@@ -151,6 +151,19 @@ button[kind="secondary"], button[kind="primary"] {
     border-radius: 10px !important;
     font-weight: 600 !important;
 }
+/* ===== 입력창 placeholder 색상도 강제로 검정으로 고정 ===== */
+input::placeholder,
+textarea::placeholder {
+    color: #555 !important;     /* placeholder 글씨 진회색 */
+    opacity: 1 !important;      /* 일부 브라우저에서 연하게 나오는 문제 방지 */
+}
+
+/* Streamlit 내부 Input 컴포넌트 placeholder용 */
+[data-baseweb="input"] input::placeholder {
+    color: #555 !important;
+    opacity: 1 !important;
+}
+
 </style>
 """
 
