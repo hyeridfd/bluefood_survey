@@ -89,6 +89,47 @@ hr {
     border-color: #0096c7;
     color: #ffffff;
 }
+.ingredient-grid-mobile {
+    display: grid;
+    grid-gap: 8px;
+    margin-bottom: 12px;
+    /* 기본: 2열 */
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* 태블릿~노트북 이상이면 4열 */
+@media (min-width: 800px) {
+    .ingredient-grid-mobile {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.card-box {
+    border: 2px solid #666666;
+    background-color: #ffffff;
+    color: #000000;
+    border-radius:10px;
+    padding:12px 6px;
+    min-height:64px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-size:15px;
+    font-weight:600;
+    line-height:1.3;
+    word-break: keep-all;
+}
+.card-box.selected {
+    background-color: #00b4d8;
+    border-color: #0096c7;
+    color: #ffffff;
+}
+
+/* 체크박스 숨기기 */
+.hidden-check-wrapper {
+    display:none;
+}
 </style>
 """
 st.set_page_config(
@@ -727,46 +768,30 @@ def show_info_form():
 
 
 def ingredient_card_block(ingredient_name: str, is_selected: bool, key_suffix: str):
-    """
-    한 개 재료 카드 + 숨은 체크박스 (단일 셀용)
-    Streamlit column 안에서 호출되는 버전
-    """
     card_class = "card-box selected" if is_selected else "card-box"
     card_id = f"card_{key_suffix}"
 
-    # 카드 HTML
+    # 카드 HTML + 숨은 체크박스 DOM id 참조
     st.markdown(
         f"""
-        <div id="{card_id}"
-             class="{card_class}"
-             onclick="document.getElementById('{card_id}_chk').click();"
-             style="cursor:pointer; width:100%; height:100%;">
+        <div class="{card_class}"
+             style="cursor:pointer;"
+             onclick="document.getElementById('{card_id}_chk').click();">
             <div class="card-label">{ingredient_name}</div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    # 실제 체크박스 (state 유지용)
-    new_val = st.checkbox(
-        "선택",
-        value=is_selected,
-        key=f"{card_id}_chk",
-        label_visibility="collapsed"
-    )
-
-    # 체크박스 숨기기 (시각적으로만 감추고 상태는 유지)
-    st.markdown(
-        f"""
-        <style>
-        div[data-testid="stCheckbox"][class*="{card_id}_chk"] {{
-            display:none !important;
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
+    # 체크박스는 state 동기화를 위해 필요하니까 여전히 Streamlit checkbox를 만든다.
+    # 다만 화면엔 안보이게 감싼다.
+    with st.container():
+        new_val = st.checkbox(
+            "선택",
+            value=is_selected,
+            key=f"{card_id}_chk",
+            label_visibility="collapsed"
+        )
     return new_val
 
 
@@ -833,22 +858,27 @@ def show_ingredient_selection():
             local_updates = {}
 
             # 4개씩 가로 배치
-            for row_start in range(0, len(ingredients), 4):
-                row_items = ingredients[row_start:row_start+4]
+            # 탭 내부
+            ingredients = INGREDIENT_CATEGORIES[category]
+            local_updates = {}
+            
+            # 그리드 래퍼 시작
+            st.markdown('<div class="ingredient-grid-mobile">', unsafe_allow_html=True)
+            
+            for idx, ing_name in enumerate(ingredients):
+                is_selected = ing_name in st.session_state.selected_ingredients
+            
+                # 각 카드는 독립 컨테이너가 필요하니까 st.container()로 하나씩 감싸서 넣어주자
+                with st.container():
+                    new_val = ingredient_card_block_raw(
+                        ingredient_name=ing_name,
+                        is_selected=is_selected,
+                        key_suffix=f"{category}_{ing_name}"
+                    )
+                local_updates[ing_name] = new_val
+            
+            st.markdown('</div>', unsafe_allow_html=True)
 
-                cols = st.columns(len(row_items))
-                for col, ing_name in zip(cols, row_items):
-                    with col:
-                        is_selected = ing_name in st.session_state.selected_ingredients
-
-                        # 카드 렌더 + 체크 상태 반환
-                        new_val = ingredient_card_block(
-                            ingredient_name=ing_name,
-                            is_selected=is_selected,
-                            key_suffix=f"{category}_{ing_name}"
-                        )
-
-                        local_updates[ing_name] = new_val
 
             # 이제 local_updates를 기반으로 session_state.selected_ingredients 수정
             for ing_name, new_val in local_updates.items():
