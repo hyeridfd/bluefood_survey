@@ -610,9 +610,40 @@ def show_info_form():
                 else:
                     st.session_state.name = name
                     st.session_state.id_number = id_number
-                    st.session_state.step = 'category'          # 👈 다음은 카테고리 단계
+                    st.session_state.step = 'guide'          # 👈 다음은 카테고리 단계
                     st.session_state.category_index = 0         # 첫 카테고리부터 시작
                     st.rerun()
+
+# ===================== 화면 =====================
+def show_overall_guide():
+    st.markdown("# 🐟 블루푸드 선호도 조사")
+    st.markdown("## 설문 안내")
+
+    st.markdown(
+        """
+        <div style="font-size:16px; line-height:1.6; color:#333;">
+        <p><strong>2단계 진행 방법</strong></p>
+        <p>
+        1) 아래 수산물(원재료) 중에서 드시기 편하신 것, 선호하시는 것을 모두 선택해주세요.<br>
+        (각 카테고리는 아무 것도 선택하지 않으셔도 됩니다.)<br><br>
+
+        2) 선택하신 재료가 있다면, 각각에 대해 즐겨 드시는 메뉴를 골라주세요.<br><br>
+
+        ※ 전체 설문 기준으로는 <strong>최소 3개 이상</strong> 수산물을 선택 부탁드립니다.
+        </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown("---")
+
+    # 버튼: 본 설문 시작
+    if st.button("설문 시작하기 →", use_container_width=True, type="primary"):
+        # 카테고리 루프 첫 번째로 이동
+        st.session_state.step = "category_loop"
+        st.session_state.category_index = 0
+        st.rerun()
 
 
 # ===================== 화면 2: 카테고리별 (재료 선택 + 메뉴 선택) =====================
@@ -1028,17 +1059,19 @@ def main():
         st.markdown("### 📊 진행 상황")
         if st.session_state.step == 'info':
             st.progress(0.2, "1단계: 정보 입력")
-        elif st.session_state.step == 'category':
-            # 대략 카테고리 진행률 반영
-            prog = 0.2 + 0.6 * ((st.session_state.category_index + 1) / TOTAL_CATEGORY_COUNT)
-            st.progress(prog, "2단계: 수산물 및 메뉴 선택")
+        elif st.session_state.step == 'guide':
+            st.progress(0.3, "2단계: 설문 안내")
+        elif st.session_state.step == 'category_loop':
+            st.progress(0.7, "3단계: 선호 식재료 & 메뉴 선택")
         elif st.session_state.step == 'complete':
             st.progress(1.0, "✅ 설문 완료!")
 
     # ===== 메인 영역 단계 전환 =====
     if st.session_state.step == 'info':
         show_info_form()
-    elif st.session_state.step == 'category':
+    elif st.session_state.step == 'guide':
+        show_overall_guide()
+    elif st.session_state.step == 'category_loop':
         show_category_step()
     elif st.session_state.step == 'complete':
         show_completion()
