@@ -710,78 +710,147 @@ def show_info_form():
 # ===================== 화면 =====================
 def show_overall_guide():
     st.markdown(
-    "<h1>블루푸드<br>선호도 조사</h1>",
-    unsafe_allow_html=True
-)
+        "<h1>블루푸드<br>선호도 조사</h1>",
+        unsafe_allow_html=True
+    )
 
-    # 헤더
+    # 헤더 카드 (보라 그라데이션)
     st.markdown("""
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 15px; margin-bottom: 30px;">
-            <h2 style="color: white; text-align: center; margin: 0;">📋 설문 안내</h2>
+        <div style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 20px;
+            line-height: 1.4;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        ">
+            <span style="font-size:24px;">📋</span>
+            <span>설문 안내</span>
         </div>
     """, unsafe_allow_html=True)
-    
-    # 2단계 진행 방법
-    st.markdown("### 🎯 2단계 진행 방법")
-    
-    # 1단계 설명
-    with st.container():
-        st.markdown("""
-            <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                <p style="margin: 0; font-size: 16px;">
-                    <span style="background-color: #667eea; color: white; padding: 5px 12px; border-radius: 20px; font-weight: bold;">1단계</span>
-                    <br><br>
-                    아래 수산물(원재료) 중에서 <strong>좋아하시는 것</strong>을 <strong>모두 선택</strong>해주세요.<br>
-                    <small>💡 <strong>각 카테고리는 아무 것도 선택하지 않으셔도 됩니다.</strong></small>
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    # 2단계 설명
-    with st.container():
-        st.markdown("""
-            <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                <p style="margin: 0; font-size: 16px;">
-                    <span style="background-color: #764ba2; color: white; padding: 5px 12px; border-radius: 20px; font-weight: bold;">2단계</span>
-                    <br><br>
-                    선택하신 재료가 있다면, <strong>각각에 대해 선호하시는 메뉴</strong>를 골라주세요.
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    # 중요 안내
-    st.warning("⚠️ 전체 설문 기준으로는 **최소 3개 이상** 수산물 선택 필수!")
-    
-    st.markdown("---")
-    
-    # 시작 버튼
-   # 버튼 CSS: 모바일에서도 100% 폭 유지
+
+    # 섹션 제목
+    st.markdown(
+        """
+        <h3 style="margin-top:0; color:#000000;">
+            <span style="font-size:20px;">🍯</span>
+            &nbsp;2단계 진행 방법
+        </h3>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # 1단계 안내 박스
     st.markdown("""
-    <style>
-    div.stButton > button {
-        width: 100% !important;         /* 항상 전체폭 */
-        font-size: 20px !important;     /* 글자 크게 */
-        padding: 18px 0 !important;     /* 버튼 높이 */
-        border-radius: 12px !important;
-        font-weight: 700 !important;
-        background-color: #0078FF !important;
-        color: white !important;
-        border: none !important;
-    }
-    
-    /* 모바일에서도 버튼 여백 균등 */
-    @media (max-width: 768px) {
-        div.stButton {
-            width: 100% !important;
-            display: flex !important;
-            justify-content: center !important;
-        }
-    }
-    </style>
+        <div style="
+            background-color: #f0f2f6;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #d5d8df;
+            color:#000000;
+            font-size:16px;
+            line-height:1.5;
+        ">
+            <div style="
+                display:inline-block;
+                background-color:#4c6ef5;
+                color:#ffffff;
+                font-weight:700;
+                padding:4px 10px;
+                border-radius:6px;
+                font-size:14px;
+                margin-bottom:10px;
+            ">
+                1단계
+            </div>
+            <div style="color:#000000;">
+                아래 수산물(원재료) 중에서 <strong>좋아하시는 것</strong>을 <strong>모두 선택</strong>해주세요.<br>
+                <span style="font-size:14px; color:#444;">
+                    ↘ 각 카테고리는 아무 것도 선택하지 않으셔도 됩니다.
+                </span>
+            </div>
+        </div>
     """, unsafe_allow_html=True)
-    
-    
-    # 버튼 출력 (columns 없이)
+
+    # 2단계 안내 박스
+    st.markdown("""
+        <div style="
+            background-color: #f0f2f6;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #d5d8df;
+            color:#000000;
+            font-size:16px;
+            line-height:1.5;
+        ">
+            <div style="
+                display:inline-block;
+                background-color:#764ba2;
+                color:#ffffff;
+                font-weight:700;
+                padding:4px 10px;
+                border-radius:6px;
+                font-size:14px;
+                margin-bottom:10px;
+            ">
+                2단계
+            </div>
+            <div style="color:#000000;">
+                선택하신 재료가 있다면,
+                <strong>각각에 대해 선호하시는 메뉴</strong>를 골라주세요.
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 중요 안내 (경고 바) → st.warning은 다크테마일 때 글자 조금 흐릴 수 있으므로 직접 스타일링으로 교체
+    st.markdown("""
+        <div style="
+            background-color:#fffeca;
+            border:1px solid #ffec8a;
+            color:#4a3b00;
+            font-size:15px;
+            font-weight:600;
+            padding:14px 16px;
+            border-radius:8px;
+            line-height:1.4;
+            margin-bottom:24px;
+        ">
+            ⚠ 전체 설문 기준으로는 <strong>최소 3개 이상</strong> 수산물을 선택해주세요.
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 버튼 스타일 (설문 시작하기)
+    st.markdown("""
+        <style>
+        div.stButton > button {
+            width: 100% !important;
+            font-size: 20px !important;
+            padding: 18px 0 !important;
+            border-radius: 12px !important;
+            font-weight: 700 !important;
+            background-color: #0078FF !important;
+            color: #ffffff !important;
+            border: none !important;
+        }
+        @media (max-width: 768px) {
+            div.stButton {
+                width: 100% !important;
+                display: flex !important;
+                justify-content: center !important;
+            }
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     if st.button("🚀 설문 시작하기", use_container_width=True, type="primary"):
         st.session_state.step = "category_loop"
         st.session_state.category_index = 0
