@@ -869,7 +869,7 @@ def show_category_step():
 
 
     with col_mid:
-        if st.button("현재 카테고리 선택 초기화", use_container_width=True):
+        if st.button("초기화", use_container_width=True):
             for ing_name in ing_list:
                 if ing_name in st.session_state.selected_ingredients:
                     st.session_state.selected_ingredients.remove(ing_name)
