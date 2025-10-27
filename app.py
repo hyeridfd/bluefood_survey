@@ -30,6 +30,38 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data
 hr {
     border-color: #cccccc !important;
 }
+
+/* 버튼 4열 그리드 레이아웃 */
+[data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+}
+
+[data-testid="stHorizontalBlock"] > div {
+    min-width: 0 !important;
+}
+
+[data-testid="stColumn"] {
+    width: 100% !important;
+}
+
+/* 모바일에서도 4열 유지 */
+@media (max-width: 768px) {
+    [data-testid="stHorizontalBlock"] {
+        grid-template-columns: repeat(4, 1fr) !important;
+    }
+}
+
+/* 버튼 스타일 */
+button {
+    width: 100% !important;
+    padding: 10px 8px !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    font-size: 14px !important;
+}
 </style>
 """
 st.set_page_config(
@@ -38,6 +70,33 @@ st.set_page_config(
     layout="wide"
 )
 st.markdown(LIGHT_FORCE_CSS, unsafe_allow_html=True)
+
+# 버튼 레이아웃 강제 적용 JavaScript
+st.markdown(
+    """
+    <script>
+    window.addEventListener('load', function() {
+        // 500ms 후에 실행 (Streamlit 렌더링 완료 후)
+        setTimeout(function() {
+            const columns = document.querySelectorAll('[data-testid="stColumn"]');
+            columns.forEach(col => {
+                col.style.flex = '1 1 calc(25% - 6px)';
+                col.style.minWidth = 'calc(25% - 6px)';
+            });
+            
+            // 버튼들도 100% 너비로
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.style.width = '100%';
+                btn.style.whiteSpace = 'normal';
+                btn.style.wordBreak = 'break-word';
+            });
+        }, 500);
+    });
+    </script>
+    """,
+    unsafe_allow_html=True
+)
 
 # ===================== 폰트(한글 깨짐 방지) =====================
 # NanumGothic 폰트 설정
