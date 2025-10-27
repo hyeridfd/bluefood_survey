@@ -389,7 +389,7 @@ def show_ingredient_selection():
         "김밥", "김무침", "김부각", "김자반"
     ]
 
-    # 1단계: 맨 위에서 모든 체크박스를 한번에 처리 (완전히 숨김)
+    # 체크박스를 숨겨진 컨테이너에서 처리
     st.markdown(
         """
         <div style="display:none;width:0;height:0;overflow:hidden;">
@@ -418,26 +418,53 @@ def show_ingredient_selection():
     
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 2단계: 그리드 HTML 생성 - 4열
+    # 그리드 HTML + JavaScript로 클릭 처리
     grid_html = '<div class="ingredient-grid">'
     
     for idx, ingredient in enumerate(ingredients):
-        # 현재 체크박스 상태
         is_selected = ingredient in st.session_state.selected_ingredients
-        
-        # 클래스 결정
         card_class = "card-box selected" if is_selected else "card-box"
-        
-        # 체크박스를 위한 고유 키
         checkbox_key = f"ingredient_{idx}_{ingredient}"
         
-        # HTML에 카드 추가 (클릭 가능하도록)
-        grid_html += f'<div class="{card_class}" onclick="document.getElementById(\'{checkbox_key}\').click();" style="cursor:pointer;">{ingredient}</div>'
+        grid_html += f'''
+        <div class="{card_class}" data-checkbox-id="{checkbox_key}" style="cursor:pointer; user-select: none;">
+            {ingredient}
+        </div>
+        '''
     
     grid_html += '</div>'
     
     # HTML 렌더링
     st.markdown(grid_html, unsafe_allow_html=True)
+    
+    # JavaScript로 클릭 이벤트 처리
+    st.markdown(
+        """
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('[data-checkbox-id]');
+            cards.forEach(card => {
+                card.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const checkboxId = this.getAttribute('data-checkbox-id');
+                    // label 찾기
+                    const label = document.querySelector(`label[for="${checkboxId}"]`);
+                    if (label) {
+                        label.click();
+                    } else {
+                        // input checkbox 직접 찾기
+                        const input = document.querySelector(`input[id="${checkboxId}"]`);
+                        if (input) {
+                            input.click();
+                        }
+                    }
+                });
+            });
+        });
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
 
     # 선택 현황
     selected_count = len(st.session_state.selected_ingredients)
@@ -482,7 +509,7 @@ def show_menu_selection():
 
         menus = menu_data.get(ing_name, [])
 
-        # 1단계: 체크박스를 완전히 숨긴 컨테이너에서 처리
+        # 체크박스를 숨겨진 컨테이너에서 처리
         st.markdown(
             """
             <div style="display:none;width:0;height:0;overflow:hidden;">
@@ -508,7 +535,7 @@ def show_menu_selection():
         
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # 2단계: 메뉴 그리드 HTML 생성 - 4열
+        # 메뉴 그리드 HTML + JavaScript
         grid_html = '<div class="menu-grid">'
         
         for menu_idx, menu_name in enumerate(menus):
@@ -516,12 +543,45 @@ def show_menu_selection():
             card_class = "menu-card-box selected" if is_selected else "menu-card-box"
             checkbox_key = f"menu_{ing_idx}_{menu_idx}_{ing_name}_{menu_name}"
             
-            grid_html += f'<div class="{card_class}" onclick="document.getElementById(\'{checkbox_key}\').click();" style="cursor:pointer;">{menu_name}</div>'
+            grid_html += f'''
+            <div class="{card_class}" data-checkbox-id="{checkbox_key}" style="cursor:pointer; user-select: none;">
+                {menu_name}
+            </div>
+            '''
         
         grid_html += '</div>'
         
         # 그리드 렌더링
         st.markdown(grid_html, unsafe_allow_html=True)
+        
+        # JavaScript로 클릭 이벤트 처리
+        st.markdown(
+            f"""
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {{
+                const cards = document.querySelectorAll('[data-checkbox-id]');
+                cards.forEach(card => {{
+                    card.addEventListener('click', function(e) {{
+                        e.stopPropagation();
+                        const checkboxId = this.getAttribute('data-checkbox-id');
+                        // label 찾기
+                        const label = document.querySelector(`label[for="${{checkboxId}}"]`);
+                        if (label) {{
+                            label.click();
+                        }} else {{
+                            // input checkbox 직접 찾기
+                            const input = document.querySelector(`input[id="${{checkboxId}}"]`);
+                            if (input) {{
+                                input.click();
+                            }}
+                        }}
+                    }});
+                }});
+            }});
+            </script>
+            """,
+            unsafe_allow_html=True
+        )
 
         # 초기화
         if ing_name not in st.session_state.selected_menus:
