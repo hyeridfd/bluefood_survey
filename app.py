@@ -30,107 +30,6 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data
 hr {
     border-color: #cccccc !important;
 }
-
-/* 모바일/태블릿/데스크탑 반응형 그리드 */
-.ingredient-grid {
-    display: grid;
-    grid-gap: 8px;
-    margin-bottom: 12px;
-    /* 모바일 기본: 4열 */
-    grid-template-columns: repeat(4, 1fr);
-}
-
-/* 타블렛 이상에서는 4열 유지 */
-@media (min-width: 600px) {
-    .ingredient-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
-/* 메뉴 선택 화면 그리드 (동일하게 4열) */
-.menu-grid {
-    display: grid;
-    grid-gap: 8px;
-    margin-bottom: 12px;
-    grid-template-columns: repeat(4, 1fr);
-}
-
-/* 카드 하나 (식재료용) */
-.card-box {
-    border: 2px solid #666666;
-    background-color: #ffffff;
-    color: #000000;
-    border-radius:10px;
-    padding:12px 6px;
-    min-height:64px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    font-size:15px;
-    font-weight:600;
-    line-height:1.3;
-    word-break: keep-all;
-}
-.card-box.selected {
-    background-color: #00b4d8;
-    border-color: #0096c7;
-    color: #ffffff;
-}
-
-/* 체크박스는 화면에서 완전히 숨김 (state만 유지) */
-.hidden-check {
-    display: none !important;
-}
-
-/* Streamlit 체크박스 전체 숨김 */
-[data-testid="stCheckbox"] {
-    display: none !important;
-}
-
-/* 메뉴 카드 (2단계 화면) */
-.menu-card-box {
-    border: 2px solid #666666;
-    background-color: #ffffff;
-    color: #000000;
-    border-radius:10px;
-    padding:16px 10px;
-    min-height:80px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    font-size:18px;
-    font-weight:600;
-    line-height:1.3;
-    word-break: keep-all;
-}
-.menu-card-box.selected {
-    background-color: #00b4d8;
-    border-color: #0096c7;
-    color: #ffffff;
-}
-
-/* 체크박스 래퍼 숨기기 */
-.hidden-check-wrapper {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    width: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-}
-
-/* Streamlit 라벨 숨김 */
-.hidden-check-wrapper label {
-    display: none !important;
-}
-
-/* Streamlit 컬럼 내 요소 숨김 */
-.hidden-check-wrapper [data-baseweb="checkbox"] {
-    display: none !important;
-}
 </style>
 """
 st.set_page_config(
@@ -389,87 +288,25 @@ def show_ingredient_selection():
         "김밥", "김무침", "김부각", "김자반"
     ]
 
-    # 체크박스를 숨겨진 컨테이너에서 처리
-    st.markdown(
-        """
-        <div style="display:none;width:0;height:0;overflow:hidden;">
-        """,
-        unsafe_allow_html=True
-    )
-    
-    cols = st.columns(len(ingredients))
-    for idx, ingredient in enumerate(ingredients):
-        checkbox_key = f"ingredient_{idx}_{ingredient}"
-        is_selected = ingredient in st.session_state.selected_ingredients
-        
+    # 4열 버튼으로 선택 처리 (체크박스 대신 사용)
+    cols = st.columns([1, 1, 1, 1])
+    for idx, ing in enumerate(ingredients):
         with cols[idx]:
-            new_state = st.checkbox(
-                ingredient,
-                value=is_selected,
-                key=checkbox_key,
-                label_visibility="collapsed"
-            )
+            is_selected = ing in st.session_state.selected_ingredients
+            button_label = f"✅ {ing}" if is_selected else ing
+            button_type = "primary" if is_selected else "secondary"
             
-            # 상태 변경 감지
-            if new_state and ingredient not in st.session_state.selected_ingredients:
-                st.session_state.selected_ingredients.append(ingredient)
-            elif not new_state and ingredient in st.session_state.selected_ingredients:
-                st.session_state.selected_ingredients.remove(ingredient)
-    
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # 그리드 HTML + JavaScript로 클릭 처리
-    grid_html = '<div class="ingredient-grid">'
-    
-    for idx, ingredient in enumerate(ingredients):
-        is_selected = ingredient in st.session_state.selected_ingredients
-        card_class = "card-box selected" if is_selected else "card-box"
-        checkbox_key = f"ingredient_{idx}_{ingredient}"
-        
-        grid_html += f'<div class="{card_class}" data-checkbox-id="{checkbox_key}" style="cursor:pointer;user-select:none;">{ingredient}</div>'
-    
-    grid_html += '</div>'
-    
-    # HTML 렌더링
-    st.markdown(grid_html, unsafe_allow_html=True)
-    
-    # JavaScript로 클릭 이벤트 처리 (한 번만)
-    st.markdown(
-        """
-        <script>
-        if (!window.checkboxClickHandlerLoaded) {
-            window.checkboxClickHandlerLoaded = true;
-            document.addEventListener('DOMContentLoaded', attachCheckboxHandlers);
-            
-            function attachCheckboxHandlers() {
-                const cards = document.querySelectorAll('[data-checkbox-id]');
-                cards.forEach(card => {
-                    if (!card.dataset.handlerAttached) {
-                        card.dataset.handlerAttached = 'true';
-                        card.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            const checkboxId = this.getAttribute('data-checkbox-id');
-                            const label = document.querySelector(`label[for="${checkboxId}"]`);
-                            if (label) {
-                                label.click();
-                            }
-                        });
-                    }
-                });
-            }
-            
-            // 초기 로드 시에도 실행
-            attachCheckboxHandlers();
-            
-            // Streamlit 리렌더링 후에도 실행
-            if (window.streamlit) {
-                window.streamlit.setComponentValue(null);
-            }
-        }
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
+            if st.button(
+                button_label,
+                key=f"btn_{ing}",
+                use_container_width=True,
+                type=button_type
+            ):
+                if is_selected:
+                    st.session_state.selected_ingredients.remove(ing)
+                else:
+                    st.session_state.selected_ingredients.append(ing)
+                st.rerun()
 
     # 선택 현황
     selected_count = len(st.session_state.selected_ingredients)
@@ -514,91 +351,29 @@ def show_menu_selection():
 
         menus = menu_data.get(ing_name, [])
 
-        # 체크박스를 숨겨진 컨테이너에서 처리
-        st.markdown(
-            """
-            <div style="display:none;width:0;height:0;overflow:hidden;">
-            """,
-            unsafe_allow_html=True
-        )
-        
-        cols = st.columns(len(menus))
-        local_updates = {}
-        
-        for menu_idx, menu_name in enumerate(menus):
-            checkbox_key = f"menu_{ing_idx}_{menu_idx}_{ing_name}_{menu_name}"
-            is_selected = menu_name in st.session_state.selected_menus.get(ing_name, [])
-            
-            with cols[menu_idx]:
-                new_val = st.checkbox(
-                    menu_name,
-                    value=is_selected,
-                    key=checkbox_key,
-                    label_visibility="collapsed"
-                )
-                local_updates[menu_name] = new_val
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        # 메뉴 그리드 HTML + JavaScript
-        grid_html = '<div class="menu-grid">'
-        
-        for menu_idx, menu_name in enumerate(menus):
-            is_selected = menu_name in st.session_state.selected_menus.get(ing_name, [])
-            card_class = "menu-card-box selected" if is_selected else "menu-card-box"
-            checkbox_key = f"menu_{ing_idx}_{menu_idx}_{ing_name}_{menu_name}"
-            
-            grid_html += f'<div class="{card_class}" data-checkbox-id="{checkbox_key}" style="cursor:pointer;user-select:none;">{menu_name}</div>'
-        
-        grid_html += '</div>'
-        
-        # 그리드 렌더링
-        st.markdown(grid_html, unsafe_allow_html=True)
-        
-        # JavaScript로 클릭 이벤트 처리
-        st.markdown(
-            """
-            <script>
-            if (!window.checkboxClickHandlerLoaded) {
-                window.checkboxClickHandlerLoaded = true;
-                document.addEventListener('DOMContentLoaded', attachCheckboxHandlers);
-                
-                function attachCheckboxHandlers() {
-                    const cards = document.querySelectorAll('[data-checkbox-id]');
-                    cards.forEach(card => {
-                        if (!card.dataset.handlerAttached) {
-                            card.dataset.handlerAttached = 'true';
-                            card.addEventListener('click', function(e) {
-                                e.stopPropagation();
-                                const checkboxId = this.getAttribute('data-checkbox-id');
-                                const label = document.querySelector(`label[for="${checkboxId}"]`);
-                                if (label) {
-                                    label.click();
-                                }
-                            });
-                        }
-                    });
-                }
-                
-                // 초기 로드 시에도 실행
-                attachCheckboxHandlers();
-            }
-            </script>
-            """,
-            unsafe_allow_html=True
-        )
-
         # 초기화
         if ing_name not in st.session_state.selected_menus:
             st.session_state.selected_menus[ing_name] = []
 
-        # 상태 업데이트
-        for menu_name, new_val in local_updates.items():
-            already = menu_name in st.session_state.selected_menus.get(ing_name, [])
-            if new_val and not already:
-                st.session_state.selected_menus[ing_name].append(menu_name)
-            elif (not new_val) and already:
-                st.session_state.selected_menus[ing_name].remove(menu_name)
+        # 4열 버튼으로 메뉴 선택 (체크박스 대신)
+        cols = st.columns([1, 1, 1, 1])
+        for menu_idx, menu_name in enumerate(menus):
+            is_selected = menu_name in st.session_state.selected_menus.get(ing_name, [])
+            button_label = f"✅ {menu_name}" if is_selected else menu_name
+            button_type = "primary" if is_selected else "secondary"
+            
+            with cols[menu_idx]:
+                if st.button(
+                    button_label,
+                    key=f"btn_menu_{ing_idx}_{menu_idx}_{menu_name}",
+                    use_container_width=True,
+                    type=button_type
+                ):
+                    if is_selected:
+                        st.session_state.selected_menus[ing_name].remove(menu_name)
+                    else:
+                        st.session_state.selected_menus[ing_name].append(menu_name)
+                    st.rerun()
 
         # 최소 1개 이상 선택 여부
         menu_count = len(st.session_state.selected_menus.get(ing_name, []))
