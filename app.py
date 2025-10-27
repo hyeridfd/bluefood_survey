@@ -368,34 +368,10 @@ def show_ingredient_selection():
         "김밥", "김무침", "김부각", "김자반"
     ]
 
-    # 그리드 HTML 생성 - 4열
-    grid_html = '<div class="ingredient-grid">'
-    
-    for idx, ingredient in enumerate(ingredients):
-        # 체크박스 상태
-        is_selected = ingredient in st.session_state.selected_ingredients
-        
-        # 클래스 결정
-        card_class = "card-box selected" if is_selected else "card-box"
-        
-        # 체크박스를 위한 고유 키
-        checkbox_key = f"ingredient_{idx}_{ingredient}"
-        
-        # HTML에 카드 추가 (클릭 가능하도록)
-        grid_html += f'''
-        <div class="{card_class}" onclick="document.getElementById('{checkbox_key}').click();" style="cursor:pointer;">
-            {ingredient}
-        </div>
-        '''
-    
-    grid_html += '</div>'
-    
-    # HTML 렌더링
-    st.markdown(grid_html, unsafe_allow_html=True)
-    
-    # 숨겨진 체크박스들 (CSS로 안 보임)
+    # 먼저 체크박스 상태 업데이트 (숨겨진 컨테이너에서)
     st.markdown('<div class="hidden-check-wrapper">', unsafe_allow_html=True)
     
+    checkbox_states = {}
     cols = st.columns(len(ingredients))
     for idx, ingredient in enumerate(ingredients):
         checkbox_key = f"ingredient_{idx}_{ingredient}"
@@ -408,6 +384,7 @@ def show_ingredient_selection():
                 key=checkbox_key,
                 label_visibility="collapsed"
             )
+            checkbox_states[ingredient] = new_state
             
             # 상태 변경 감지
             if new_state and ingredient not in st.session_state.selected_ingredients:
@@ -416,6 +393,27 @@ def show_ingredient_selection():
                 st.session_state.selected_ingredients.remove(ingredient)
     
     st.markdown('</div>', unsafe_allow_html=True)
+
+    # 그리드 HTML 생성 - 4열
+    grid_html = '<div class="ingredient-grid">'
+    
+    for idx, ingredient in enumerate(ingredients):
+        # 현재 체크박스 상태
+        is_selected = ingredient in st.session_state.selected_ingredients
+        
+        # 클래스 결정
+        card_class = "card-box selected" if is_selected else "card-box"
+        
+        # 체크박스를 위한 고유 키
+        checkbox_key = f"ingredient_{idx}_{ingredient}"
+        
+        # HTML에 카드 추가 (클릭 가능하도록)
+        grid_html += f'<div class="{card_class}" onclick="document.getElementById(\'{checkbox_key}\').click();" style="cursor:pointer;">{ingredient}</div>'
+    
+    grid_html += '</div>'
+    
+    # HTML 렌더링
+    st.markdown(grid_html, unsafe_allow_html=True)
 
     # 선택 현황
     selected_count = len(st.session_state.selected_ingredients)
@@ -460,26 +458,7 @@ def show_menu_selection():
 
         menus = menu_data.get(ing_name, [])
 
-        # 메뉴 그리드 HTML 생성 - 4열
-        grid_html = '<div class="menu-grid">'
-        
-        for menu_idx, menu_name in enumerate(menus):
-            is_selected = menu_name in st.session_state.selected_menus.get(ing_name, [])
-            card_class = "menu-card-box selected" if is_selected else "menu-card-box"
-            checkbox_key = f"menu_{ing_idx}_{menu_idx}_{ing_name}_{menu_name}"
-            
-            grid_html += f'''
-            <div class="{card_class}" onclick="document.getElementById('{checkbox_key}').click();" style="cursor:pointer;">
-                {menu_name}
-            </div>
-            '''
-        
-        grid_html += '</div>'
-        
-        # 그리드 렌더링
-        st.markdown(grid_html, unsafe_allow_html=True)
-        
-        # 숨겨진 체크박스들
+        # 먼저 체크박스 상태 업데이트 (숨겨진 컨테이너에서)
         st.markdown('<div class="hidden-check-wrapper">', unsafe_allow_html=True)
         
         cols = st.columns(len(menus))
@@ -499,6 +478,21 @@ def show_menu_selection():
                 local_updates[menu_name] = new_val
         
         st.markdown('</div>', unsafe_allow_html=True)
+
+        # 메뉴 그리드 HTML 생성 - 4열
+        grid_html = '<div class="menu-grid">'
+        
+        for menu_idx, menu_name in enumerate(menus):
+            is_selected = menu_name in st.session_state.selected_menus.get(ing_name, [])
+            card_class = "menu-card-box selected" if is_selected else "menu-card-box"
+            checkbox_key = f"menu_{ing_idx}_{menu_idx}_{ing_name}_{menu_name}"
+            
+            grid_html += f'<div class="{card_class}" onclick="document.getElementById(\'{checkbox_key}\').click();" style="cursor:pointer;">{menu_name}</div>'
+        
+        grid_html += '</div>'
+        
+        # 그리드 렌더링
+        st.markdown(grid_html, unsafe_allow_html=True)
 
         # 초기화
         if ing_name not in st.session_state.selected_menus:
