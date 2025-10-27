@@ -774,7 +774,6 @@ def ingredient_card_block_html(ingredient_name: str, is_selected: bool, idx: int
 
 
 def show_ingredient_selection():
-    # 상단 안내/상태 박스
     st.title("🐟 블루푸드 선호도 조사")
     st.subheader("🐟 수산물 원재료 선호도")
     st.markdown(
@@ -786,7 +785,7 @@ def show_ingredient_selection():
         unsafe_allow_html=True
     )
 
-    # 현재 선택 개수
+    # 현재 선택 개수 상태 박스
     selected_count = len(st.session_state.selected_ingredients)
     if selected_count < 3:
         status_msg = f"현재 {selected_count}개 선택됨 · 최소 3개 이상 선택해주세요"
@@ -813,7 +812,7 @@ def show_ingredient_selection():
         unsafe_allow_html=True
     )
 
-    # 카테고리 탭 유지
+    # 카테고리 탭
     category_names = list(INGREDIENT_CATEGORIES.keys())
     tabs = st.tabs(category_names)
 
@@ -828,79 +827,51 @@ def show_ingredient_selection():
                 """,
                 unsafe_allow_html=True
             )
-    
+
             ingredients = INGREDIENT_CATEGORIES[category]
-    
-            # --- 1) 현재 선택 상태 불러오기 ---
-            selected_now = set(st.session_state.selected_ingredients)
-    
-            # --- 2) 그리드 안의 카드들을 미리 HTML로 구성 ---
-            cards_html_parts = []
+
+            # 💡 탭마다 먼저 local_updates를 초기화
+            local_updates = {}
+
+            # 그리드 컨테이너 시작
+            st.markdown('<div class="ingredient-grid">', unsafe_allow_html=True)
+
             for idx, ing_name in enumerate(ingredients):
-                is_selected = ing_name in selected_now
-    
-                card_class = "card-box selected" if is_selected else "card-box"
-    
-                # 각 카드+체크박스를 하나의 grid cell로 구성
-                cell_html = f"""
-                <div class="ingredient-cell" style="cursor:pointer;"
-                     onclick="const cb=document.getElementById('ing_chk_{category}_{idx}');
-                              cb.checked=!cb.checked;
-                              cb.dispatchEvent(new Event('change'));">
-    
-                    <div class="{card_class}" id="card_{category}_{idx}">
-                        {ing_name}
-                    </div>
-    
-                    <input type="checkbox"
-                           id="ing_chk_{category}_{idx}"
-                           name="ing_{category}"
-                           value="{ing_name}"
-                           {'checked' if is_selected else '' }
-                           style="display:none;" />
-                </div>
-                """
-                cards_html_parts.append(cell_html)
-    
-            grid_html = (
-                '<div class="ingredient-grid">'
-                + "\n".join(cards_html_parts) +
-                "</div>"
-            )
-    
-            # --- 3) grid HTML 실제 렌더 ---
-            st.markdown(grid_html, unsafe_allow_html=True)
-    
-            # --- 4) 브라우저에서 바뀐 체크 상태를 Streamlit으로 sync하는 작은 JS ---
-            # Streamlit에 값을 다시 보내려면, st.session_state를 직접 건드릴 수 없으니까
-            # 우리는 form + st.form_submit_button 을 이용해서 roundtrip 시점에 값을 읽는다.
-            # 즉 "다음 단계" 누를 때 sync하도록 할 거야.
-            #
-            # 그래서 여기서는 당장 세션 업데이트를 안 하고,
-            # 아래에서 "다음 단계" 버튼을 눌렀을 때 hidden field를 통해 넘겨줄 거야.
-    
-            # 카테고리 내 요약
-            cat_selected = [x for x in st.session_state.selected_ingredients if x in ingredients]
-            if len(cat_selected) == 0:
-                st.info("이 카테고리에서 아직 선택한 항목이 없습니다.")
-            else:
-                st.success("이 카테고리에서 선택됨: " + " / ".join(cat_selected))
+                is_selected = ing_name in st.session_state.selected_ingredients
 
+                # 카드 + 숨은 체크박스 렌더
+                new_val = ingredient_card_block_html(
+                    ingredient_name=ing_name,
+                    is_selected=is_selected,
+                    idx=idx
+                )
 
-            # 상태 업데이트
+                # 나중에 반영할 변경 사항 기억
+                local_updates[ing_name] = new_val
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # ✅ 여기서만 상태 반영 (local_updates가 항상 존재하므로 NameError 방지)
+            #    그리고 빈 dict라도 for문은 그냥 0번 돈다 -> 안전
             for ing_name, new_val in local_updates.items():
                 already = ing_name in st.session_state.selected_ingredients
+
                 if new_val and not already:
-                    # 추가
+                    # 새로 선택
                     if len(st.session_state.selected_ingredients) < 9:
                         st.session_state.selected_ingredients.append(ing_name)
+                        # 메뉴 dict도 초기화 보장
                         if ing_name not in st.session_state.selected_menus:
                             st.session_state.selected_menus[ing_name] = []
                     else:
                         st.warning("최대 9개까지만 선택할 수 있습니다.")
+
                 elif (not new_val) and already:
-                    # 해제
+                    # 선택 해제
                     st.session_state.selected_ingredients.remove(ing_name)
+                    # 여기서 메뉴 선택까지 즉시 지울 거면 아래 주석 해제 가능
+                    # if ing_name in st.session_state.selected_menus:
+                    #     del st.session_state.selected_menus[ing_name]
 
             # 카테고리 내 요약
             cat_selected = [
@@ -912,45 +883,31 @@ def show_ingredient_selection():
             else:
                 st.success("이 카테고리에서 선택됨: " + " / ".join(cat_selected))
 
+    # 아래는 그대로 (하단 버튼 영역 등)
     st.markdown("<hr style='margin-top:24px;margin-bottom:16px;'>", unsafe_allow_html=True)
 
-    with st.form("ingredient_submit_form"):
-        col_left, col_mid, col_right = st.columns([1,1,1])
-    
-        with col_left:
-            reset_clicked = st.form_submit_button("선택 초기화", use_container_width=True)
-        with col_mid:
-            st.write(f"현재 {len(st.session_state.selected_ingredients)}개")
-        with col_right:
-            next_clicked = st.form_submit_button("다음 단계 →", use_container_width=True)
-    
-        # 🔥 핵심: hidden field. (streamlit text_input으로 받기)
-        # JS가 선택된 재료들을 콤마구분 문자열로 채워넣도록 할 거야.
-        chosen_raw = st.text_input("CHOSEN_INGREDIENTS_SYNC", value=",".join(st.session_state.selected_ingredients), label_visibility="collapsed")
-    
-        # 폼이 제출되었으면 chosen_raw를 파싱해서 session_state.selected_ingredients 갱신
-        if reset_clicked:
+    col_left, col_mid, col_right = st.columns([1,1,1])
+
+    with col_left:
+        if st.button("선택 초기화", use_container_width=True):
             st.session_state.selected_ingredients = []
             st.session_state.selected_menus = {}
-            st.experimental_rerun()
-    
-        if next_clicked:
-            # 사용자가 실제로 화면에서 클릭한 결과를 chosen_raw로 받았다고 가정
-            chosen_list = [x.strip() for x in chosen_raw.split(",") if x.strip()]
-            # 3~9 개 제약 확인
-            if len(chosen_list) < 3:
-                st.warning("최소 3개 이상 선택해주세요.")
-            elif len(chosen_list) > 9:
-                st.warning("최대 9개까지만 선택할 수 있습니다.")
-            else:
-                st.session_state.selected_ingredients = chosen_list
-                # 메뉴 딕셔너리 초기화/보존
+            st.rerun()
+
+    with col_mid:
+        st.write(f"현재 {len(st.session_state.selected_ingredients)}개")
+
+    with col_right:
+        can_go_next = (3 <= len(st.session_state.selected_ingredients) <= 9)
+        if st.button("다음 단계 →", use_container_width=True, disabled=not can_go_next):
+            if can_go_next:
                 st.session_state.selected_menus = {
                     ing: st.session_state.selected_menus.get(ing, [])
-                    for ing in chosen_list
+                    for ing in st.session_state.selected_ingredients
                 }
                 st.session_state.step = 'menus'
                 st.rerun()
+
 
 st.markdown(
     """
