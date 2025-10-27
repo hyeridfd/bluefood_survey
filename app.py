@@ -620,7 +620,7 @@ def show_info_form():
 # ===================== 화면 =====================
 def show_overall_guide():
     st.markdown(
-    "<h1>🐟 블루푸드<br>선호도 조사</h1>",
+    "<h1>블루푸드<br>선호도 조사</h1>",
     unsafe_allow_html=True
 )
 
@@ -678,7 +678,7 @@ def show_category_step():
     cat_label, ing_list = INGREDIENT_CATEGORIES[idx]
 
     st.markdown(
-    "<h1>🐟 블루푸드<br>선호도 조사</h1>",
+    "<h1>블루푸드<br>선호도 조사</h1>",
     unsafe_allow_html=True
 )
 
