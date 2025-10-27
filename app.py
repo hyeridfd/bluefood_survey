@@ -665,12 +665,38 @@ def show_overall_guide():
     st.markdown("---")
     
     # 시작 버튼
-    col1, col2, col3 = st.columns([0.2, 5, 0.2])
-    with col2:
-        if st.button("🚀 설문 시작하기", use_container_width=True, type="primary"):
-            st.session_state.step = "category_loop"
-            st.session_state.category_index = 0
-            st.rerun()
+   # 버튼 CSS: 모바일에서도 100% 폭 유지
+    st.markdown("""
+    <style>
+    div.stButton > button {
+        width: 100% !important;         /* 항상 전체폭 */
+        font-size: 20px !important;     /* 글자 크게 */
+        padding: 18px 0 !important;     /* 버튼 높이 */
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        background-color: #0078FF !important;
+        color: white !important;
+        border: none !important;
+    }
+    
+    /* 모바일에서도 버튼 여백 균등 */
+    @media (max-width: 768px) {
+        div.stButton {
+            width: 100% !important;
+            display: flex !important;
+            justify-content: center !important;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    
+    # 버튼 출력 (columns 없이)
+    if st.button("🚀 설문 시작하기", use_container_width=True, type="primary"):
+        st.session_state.step = "category_loop"
+        st.session_state.category_index = 0
+        st.rerun()
+
             
 # ===================== 화면 2: 카테고리별 (재료 선택 + 메뉴 선택) =====================
 def show_category_step():
