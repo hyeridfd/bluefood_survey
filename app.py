@@ -585,7 +585,10 @@ def is_valid_name_id(name: str, id_number: str) -> bool:
 # ===================== 화면 1: 참여자 정보 입력 =====================
 
 def show_info_form():
-    st.markdown("# 🐟 블루푸드 선호도 조사")
+    st.markdown(
+    "<h1>블루푸드<br>선호도 조사</h1>",
+    unsafe_allow_html=True
+)
     st.markdown("## 1단계: 참여자 정보 입력")
     st.markdown(
         """
