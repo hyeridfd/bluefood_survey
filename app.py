@@ -665,7 +665,7 @@ def show_overall_guide():
     st.markdown("---")
     
     # 시작 버튼
-    col1, col2, col3 = st.columns([0.5, 2, 0.5])
+    col1, col2, col3 = st.columns([0.5, 4, 0.5])
     with col2:
         if st.button("🚀 설문 시작하기", use_container_width=True, type="primary"):
             st.session_state.step = "category_loop"
