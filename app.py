@@ -704,34 +704,24 @@ def show_category_step():
     cat_label, ing_list = INGREDIENT_CATEGORIES[idx]
 
     st.markdown(
-    "<h1>블루푸드<br>선호도 조사</h1>",
-    unsafe_allow_html=True
-)
+        "<h1>블루푸드<br>선호도 조사</h1>",
+        unsafe_allow_html=True
+    )
 
     st.markdown(f"## 2단계: {cat_label} 선호도 조사")
-    # st.markdown(
-    #     """
-    #     <p style="font-size:16px; line-height:1.5; color:#333;">
-    #     1) 아래 수산물(원재료) 중에서 **좋아하시는 수산물**을 모두 선택해주세요.<br>
-    #     (이 카테고리는 아무 것도 선택하지 않으셔도 됩니다.)<br><br>
-    #     2) 선택하신 재료가 있다면, 각각에 대해 즐겨 드시는 메뉴를 골라주세요.<br>
-    #     <br>
-    #     <strong>※ 전체 설문 기준으로는 최소 3개 이상 수산물을 선택 부탁드립니다.</strong>
-    #     </p>
-    #     """,
-    #     unsafe_allow_html=True
-    # )
 
     # ---------- (1) 이 카테고리의 수산물 선택 영역 ----------
     st.markdown("### 🐟 선호 수산물 선택")
     st.markdown(
         """
         <p>
-        아래 수산물(원재료) 중에서 <strong>좋아하는 수산물</strong>을 모두 선택해주세요. 좋아하는 재료가 없으시면 선택하지 않으셔도 됩니다.<br>
+        아래 수산물(원재료) 중에서 <strong>좋아하는 수산물</strong>을 모두 선택해주세요. 
+        좋아하는 재료가 없으시면 선택하지 않으셔도 됩니다.<br>
         <strong>※ 단, 전체 설문 기준으로는 최소 3개 이상 수산물을 선택 부탁드립니다.</strong>
         </p>
         """,  unsafe_allow_html=True
     )
+
     num_cols = 3
     cols = st.columns([1,1,1])
 
@@ -790,14 +780,10 @@ def show_category_step():
         if ing in st.session_state.selected_ingredients
     ]
 
-    # flag: 이 카테고리에서 뭔가 재료는 골랐는지
     picked_any_here = len(chosen_ings_in_this_cat) > 0
-
-    # 카테고리 유효성 체크용 (기본 True, 나중에 메뉴 없으면 False로 깎음)
-    all_valid_this_cat = True
+    all_valid_this_cat = True  # 기본 True, 아래에서 메뉴 미선택 발견 시 False
 
     if picked_any_here:
-        # 👉 재료를 골랐을 때만 메뉴 영역을 그린다
         st.markdown("### 🐟 선호 메뉴 선택")
         st.markdown(
             """
@@ -821,7 +807,7 @@ def show_category_step():
                 unsafe_allow_html=True
             )
 
-            # 가능한 메뉴들 수집
+            # 가능한 메뉴들
             all_menus = []
             if ing_name in MENU_DATA:
                 for menu_list in MENU_DATA[ing_name].values():
@@ -831,7 +817,6 @@ def show_category_step():
             if ing_name not in st.session_state.selected_menus:
                 st.session_state.selected_menus[ing_name] = []
 
-            # 메뉴 토글 버튼들
             cols_m = st.columns([1,1,1])
             for m_i, menu_name in enumerate(all_menus):
                 colm = cols_m[m_i % 3]
@@ -861,22 +846,87 @@ def show_category_step():
 
             st.markdown("<hr>", unsafe_allow_html=True)
 
+    # ---------- (2.5) 이 카테고리 요약 섹션 (NEW) ----------
+    # 항상 보여줄 거야. 단, 아무 것도 고른 게 없으면 “선택 없음”만 보여주자.
+    st.markdown("### 📌 이 카테고리에서 선택한 내용 요약")
+
+    # 1) 이 카테고리에서 고른 수산물
+    picked_ings_here_list = chosen_ings_in_this_cat  # 이미 계산됨
+
+    if len(picked_ings_here_list) == 0:
+        st.info("아직 이 카테고리에서 선택하신 수산물이 없습니다.")
+    else:
+        st.markdown(
+            f"""
+            <div style="
+                border:1px solid #ddd;
+                border-radius:8px;
+                padding:12px 16px;
+                margin-bottom:12px;
+                font-size:15px;
+                line-height:1.5;
+            ">
+                <div style="font-weight:600; margin-bottom:6px;">
+                    ✅ 선택한 수산물:
+                </div>
+                <div>
+                    {", ".join(picked_ings_here_list)}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        # 2) 각 수산물별로 선택된 메뉴들
+        any_menu_chosen = False
+        menu_summary_html_parts = []
+        for ing_name in picked_ings_here_list:
+            chosen_menu_list = st.session_state.selected_menus.get(ing_name, [])
+            if chosen_menu_list:
+                any_menu_chosen = True
+                menu_summary_html_parts.append(
+                    f"<li><b>{ing_name}</b>: {', '.join(chosen_menu_list)}</li>"
+                )
+            else:
+                menu_summary_html_parts.append(
+                    f"<li><b>{ing_name}</b>: (메뉴 선택 없음)</li>"
+                )
+
+        st.markdown(
+            f"""
+            <div style="
+                border:1px solid #ddd;
+                border-radius:8px;
+                padding:12px 16px;
+                margin-bottom:20px;
+                font-size:15px;
+                line-height:1.5;
+            ">
+                <div style="font-weight:600; margin-bottom:6px;">
+                    🍽️ 선택한 메뉴:
+                </div>
+                <ul style="margin-top:4px; margin-bottom:0; padding-left:20px;">
+                    {''.join(menu_summary_html_parts)}
+                </ul>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
     # ---------- (3) 하단 네비게이션 영역 ----------
     col_prev, col_mid, col_next = st.columns([1,1,1])
 
     with col_prev:
         if st.button("← 이전", use_container_width=True):
             if idx > 0:
-                # 이전 카테고리로 이동
                 st.session_state.category_index -= 1
             else:
-                # 첫 번째 카테고리일 때는 안내 화면(guide)으로 이동
                 st.session_state.step = "guide"
             st.rerun()
 
-
     with col_mid:
         if st.button("초기화", use_container_width=True):
+            # 이 카테고리에서 고른 것만 싹 지우기
             for ing_name in ing_list:
                 if ing_name in st.session_state.selected_ingredients:
                     st.session_state.selected_ingredients.remove(ing_name)
@@ -887,14 +937,13 @@ def show_category_step():
     with col_next:
         is_last_category = (idx == TOTAL_CATEGORY_COUNT - 1)
 
-        # picked_any_here = 이번 카테고리에서 최소 1개 재료는 골랐는지
-        # all_valid_this_cat = (재료를 골랐다면) 그 재료별로 메뉴도 최소 1개 이상 골랐는지
+        # 이번 카테고리의 유효성
         if picked_any_here:
             cat_ready = all_valid_this_cat
         else:
-            cat_ready = True  # 이번 카테고리 자체는 패스 가능
+            cat_ready = True  # 이 카테고리는 통째로 스킵 가능
 
-        # 마지막 제출 시에는 전체 수산물 최소 3개 이상
+        # 전체 최소 3개 수산물 조건 (마지막 제출 때만 체크)
         global_ready = (len(st.session_state.selected_ingredients) >= 3)
 
         next_btn_label = "설문 완료하기 ✅" if is_last_category else "다음 →"
@@ -930,6 +979,7 @@ def show_category_step():
             else:
                 st.session_state.category_index += 1
                 st.rerun()
+
 
 # ===================== 화면 3: 완료 =====================
 
