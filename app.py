@@ -833,21 +833,21 @@ def show_ingredient_selection():
 
             # 그리드 컨테이너 시작
             st.markdown('<div class="ingredient-grid">', unsafe_allow_html=True)
-            
+
             local_updates = {}
-            
             for idx, ing_name in enumerate(ingredients):
-                # 셀 하나를 만들기 위해 container()로 감싸도 되고
-                with st.container():
-                    is_selected = ing_name in st.session_state.selected_ingredients
-                    new_val = ingredient_card_block_html(
-                        ingredient_name=ing_name,
-                        is_selected=is_selected,
-                        idx=idx
-                    )
-                    local_updates[ing_name] = new_val
+                is_selected = ing_name in st.session_state.selected_ingredients
+            
+                # grid cell 직접 넣기 (container 안 쓰고 markdown만 반복)
+                new_val = ingredient_card_block_html(
+                    ingredient_name=ing_name,
+                    is_selected=is_selected,
+                    idx=idx
+                )
+                local_updates[ing_name] = new_val
             
             st.markdown('</div>', unsafe_allow_html=True)
+
 
             # 상태 업데이트
             for ing_name, new_val in local_updates.items():
