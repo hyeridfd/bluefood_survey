@@ -40,7 +40,7 @@ hr {
 
 [data-testid="stHorizontalBlock"] {
     display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-columns: repeat(3, 1fr) !important;
     gap: 8px !important;
     width: 100% !important;
 }
@@ -57,7 +57,7 @@ hr {
 /* 모바일에서도 유지 (원하면 여기서 2열로 바꿀 수도 있음) */
 @media (max-width: 768px) {
     [data-testid="stHorizontalBlock"] {
-        grid-template-columns: repeat(4, 1fr) !important;
+        grid-template-columns: repeat(3, 1fr) !important;
     }
 }
 
@@ -82,8 +82,8 @@ window.addEventListener('load', function() {
     function fixLayout() {
         const cols = document.querySelectorAll('[data-testid="stColumn"]');
         cols.forEach(col => {
-            col.style.flex = '1 1 calc(25% - 6px)';
-            col.style.minWidth = 'calc(25% - 6px)';
+            col.style.flex = '1 1 calc(33.33% - 6px)';
+            col.style.minWidth = 'calc(33.33% - 6px)';
         });
 
         const btns = document.querySelectorAll('button');
@@ -717,11 +717,8 @@ def show_info_form():
     )
 
     with st.form("info_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            name = st.text_input("성함", value=st.session_state.name, placeholder="홍길동", max_chars=20)
-        with col2:
-            id_number = st.text_input("식별번호", value=st.session_state.id_number, placeholder="예: HG001", max_chars=20)
+        name = st.text_input("성함", value=st.session_state.name, placeholder="홍길동", max_chars=20)
+        id_number = st.text_input("식별번호", value=st.session_state.id_number, placeholder="예: HG001", max_chars=20)
 
         submitted = st.form_submit_button("다음 단계 →", use_container_width=True)
         if submitted:
@@ -790,8 +787,8 @@ def show_ingredient_selection():
 
             # 4열 레이아웃: Streamlit columns를 4개 만들고 나서
             # 모든 재료를 순서대로 col[0], col[1], col[2], col[3], 다시 col[0]... 로 넣는 방식
-            num_cols = 4
-            cols = st.columns([1,1,1,1])
+            num_cols = 3
+            cols = st.columns([1,1,1])
 
             for i, ing_name in enumerate(ing_list):
                 col = cols[i % num_cols]
@@ -893,8 +890,8 @@ def show_menu_selection():
         if ing_name not in st.session_state.selected_menus:
             st.session_state.selected_menus[ing_name] = []
 
-        num_cols = 4
-        cols = st.columns([1,1,1,1])
+        num_cols = 3
+        cols = st.columns([1,1,1])
 
         for m_idx, menu_name in enumerate(all_menus):
             col = cols[m_idx % num_cols]
