@@ -695,8 +695,7 @@ def show_category_step():
 
     # --- 2) (선택한 재료가 있는 경우에만) 메뉴 선택 -----------------
 
-    #st.markdown("### 선호 메뉴 선택")
-    st.progress(prog, "3단계: 선호 메뉴 메뉴 선택")
+    st.markdown("### 선호 메뉴 선택")
     st.markdown(
         """
         <p style="font-size:15px; line-height:1.5; color:#333; margin-top:-8px;">
