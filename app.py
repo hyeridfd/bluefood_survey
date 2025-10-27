@@ -959,7 +959,6 @@ def show_menu_selection():
 # ===================== 4단계: 완료 화면 =====================
 
 def show_completion():
-    st.balloons()
     st.success("🎉 설문이 완료되었습니다! 감사합니다.")
 
     if st.session_state.google_sheets_success:
