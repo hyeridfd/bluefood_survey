@@ -618,50 +618,46 @@ def show_info_form():
 def show_overall_guide():
     st.markdown("# 🐟 블루푸드 선호도 조사")
     
-    # 헤더 박스
+    # 헤더
     st.markdown("""
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <h2 style="color: white; text-align: center; margin: 0; font-size: 28px;">📋 설문 안내</h2>
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 15px; margin-bottom: 30px;">
+            <h2 style="color: white; text-align: center; margin: 0;">📋 설문 안내</h2>
         </div>
     """, unsafe_allow_html=True)
-
-    # 진행 방법 섹션
-    st.markdown("""
-        <div style="background-color: #f8f9fa; padding: 25px; border-radius: 12px; border-left: 5px solid #667eea; margin-bottom: 20px;">
-            <h3 style="color: #667eea; margin-top: 0;">🎯 2단계 진행 방법</h3>
-            
-            <div style="margin-top: 20px;">
-                <div style="background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <p style="margin: 0; font-size: 16px; line-height: 1.8;">
-                        <span style="background-color: #667eea; color: white; padding: 4px 10px; border-radius: 20px; font-weight: bold; margin-right: 10px;">1단계</span>
-                        아래 수산물(원재료) 중에서 <strong style="color: #667eea;">좋아하시는 것</strong>을 모두 선택해주세요.
-                    </p>
-                    <p style="margin: 10px 0 0 0; font-size: 14px; color: #6c757d; padding-left: 60px;">
-                        💡 각 카테고리는 아무 것도 선택하지 않으셔도 됩니다.
-                    </p>
-                </div>
-                
-                <div style="background-color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    <p style="margin: 0; font-size: 16px; line-height: 1.8;">
-                        <span style="background-color: #764ba2; color: white; padding: 4px 10px; border-radius: 20px; font-weight: bold; margin-right: 10px;">2단계</span>
-                        선택하신 재료가 있다면, <strong style="color: #764ba2;">각각에 대해 선호하시는 메뉴</strong>를 골라주세요.
-                    </p>
-                </div>
+    
+    # 2단계 진행 방법
+    st.markdown("### 🎯 2단계 진행 방법")
+    
+    # 1단계 설명
+    with st.container():
+        st.markdown("""
+            <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
+                <p style="margin: 0; font-size: 16px;">
+                    <span style="background-color: #667eea; color: white; padding: 5px 12px; border-radius: 20px; font-weight: bold;">1단계</span>
+                    <br><br>
+                    아래 수산물(원재료) 중에서 <strong>좋아하시는 것</strong>을 모두 선택해주세요.<br>
+                    <small>💡 각 카테고리는 아무 것도 선택하지 않으셔도 됩니다.</small>
+                </p>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # 중요 안내 박스
-    st.markdown("""
-        <div style="background-color: #fff3cd; border: 2px solid #ffc107; padding: 15px; border-radius: 10px; margin-bottom: 30px;">
-            <p style="margin: 0; font-size: 15px; color: #856404; text-align: center;">
-                ⚠️ 전체 설문 기준으로는 <strong>최소 3개 이상</strong> 수산물을 선택 부탁드립니다.
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
-
+        """, unsafe_allow_html=True)
+    
+    # 2단계 설명
+    with st.container():
+        st.markdown("""
+            <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <p style="margin: 0; font-size: 16px;">
+                    <span style="background-color: #764ba2; color: white; padding: 5px 12px; border-radius: 20px; font-weight: bold;">2단계</span>
+                    <br><br>
+                    선택하신 재료가 있다면, <strong>각각에 대해 선호하시는 메뉴</strong>를 골라주세요.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    # 중요 안내
+    st.warning("⚠️ 전체 설문 기준으로는 **최소 3개 이상** 수산물을 선택 부탁드립니다.")
+    
     st.markdown("---")
-
+    
     # 시작 버튼
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
