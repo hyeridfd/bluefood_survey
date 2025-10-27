@@ -641,8 +641,8 @@ def show_overall_guide():
                 <p style="margin: 0; font-size: 16px;">
                     <span style="background-color: #667eea; color: white; padding: 5px 12px; border-radius: 20px; font-weight: bold;">1단계</span>
                     <br><br>
-                    아래 수산물(원재료) 중에서 <strong>좋아하시는 것</strong>을 모두 선택해주세요.<br>
-                    <small>💡 각 카테고리는 아무 것도 선택하지 않으셔도 됩니다.</small>
+                    아래 수산물(원재료) 중에서 <strong>좋아하시는 것</strong>을 <strong>모두 선택</strong>해주세요.<br>
+                    <small>💡 <strong>각 카테고리는 아무 것도 선택하지 않으셔도 됩니다.</strong></small>
                 </p>
             </div>
         """, unsafe_allow_html=True)
@@ -660,7 +660,7 @@ def show_overall_guide():
         """, unsafe_allow_html=True)
     
     # 중요 안내
-    st.warning("⚠️ 전체 설문 기준으로는 **최소 3개 이상** 수산물을 선택 부탁드립니다.")
+    st.warning("⚠️ 전체 설문 기준으로는 **최소 3개 이상** 수산물 선택 필수!")
     
     st.markdown("---")
     
