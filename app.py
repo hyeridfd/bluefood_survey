@@ -646,7 +646,7 @@ def show_category_step():
         col = cols[i % num_cols]
         with col:
             is_selected_globally = ing_name in st.session_state.selected_ingredients
-            label = f"✅ {ing_name}" if is_selected_globally else ing_name
+            label = f"👍{ing_name}" if is_selected_globally else ing_name
             btn_type = "primary" if is_selected_globally else "secondary"
 
             if st.button(
