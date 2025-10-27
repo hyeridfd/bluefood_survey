@@ -17,35 +17,41 @@ import urllib.request
 # 라이트 모드 강제 (모바일에서 다크/라이트 전환 때문에 대비가 깨지는 문제 방지)
 LIGHT_FORCE_CSS = """
 <style>
-/* 전체 배경, 글자색 라이트 고정 */
+/* 전체 라이트 모드 강제 */
 html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data-testid="stApp"] {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
 
-/* 경고/안내 박스 등 텍스트 대비 유지 */
 .block-container {
     color: #000000 !important;
 }
 
-/* Streamlit 기본 헤더 줄(예: expander 등) 색상도 너무 어두워지지 않게 */
 hr {
     border-color: #cccccc !important;
 }
 
-/* 우리가 쓰는 카드 스타일 (식재료 선택용) */
+/* 그리드: 한 줄에 4개. 화면이 좁아지면 자동으로 다음 줄로 떨어짐 */
+.ingredient-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);  /* <- 핵심!! 4등분 */
+    grid-gap: 8px;
+    margin-bottom: 12px;
+}
+
+/* 카드 하나 (식재료용) */
 .card-box {
     border: 2px solid #666666;
     background-color: #ffffff;
     color: #000000;
     border-radius:10px;
     padding:12px 6px;
-    min-height:70px;
+    min-height:64px;
     display:flex;
     align-items:center;
     justify-content:center;
     text-align:center;
-    font-size:16px;
+    font-size:15px;
     font-weight:600;
     line-height:1.3;
     word-break: keep-all;
@@ -56,7 +62,12 @@ hr {
     color: #ffffff;
 }
 
-/* 메뉴(2단계)에서 쓰는 큰 카드 */
+/* 체크박스는 화면에서 숨김 (state만 유지) */
+.hidden-check {
+    display:none;
+}
+
+/* 메뉴 카드 (2단계 화면) 기존 유지 */
 .menu-card-box {
     border: 2px solid #666666;
     background-color: #ffffff;
@@ -77,21 +88,6 @@ hr {
     background-color: #00b4d8;
     border-color: #0096c7;
     color: #ffffff;
-}
-
-/* (중요) 반응형 그리드: 모바일에서도 무조건 3열로 유지하고 싶으면 repeat(3,1fr) 고정
-   단, 진짜 작은 화면은 너무 꽉 낄 수 있으니까 최소 너비 한계가 없으면 글자가 줄바꿈됨 */
-.ingredient-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-gap: 8px 8px;
-    margin-bottom: 12px;
-}
-
-/* checkbox 기본 라벨(우리는 안 쓸거라 숨겨도 되지만 혹시 보일 경우 대비해서 글자 크게) */
-div.stCheckbox > label {
-    font-size: 16px;
-    font-weight: 500;
 }
 </style>
 """
@@ -732,31 +728,49 @@ def show_info_form():
 
 def ingredient_card_block_html(ingredient_name: str, is_selected: bool, idx: int):
     """
-    한 개의 식재료 카드를 그리드에 올리는 컴포넌트.
-    실제 state는 checkbox로 유지하고, 카드 터치 -> 해당 체크박스를 클릭시키는 방식.
+    한 개의 식재료 카드를 그리드 셀로 렌더링.
+    - 카드 자체만 보이고
+    - 내부적으로 hidden checkbox 로 state 유지
+    - 카드 터치 시 checkbox 토글
     """
     card_class = "card-box selected" if is_selected else "card-box"
     card_id = f"card_{ingredient_name}_{idx}"
 
-    # 카드 HTML
-    html = f"""
-    <div id="{card_id}"
-         class="{card_class}"
-         onclick="document.getElementById('{card_id}_chk').click();"
-         style="cursor:pointer;">
-        <div class="card-label">{ingredient_name}</div>
-    </div>
-    """
-    st.markdown(html, unsafe_allow_html=True)
+    # 카드 HTML (클릭하면 숨겨진 체크박스를 클릭시키는 방식)
+    st.markdown(
+        f"""
+        <div id="{card_id}"
+             class="{card_class}"
+             onclick="document.getElementById('{card_id}_chk').click();"
+             style="cursor:pointer;">
+            <div class="card-label">{ingredient_name}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-    # 실제 state용 체크박스(보이지 않게 label_visibility="collapsed")
+    # 실제 상태를 위한 체크박스는 화면에서 숨김
     new_val = st.checkbox(
         "선택",
         value=is_selected,
         key=f"{card_id}_chk",
         label_visibility="collapsed"
     )
+
+    # 체크박스 DOM 숨기기 (streamlit이 checkbox를 div로 감싸 렌더하므로 CSS로 처리)
+    st.markdown(
+        f"""
+        <style>
+        div[data-testid="stCheckbox"][class*="{card_id}_chk"] {{
+            display:none !important;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
     return new_val
+
 
 
 def show_ingredient_selection():
@@ -819,20 +833,20 @@ def show_ingredient_selection():
 
             # 그리드 컨테이너 시작
             st.markdown('<div class="ingredient-grid">', unsafe_allow_html=True)
-
-            # 한 탭에서 바뀐 값 저장
+            
             local_updates = {}
-
+            
             for idx, ing_name in enumerate(ingredients):
-                is_selected = ing_name in st.session_state.selected_ingredients
-                with st.container():  # 각각 카드+히든체크를 한 셀로 묶음
+                # 셀 하나를 만들기 위해 container()로 감싸도 되고
+                with st.container():
+                    is_selected = ing_name in st.session_state.selected_ingredients
                     new_val = ingredient_card_block_html(
                         ingredient_name=ing_name,
                         is_selected=is_selected,
                         idx=idx
                     )
                     local_updates[ing_name] = new_val
-
+            
             st.markdown('</div>', unsafe_allow_html=True)
 
             # 상태 업데이트
