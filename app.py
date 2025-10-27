@@ -163,6 +163,20 @@ textarea::placeholder {
     color: #555 !important;
     opacity: 1 !important;
 }
+/* ===== Input 라벨(label) 글자색 강제 (라이트 모드용) ===== */
+label, 
+div[data-testid="stFormLabel"], 
+span[data-testid="stMarkdownContainer"] label {
+    color: #000000 !important;   /* 완전 검정 */
+    font-weight: 600 !important; /* 살짝 굵게 */
+}
+
+/* Streamlit 내부 폼 라벨에도 적용 */
+[data-testid="stFormSubmitButton"] label,
+[data-testid="stFormLabel"] p,
+[data-testid="stFormLabel"] span {
+    color: #000000 !important;
+}
 
 </style>
 """
