@@ -616,7 +616,6 @@ def show_info_form():
 
 
 # ===================== 화면 2: 카테고리별 (재료 선택 + 메뉴 선택) =====================
-
 def show_category_step():
     # 현재 카테고리 인덱스
     idx = st.session_state.category_index
@@ -628,9 +627,10 @@ def show_category_step():
         """
         <p style="font-size:16px; line-height:1.5; color:#333;">
         1) 아래 수산물(원재료) 중에서 드시기 편하신 것, 선호하시는 것을 모두 선택해주세요.<br>
-        2) 선택한 각각에 대해 즐겨 드시는 메뉴를 골라주세요.<br>
+        (이 카테고리는 아무 것도 선택하지 않으셔도 됩니다.)<br><br>
+        2) 선택하신 재료가 있다면, 각각에 대해 즐겨 드시는 메뉴를 골라주세요.<br>
         <br>
-        <strong>※ 최소 3개 이상은 전체 설문 기준으로 선택 부탁드립니다.</strong>
+        <strong>※ 전체 설문 기준으로는 최소 3개 이상 수산물을 선택 부탁드립니다.</strong>
         </p>
         """,
         unsafe_allow_html=True
@@ -639,7 +639,6 @@ def show_category_step():
     # --- 1) 이 카테고리의 재료 선택 ---------------------------------
     st.markdown("### ✅ 선호 수산물 선택")
 
-    # 버튼들 3열로 렌더
     num_cols = 3
     cols = st.columns([1,1,1])
 
@@ -658,9 +657,9 @@ def show_category_step():
             ):
                 # 토글
                 if is_selected_globally:
-                    # 이 재료를 전체 선택 리스트에서 제거
+                    # 전체 선택 해제
                     st.session_state.selected_ingredients.remove(ing_name)
-                    # 관련 메뉴 선택도 제거
+                    # 그 재료의 메뉴 선택도 같이 제거
                     if ing_name in st.session_state.selected_menus:
                         del st.session_state.selected_menus[ing_name]
                 else:
@@ -669,7 +668,7 @@ def show_category_step():
                         st.session_state.selected_menus[ing_name] = []
                 st.rerun()
 
-    # 안내 박스: 전체 누적 몇 개 선택했는지
+    # 전체 누적 몇 개 선택했는지 안내
     total_selected_count = len(st.session_state.selected_ingredients)
     if total_selected_count < 3:
         box_msg = f"현재까지 전체 선택 수산물: {total_selected_count}개 · 최소 3개 이상 선택 부탁드립니다."
@@ -694,26 +693,30 @@ def show_category_step():
 
     st.markdown("---")
 
-    # --- 2) 방금(또는 이전에) 선택한 재료들에 대해 메뉴 선택 -----------------
+    # --- 2) (선택한 재료가 있는 경우에만) 메뉴 선택 -----------------
 
     st.markdown("### 🍽️ 선호 메뉴 선택")
     st.markdown(
         """
         <p style="font-size:15px; line-height:1.5; color:#333; margin-top:-8px;">
-        선택하신 각각의 수산물마다, 좋아하시는 조리 메뉴를 골라주세요.<br>
+        이 카테고리에서 선택하신 수산물이 있다면,<br>
+        각 수산물마다 좋아하시는 조리 메뉴를 골라주세요.<br>
         <strong>각 수산물당 최소 1개 이상</strong> 선택 부탁드립니다.
         </p>
         """,
         unsafe_allow_html=True
     )
 
-    # 이 카테고리에서 '현재 선택된' 재료만 순회
+    # 현재 카테고리에서 사용자가 선택한 재료들만
     chosen_ings_in_this_cat = [
         ing for ing in ing_list
         if ing in st.session_state.selected_ingredients
     ]
 
-    all_valid_this_cat = True  # 이 카테고리 내 유효성 (각 재료 최소 1개 메뉴)
+    # 기본적으로 통과(true)로 두고, 위 조건이 생기는 건
+    # "재료를 골랐다면 그 재료마다 메뉴 최소 1개"일 때만 검사
+    all_valid_this_cat = True
+
     for ing_idx_local, ing_name in enumerate(chosen_ings_in_this_cat):
         st.markdown(
             f"""
@@ -725,17 +728,17 @@ def show_category_step():
             unsafe_allow_html=True
         )
 
-        # 가능한 메뉴 리스트 뽑기
+        # 가능한 메뉴 후보 만들기
         all_menus = []
         if ing_name in MENU_DATA:
             for menu_list in MENU_DATA[ing_name].values():
                 all_menus.extend(menu_list)
 
-        # 세션에 키 보장
+        # 세션 키 보장
         if ing_name not in st.session_state.selected_menus:
             st.session_state.selected_menus[ing_name] = []
 
-        # 메뉴들 버튼 토글
+        # 메뉴 버튼 (토글)
         cols_m = st.columns([1,1,1])
         for m_i, menu_name in enumerate(all_menus):
             colm = cols_m[m_i % 3]
@@ -765,7 +768,7 @@ def show_category_step():
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
-    # --- 하단 네비게이션 버튼들 ---
+    # --- 하단 네비게이션 버튼들 ---------------------------------
     col_prev, col_mid, col_next = st.columns([1,1,1])
 
     # 이전 카테고리 버튼
@@ -776,11 +779,9 @@ def show_category_step():
                 st.session_state.category_index -= 1
                 st.rerun()
 
-    # 선택 초기화 (현재 카테고리만 초기화할지 전체 초기화할지?  
-    # 여기서는 "현재 카테고리 재료/메뉴만 모두 해제"로 구현)
+    # 현재 카테고리 선택 초기화
     with col_mid:
         if st.button("현재 카테고리 선택 초기화", use_container_width=True):
-            # 이 카테고리의 재료들만 비우기
             for ing_name in ing_list:
                 if ing_name in st.session_state.selected_ingredients:
                     st.session_state.selected_ingredients.remove(ing_name)
@@ -792,26 +793,23 @@ def show_category_step():
     with col_next:
         is_last_category = (idx == TOTAL_CATEGORY_COUNT - 1)
 
-        # 다음으로 갈 수 있는 조건:
-        #  - 최소한 지금 카테고리에서 뭔가 1개 이상은 골랐는지? (사용자 행동 유도)
-        #  - 고른 재료마다 메뉴 최소 1개씩 골랐는지?
-        #  - 전체 누적 원재료 선택 수가 3개 이상인지? (마지막 카테고리에서 완료 눌렀을 때 특히 중요)
+        # ====== 버튼 활성화 조건 정리 👇 ======
+        # 1) 만약 이 카테고리에서 아무 재료도 안 골랐다면 -> 그냥 통과 가능
         picked_any_here = (len(chosen_ings_in_this_cat) > 0)
-        cat_ready = picked_any_here and all_valid_this_cat
-        global_ready = (len(st.session_state.selected_ingredients) >= 3)
 
-        # 다음으로 넘어가거나 완료하기 위해 필요한 조건
-        can_advance = cat_ready and (global_ready or not is_last_category or True)
-        # 설명:
-        # - 마지막 아니면 굳이 global_ready 없어도 다음 카테고리로 가게 해도 되지만
-        #   연구 요구상 "전체 최소 3개"라면 마지막 단계에서만 체크해도 충분.
-        #   위 can_advance는 사실상 cat_ready만 확인하고,
-        #   마지막 카테고리일 때는 global_ready도 확인하도록 아래에서 한 번 더 처리할게.
+        # 2) 이 카테고리에서 뭔가 골랐다면,
+        #    그 각각에 대해 메뉴 최소 1개 선택했는지(all_valid_this_cat) 확인
+        if picked_any_here:
+            cat_ready = all_valid_this_cat
+        else:
+            cat_ready = True  # 아무 것도 안 골랐으면 그냥 OK
+
+        # 3) 마지막 카테고리에서 "완료" 누를 땐
+        #    전체적으로 최소 3개 이상 재료가 선택돼 있어야 함
+        global_ready = (len(st.session_state.selected_ingredients) >= 3)
 
         next_btn_label = "설문 완료하기 ✅" if is_last_category else "다음 카테고리 →"
 
-        # 마지막 카테고리에서는 global_ready(전체 3개 이상)도 필요
-        final_disabled = False
         if is_last_category:
             final_disabled = not (cat_ready and global_ready)
         else:
@@ -819,7 +817,7 @@ def show_category_step():
 
         if st.button(next_btn_label, use_container_width=True, disabled=final_disabled):
             if is_last_category:
-                # 마지막이면 저장하고 완료 화면으로
+                # 마지막이면 저장하고 완료 화면으로 이동
                 filename, df = save_to_excel(
                     st.session_state.name,
                     st.session_state.id_number,
@@ -841,7 +839,7 @@ def show_category_step():
                 else:
                     st.error("❌ 설문 데이터 저장에 실패했습니다. 다시 시도해주세요.")
             else:
-                # 다음 카테고리로
+                # 다음 카테고리로 이동
                 st.session_state.category_index += 1
                 st.rerun()
 
