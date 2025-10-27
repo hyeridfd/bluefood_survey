@@ -731,6 +731,7 @@ def show_overall_guide():
             st.session_state.step = "category_loop"
             st.session_state.category_index = 0
             st.rerun()
+            
 # ===================== 화면 2: 카테고리별 (재료 선택 + 메뉴 선택) =====================
 def show_category_step():
     idx = st.session_state.category_index
