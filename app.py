@@ -33,11 +33,7 @@ hr {
 
 /* --- 공통 카드/버튼 레이아웃 강제 --- */
 
-/* Streamlit이 가로 cols를 렌더할 때 내부적으로
-   [data-testid="stHorizontalBlock"] -> 그 안에 [data-testid="stVerticalBlock"] -> [data-testid="stColumn"]
-   이런 구조를 쓰는데
-   여기를 grid로 갈아엎어서 모바일에서도 항상 4열처럼 보이게 한다. */
-
+/* 가로 버튼 레이아웃을 grid로 강제 (모바일에서도 유지) */
 [data-testid="stHorizontalBlock"] {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
@@ -54,7 +50,7 @@ hr {
     flex: 1 1 auto !important;
 }
 
-/* 모바일에서도 유지 (원하면 여기서 2열로 바꿀 수도 있음) */
+/* 모바일에서도 그대로 3열 유지 */
 @media (max-width: 768px) {
     [data-testid="stHorizontalBlock"] {
         grid-template-columns: repeat(3, 1fr) !important;
@@ -78,7 +74,6 @@ button[kind="secondary"], button[kind="primary"] {
 JS_PATCH = """
 <script>
 window.addEventListener('load', function() {
-    // Streamlit이 DOM 다시 그린 직후 버튼/컬럼 폭이 깨지는 경우 대비
     function fixLayout() {
         const cols = document.querySelectorAll('[data-testid="stColumn"]');
         cols.forEach(col => {
@@ -93,9 +88,7 @@ window.addEventListener('load', function() {
             btn.style.wordBreak = 'break-word';
         });
     }
-    // 최초 한 번
     setTimeout(fixLayout, 500);
-    // 이후 주기적으로 한 번 더 (간단한 폴백)
     setInterval(fixLayout, 1500);
 });
 </script>
@@ -546,10 +539,7 @@ INGREDIENT_CATEGORIES = {
     ]
 }
 
-# ===================== 유틸: 화이트리스트 (원래 코드엔 참여자 검증 있었음)
-# 그대로 유지하려면 st.secrets["allowed_pairs"] + 시트 "참여자_명단" 읽어오는 로직 추가
-# 여기서는 간단하게 그냥 항상 True로 둘게.
-# 필요하면 아래 주석 풀고 다시 넣으면 돼.
+# ===================== 화이트리스트 체크 =====================
 
 @st.cache_data(ttl=300)
 def load_allowed_name_id_pairs():
@@ -588,7 +578,6 @@ def is_valid_name_id(name: str, id_number: str) -> bool:
         return False
     allowed = load_allowed_name_id_pairs()
     if len(allowed) == 0:
-        # 화이트리스트 미설정 시 그냥 통과시키고 싶으면 True 리턴
         return True
     return (name.strip(), id_number.strip().upper()) in allowed
 
@@ -607,7 +596,6 @@ def show_admin_dashboard(df):
     if '설문일시' in df.columns:
         st.markdown(f"**최근 응답 시간:** {df['설문일시'].max()}")
 
-    # 중복 응답 검사
     if '식별번호' in df.columns:
         st.markdown("### 🔍 중복 응답 감지")
         dup = df[df.duplicated('식별번호', keep=False)]
@@ -617,7 +605,6 @@ def show_admin_dashboard(df):
         else:
             st.success("✅ 중복 응답 없음")
 
-    # 수산물 TOP5
     if '선택한_수산물' in df.columns:
         st.markdown("### 🐟 수산물 선호도 TOP5")
         try:
@@ -626,7 +613,6 @@ def show_admin_dashboard(df):
                 try:
                     ings = json.loads(ingredients_json)
                 except Exception:
-                    # fallback 콤마 문자열일 경우
                     ings = [x.strip() for x in str(ingredients_json).split(",")]
                 for ing in ings:
                     if ing:
@@ -649,14 +635,13 @@ def show_admin_dashboard(df):
         except Exception as e:
             st.error(f"데이터 로드 오류 (수산물): {e}")
 
-    # 메뉴 TOP5
     if '선택한_메뉴' in df.columns:
         st.markdown("### 🍽️ 메뉴 선호도 TOP5")
         try:
             menu_counts = {}
             for menus_json in df['선택한_메뉴'].dropna():
                 try:
-                    menu_dict = json.loads(menus_json)  # {재료: [메뉴,...]}
+                    menu_dict = json.loads(menus_json)
                     for _, lst in menu_dict.items():
                         for m in lst:
                             if m:
@@ -681,7 +666,6 @@ def show_admin_dashboard(df):
         except Exception as e:
             st.error(f"데이터 로드 오류 (메뉴): {e}")
 
-    # 날짜별 추이
     if '설문일시' in df.columns:
         st.markdown("### ⏱️ 날짜별 응답 추이")
         try:
@@ -739,16 +723,17 @@ def show_info_form():
 def show_ingredient_selection():
     st.markdown("# 🐟 블루푸드 선호도 조사")
     st.markdown("## 2단계: 선호하시는 수산물(원재료)을 선택해주세요")
-    st.markdown("**(최소 3개, 최대 9개까지 선택)**")
+    st.markdown("**(최소 3개 이상 선택해주세요)**")  # ### 변경됨: 최대 9개 문구 삭제
 
     # 현재 선택 개수 안내 박스
     selected_count = len(st.session_state.selected_ingredients)
+
+    # ### 변경됨: 상태 메시지/색 논리 수정
+    # - 3개 미만: 경고 (노란색)
+    # - 3개 이상: 정상 (초록)
     if selected_count < 3:
         status_msg = f"현재 {selected_count}개 선택됨 · 최소 3개 이상 선택해주세요"
         status_style = "background-color:#fff3cd;border:1px solid #ffe69c;color:#664d03;"
-    elif selected_count > 9:
-        status_msg = f"현재 {selected_count}개 선택됨 · 최대 9개까지만 가능합니다"
-        status_style = "background-color:#f8d7da;border:1px solid #f5c2c7;color:#842029;"
     else:
         status_msg = f"현재 {selected_count}개 선택됨"
         status_style = "background-color:#d1e7dd;border:1px solid #badbcc;color:#0f5132;"
@@ -785,8 +770,6 @@ def show_ingredient_selection():
 
             ing_list = INGREDIENT_CATEGORIES[category]
 
-            # 4열 레이아웃: Streamlit columns를 4개 만들고 나서
-            # 모든 재료를 순서대로 col[0], col[1], col[2], col[3], 다시 col[0]... 로 넣는 방식
             num_cols = 3
             cols = st.columns([1,1,1])
 
@@ -806,16 +789,14 @@ def show_ingredient_selection():
                         # 토글 로직
                         if is_selected:
                             st.session_state.selected_ingredients.remove(ing_name)
-                            # 선택 해제 시 해당 수산물의 메뉴 선택도 비울 수 있음
+                            # 선택 해제 시 해당 수산물의 메뉴 선택도 정리
                             if ing_name in st.session_state.selected_menus:
                                 del st.session_state.selected_menus[ing_name]
                         else:
-                            if len(st.session_state.selected_ingredients) < 9:
-                                st.session_state.selected_ingredients.append(ing_name)
-                                if ing_name not in st.session_state.selected_menus:
-                                    st.session_state.selected_menus[ing_name] = []
-                            else:
-                                st.warning("최대 9개까지만 선택할 수 있습니다.")
+                            # ### 변경됨: 더 이상 최대값(9개) 체크 안 함
+                            st.session_state.selected_ingredients.append(ing_name)
+                            if ing_name not in st.session_state.selected_menus:
+                                st.session_state.selected_menus[ing_name] = []
                         st.rerun()
 
             # 카테고리 내에서 선택된 항목 요약
@@ -841,7 +822,8 @@ def show_ingredient_selection():
             st.rerun()
 
     with col_right:
-        can_go_next = (3 <= len(st.session_state.selected_ingredients) <= 9)
+        # ### 변경됨: 다음 단계 가능 여부 = 최소 3개 이상만 체크
+        can_go_next = (len(st.session_state.selected_ingredients) >= 3)
         if st.button("다음 단계 →", use_container_width=True, disabled=not can_go_next):
             if can_go_next:
                 # 메뉴 dict shape 보장
@@ -861,7 +843,7 @@ def show_menu_selection():
     st.markdown(
         """
         <p style="font-size:16px; line-height:1.5; color:#333;">
-        각 수산물마다 최소 1개 이상 선택해주세요.
+        각 수산물마다 <strong>최소 1개 이상</strong> 선택해주세요.
         </p>
         """,
         unsafe_allow_html=True
@@ -912,7 +894,7 @@ def show_menu_selection():
                         st.session_state.selected_menus[ing_name].append(menu_name)
                     st.rerun()
 
-        # 최소 1개 이상 선택 체크
+        # 최소 1개 이상 선택 체크 (이건 그대로 유지)
         chosen_cnt = len(st.session_state.selected_menus.get(ing_name, []))
         if chosen_cnt == 0:
             all_valid = False
@@ -938,7 +920,7 @@ def show_menu_selection():
                     st.session_state.selected_ingredients,
                     st.session_state.selected_menus
                 )
-                # 구글시트에도 시도 (성공/실패 여부만 state에 남김)
+                # 구글시트에도 시도
                 save_to_google_sheets(
                     st.session_state.name,
                     st.session_state.id_number,
@@ -1125,8 +1107,8 @@ def main():
                 <p><strong>⏱️ 소요시간</strong><br>약 3-5분</p>
                 <p><strong>📝 설문 단계</strong><br>
                     1️⃣ 참여자 정보 입력<br>
-                    2️⃣ 선호 수산물 선택 (3-9개)<br>
-                    3️⃣ 선호 메뉴 선택<br>
+                    2️⃣ 선호 수산물 선택 (최소 3개)<br>
+                    3️⃣ 선호 메뉴 선택 (각 수산물별 최소 1개)<br>
                     4️⃣ 완료
                 </p>
                 <p><strong>🔒 개인정보 보호</strong><br>
