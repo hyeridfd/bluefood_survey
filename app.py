@@ -946,7 +946,7 @@ def show_category_step():
         # 전체 최소 3개 수산물 조건 (마지막 제출 때만 체크)
         global_ready = (len(st.session_state.selected_ingredients) >= 3)
 
-        next_btn_label = "제출하기기" if is_last_category else "다음 →"
+        next_btn_label = "제출 →" if is_last_category else "다음 →"
 
         if is_last_category:
             final_disabled = not (cat_ready and global_ready)
