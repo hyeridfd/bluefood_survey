@@ -17,12 +17,12 @@ import json
 
 LIGHT_FORCE_CSS = """
 <style>
-/* OS가 다크모드여도 늘 라이트 팔레트로 해석하게 강제 */
+/* 항상 라이트로 생각해 */
 :root {
     color-scheme: light !important;
 }
 
-/* 다크모드일 때 Streamlit이 어둡게 칠하려고 해도 다시 흰색/검정으로 덮어쓰기 */
+/* 브라우저/OS가 다크모드여도 강제로 라이트 팔레트 */
 @media (prefers-color-scheme: dark) {
     html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data-testid="stApp"] {
         background-color: #ffffff !important;
@@ -30,19 +30,95 @@ LIGHT_FORCE_CSS = """
     }
 }
 
-/* 기존 너 코드 그대로 ↓ */
-html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data-testid="stApp"] {
+/* 전체 레이아웃 배경/글자색 */
+html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
-.block-container {
+
+/* 사이드바도 하양 */
+[data-testid="stSidebar"] {
+    background-color: #ffffff !important;
     color: #000000 !important;
+    border-right: 1px solid #e0e0e0 !important;
 }
+
+/* 상단 헤더바(스크린샷 맨 위 검은 바) → 흰색으로 */
+header[data-testid="stHeader"] {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border-bottom: 1px solid #e0e0e0 !important;
+}
+header[data-testid="stHeader"] > div {
+    background-color: #ffffff !important;
+}
+
+/* 구분선 밝게 */
 hr {
     border-color: #cccccc !important;
 }
 
-/* 3열 그리드 강제 */
+/* -------- 입력창 & form 요소 라이트 강제 -------- */
+
+/* 전체 input/textarea/select 박스 */
+input, textarea, select {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #999999 !important;
+    border-radius: 6px !important;
+}
+
+/* Streamlit이 감싸는 input 컨테이너 (검은 배경 덮어쓰기) */
+[data-baseweb="input"] {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border-radius: 6px !important;
+    border: 1px solid #999999 !important;
+}
+[data-baseweb="input"] input {
+    color: #000000 !important;
+}
+[data-baseweb="input"] > div {
+    background-color: transparent !important;
+}
+
+/* 포커스 시에도 파란 테두리 정도만 */
+[data-baseweb="input"]:focus-within {
+    box-shadow: 0 0 0 2px rgba(0,120,255,0.3) !important;
+    border-color: #0078FF !important;
+}
+
+/* -------- 버튼 라이트 강제 -------- */
+
+/* 기본 st.form_submit_button, st.button */
+button, button[kind] {
+    background-color: #0078FF !important;
+    color: #ffffff !important;
+    border: 1px solid #0078FF !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+
+/* disabled 버튼도 너무 까맣지 않게 */
+button:disabled, button[disabled] {
+    background-color: #d3d3d3 !important;
+    color: #666666 !important;
+    border: 1px solid #cccccc !important;
+}
+
+/* 수산물/메뉴 토글 버튼들 (secondary / primary) */
+button[kind="secondary"] {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #999999 !important;
+}
+button[kind="primary"] {
+    background-color: #0078FF !important;
+    color: #ffffff !important;
+    border: 1px solid #0078FF !important;
+}
+
+/* 3열 그리드 유지 */
 [data-testid="stHorizontalBlock"] {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
@@ -57,14 +133,14 @@ hr {
     flex: 1 1 auto !important;
 }
 
-/* 모바일에서도 동일하게 3열 유지 */
+/* 모바일에서도 강제로 3열 (너 원래 의도 유지) */
 @media (max-width: 768px) {
     [data-testid="stHorizontalBlock"] {
         grid-template-columns: repeat(3, 1fr) !important;
     }
 }
 
-/* 선택 버튼 스타일 */
+/* 버튼 공통 스타일(네가 하던 거 가져옴) */
 button[kind="secondary"], button[kind="primary"] {
     width: 100% !important;
     padding: 10px 8px !important;
