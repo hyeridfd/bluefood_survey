@@ -727,8 +727,7 @@ def show_category_step():
     st.markdown(
         """
         <p>
-        아래 수산물(원재료) 중에서 <strong>좋아하는 수산물</strong>을 모두 선택해주세요.<br>
-        좋아하는 재료가 없으시면 선택하지 않으셔도 됩니다.<br>
+        아래 수산물(원재료) 중에서 <strong>좋아하는 수산물</strong>을 모두 선택해주세요. 좋아하는 재료가 없으시면 선택하지 않으셔도 됩니다.<br>
         <strong>※ 단, 전체 설문 기준으로는 최소 3개 이상 수산물을 선택 부탁드립니다.</strong>
         </p>
         """,  unsafe_allow_html=True
