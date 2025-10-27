@@ -837,7 +837,7 @@ def show_category_step():
                 colm = cols_m[m_i % 3]
                 with colm:
                     is_menu_selected = menu_name in st.session_state.selected_menus[ing_name]
-                    menu_label = f"✅ {menu_name}" if is_menu_selected else menu_name
+                    menu_label = f"👍 {menu_name}" if is_menu_selected else menu_name
                     menu_btn_type = "primary" if is_menu_selected else "secondary"
 
                     if st.button(
