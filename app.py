@@ -12,6 +12,8 @@ import matplotlib.font_manager as fm
 from matplotlib import rcParams
 import urllib.request
 import json
+import ast
+from collections import Counter
 
 # ===================== 기본 설정 / 스타일 =====================
 
@@ -386,6 +388,238 @@ if 'already_saved' not in st.session_state:
 if 'category_index' not in st.session_state:
     st.session_state.category_index = 0
 
+# ===================== Admin Dashboard Helpers =====================
+
+def _safe_load_list(s):
+    """['a','b'] 혹은 JSON 문자열을 안전하게 list로."""
+    if s is None or (isinstance(s, float) and pd.isna(s)):
+        return []
+    if isinstance(s, list):
+        return s
+    s = str(s).strip()
+    if s == "":
+        return []
+    # JSON 시도
+    try:
+        v = json.loads(s)
+        if isinstance(v, list):
+            return v
+    except Exception:
+        pass
+    # literal_eval 시도 (엑셀/CSV에서 온 문자열 리스트)
+    try:
+        v = ast.literal_eval(s)
+        if isinstance(v, list):
+            return v
+    except Exception:
+        pass
+    return []
+
+def _safe_load_dict(s):
+    """{'재료':['메뉴',...]} 혹은 JSON 문자열을 안전하게 dict로."""
+    if s is None or (isinstance(s, float) and pd.isna(s)):
+        return {}
+    if isinstance(s, dict):
+        return s
+    s = str(s).strip()
+    if s == "":
+        return {}
+    # JSON 시도
+    try:
+        v = json.loads(s)
+        if isinstance(v, dict):
+            return v
+    except Exception:
+        pass
+    # literal_eval 시도
+    try:
+        v = ast.literal_eval(s)
+        if isinstance(v, dict):
+            return v
+    except Exception:
+        pass
+    return {}
+
+def build_aggregates(df):
+    """
+    df에서 '선택한_수산물'(list), '선택한_메뉴'(dict: 재료->list)를 파싱하여
+    (1) 식재료 카운트, (2) 메뉴 카운트, (3) 개인별 요약을 반환
+    """
+    ing_counter = Counter()
+    menu_counter = Counter()
+
+    per_person_rows = []
+
+    for _, row in df.iterrows():
+        name = row.get('이름', '')
+        pid  = row.get('식별번호', '')
+        ings = _safe_load_list(row.get('선택한_수산물'))
+        menus_map = _safe_load_dict(row.get('선택한_메뉴'))
+
+        # 식재료 카운트
+        for ing in ings:
+            if ing:
+                ing_counter[ing] += 1
+
+        # 메뉴 카운트(재료 구분 없이 메뉴 이름만 단일 차원으로 집계)
+        for ing, menus in menus_map.items():
+            mlist = menus if isinstance(menus, list) else []
+            for m in mlist:
+                if m:
+                    menu_counter[m] += 1
+
+        # 개인별 상세 테이블용(재료-메뉴를 풀어서 한 줄씩)
+        for ing in ings:
+            chosen_menus = menus_map.get(ing, [])
+            chosen_menus = chosen_menus if isinstance(chosen_menus, list) else []
+            # 메뉴가 없으면 (메뉴 선택 없음)으로 1행
+            if not chosen_menus:
+                per_person_rows.append({
+                    '이름': name, '식별번호': pid, '수산물': ing, '메뉴': '(메뉴 선택 없음)'
+                })
+            else:
+                for m in chosen_menus:
+                    per_person_rows.append({
+                        '이름': name, '식별번호': pid, '수산물': ing, '메뉴': m
+                    })
+
+    # DataFrame 변환
+    ing_rank_df = pd.DataFrame(
+        [{'수산물': k, '선택 수': v} for k, v in ing_counter.most_common()]
+    )
+    menu_rank_df = pd.DataFrame(
+        [{'메뉴': k, '선택 수': v} for k, v in menu_counter.most_common()]
+    )
+    per_person_df = pd.DataFrame(per_person_rows)
+
+    return ing_rank_df, menu_rank_df, per_person_df
+
+def show_admin_dashboard(df):
+    """
+    관리자 대시보드 UI:
+      - 랭킹(식재료/메뉴 Top N)
+      - 개인별 선택 조회
+      - 원시 데이터 미리보기
+    """
+    st.markdown("## 📊 관리자 대시보드")
+
+    # 필수 컬럼 점검
+    required_cols = {'이름', '식별번호', '선택한_수산물', '선택한_메뉴'}
+    if not required_cols.issubset(set(df.columns)):
+        st.error(f"데이터 컬럼이 부족합니다. 필요한 컬럼: {sorted(list(required_cols))}")
+        st.dataframe(df, use_container_width=True)
+        return
+
+    # 날짜 필터(선택)
+    left, right = st.columns([1, 3])
+    with left:
+        top_n = st.number_input("Top N", min_value=5, max_value=50, value=10, step=1)
+    with right:
+        st.caption("※ 날짜 필터는 '설문일시'가 문자열이라면 적용이 어려울 수 있어요. 필요하면 날짜형으로 저장 권장합니다.")
+
+    # 집계 생성
+    ing_rank_df, menu_rank_df, per_person_df = build_aggregates(df)
+
+    tab1, tab2, tab3 = st.tabs(["🏆 랭킹(식재료/메뉴)", "👤 개인별 선택", "📄 원시 데이터 미리보기"])
+
+    # --- Tab 1: 랭킹 ---
+    with tab1:
+        col_a, col_b = st.columns(2)
+
+        with col_a:
+            st.markdown("### 🐟 식재료 Top")
+            if len(ing_rank_df) == 0:
+                st.info("식재료 선택 데이터가 아직 없습니다.")
+            else:
+                st.dataframe(ing_rank_df.head(int(top_n)), use_container_width=True)
+                # 바차트 (옵션)
+                try:
+                    fig, ax = plt.subplots(figsize=(6, 4))
+                    head = ing_rank_df.head(int(top_n))
+                    ax.bar(head['수산물'], head['선택 수'])
+                    ax.set_title("식재료 선택 Top")
+                    ax.set_xlabel("수산물")
+                    ax.set_ylabel("선택 수")
+                    plt.xticks(rotation=45, ha='right')
+                    st.pyplot(fig)
+                except Exception:
+                    pass
+
+        with col_b:
+            st.markdown("### 🍽️ 메뉴 Top")
+            if len(menu_rank_df) == 0:
+                st.info("메뉴 선택 데이터가 아직 없습니다.")
+            else:
+                st.dataframe(menu_rank_df.head(int(top_n)), use_container_width=True)
+                # 바차트 (옵션)
+                try:
+                    fig, ax = plt.subplots(figsize=(6, 4))
+                    head = menu_rank_df.head(int(top_n))
+                    ax.bar(head['메뉴'], head['선택 수'])
+                    ax.set_title("메뉴 선택 Top")
+                    ax.set_xlabel("메뉴")
+                    ax.set_ylabel("선택 수")
+                    plt.xticks(rotation=45, ha='right')
+                    st.pyplot(fig)
+                except Exception:
+                    pass
+
+        st.download_button(
+            "⬇️ 식재료 랭킹 CSV 다운로드",
+            data=ing_rank_df.to_csv(index=False).encode('utf-8-sig'),
+            file_name="ingredient_ranking.csv",
+            mime="text/csv"
+        )
+        st.download_button(
+            "⬇️ 메뉴 랭킹 CSV 다운로드",
+            data=menu_rank_df.to_csv(index=False).encode('utf-8-sig'),
+            file_name="menu_ranking.csv",
+            mime="text/csv"
+        )
+
+    # --- Tab 2: 개인별 선택 ---
+    with tab2:
+        st.markdown("### 👤 개인별 선택 내역")
+        if len(per_person_df) == 0:
+            st.info("개인별 상세 데이터가 아직 없습니다.")
+        else:
+            # 검색/필터
+            c1, c2, c3 = st.columns([1, 1, 2])
+            with c1:
+                name_q = st.text_input("이름 검색", value="")
+            with c2:
+                id_q = st.text_input("식별번호 검색", value="")
+            with c3:
+                only_menu_selected = st.checkbox("메뉴 선택 있는 행만 보기", value=False)
+
+            filtered = per_person_df.copy()
+            if name_q.strip():
+                filtered = filtered[filtered['이름'].astype(str).str.contains(name_q.strip(), case=False, na=False)]
+            if id_q.strip():
+                filtered = filtered[filtered['식별번호'].astype(str).str.contains(id_q.strip(), case=False, na=False)]
+            if only_menu_selected:
+                filtered = filtered[filtered['메뉴'] != '(메뉴 선택 없음)']
+
+            # 이름/식별번호 선택 박스
+            uniq_names = ["(전체)"] + sorted(per_person_df['이름'].dropna().unique().tolist())
+            sel_name = st.selectbox("이름 선택", uniq_names)
+            if sel_name != "(전체)":
+                filtered = filtered[filtered['이름'] == sel_name]
+
+            st.dataframe(filtered.sort_values(['이름', '식별번호', '수산물', '메뉴']),
+                         use_container_width=True, height=420)
+
+            st.download_button(
+                "⬇️ 개인별 선택 CSV 다운로드",
+                data=filtered.to_csv(index=False).encode('utf-8-sig'),
+                file_name="per_person_choices.csv",
+                mime="text/csv"
+            )
+
+    # --- Tab 3: 원시 데이터 ---
+    with tab3:
+        st.markdown("### 📄 원시 데이터 (백업 파일 기준)")
+        st.dataframe(df, use_container_width=True, height=420)
 
 # ===================== 설문 데이터 (수산물/메뉴) =====================
 
@@ -1312,38 +1546,38 @@ def main():
                             st.rerun()
                         else:
                             st.error("잘못된 패스워드입니다.")
-        else:
-            st.success("🔐 관리자 모드")
-            backup_files = ["bluefood_survey.xlsx", "bluefood_survey_backup.xlsx"]
-            available_file = None
-            for file in backup_files:
-                if os.path.exists(file):
-                    available_file = file
-                    break
-
-            if available_file:
-                with open(available_file, 'rb') as file:
-                    st.download_button(
-                        label="📥 전체 설문 데이터 다운로드",
-                        data=file.read(),
-                        file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        use_container_width=True
-                    )
-
-                try:
-                    df = pd.read_excel(available_file)
-                    st.markdown(f"**📊 총 응답 수: {len(df)}건**")
-                    if '설문일시' in df.columns:
-                        st.markdown(f"**📅 최근 응답: {df['설문일시'].max()}**")
-                    
-                    # 간단 요약만: 여기선 전체 대시보드까지는 안 보여줘도 되지만
-                    # 원하면 show_admin_dashboard(df) 호출 가능
-                    # show_admin_dashboard(df)
-                except Exception:
-                    st.markdown("**📊 데이터 로드 오류**")
-            else:
-                st.info("아직 설문 데이터가 없습니다.")
+               else:
+                st.success("🔐 관리자 모드")
+                backup_files = ["bluefood_survey.xlsx", "bluefood_survey_backup.xlsx"]
+                available_file = None
+                for file in backup_files:
+                    if os.path.exists(file):
+                        available_file = file
+                        break
+    
+                if available_file:
+                    with open(available_file, 'rb') as file:
+                        st.download_button(
+                            label="📥 전체 설문 데이터 다운로드",
+                            data=file.read(),
+                            file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            use_container_width=True
+                        )
+    
+                    try:
+                        df = pd.read_excel(available_file)
+                        st.markdown(f"**📊 총 응답 수: {len(df)}건**")
+                        if '설문일시' in df.columns:
+                            st.markdown(f"**📅 최근 응답: {df['설문일시'].max()}**")
+    
+                        # ✅ 여기서 관리자 대시보드 호출
+                        show_admin_dashboard(df)
+    
+                    except Exception:
+                        st.markdown("**📊 데이터 로드 오류**")
+                else:
+                    st.info("아직 설문 데이터가 없습니다.")
 
             if st.button("🚪 로그아웃", use_container_width=True):
                 st.session_state.is_admin = False
