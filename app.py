@@ -1531,57 +1531,54 @@ def main():
         # 관리자 로그인 / 대시보드
         st.markdown("---")
         if not st.session_state.is_admin:
-            if st.button("🔐 관리자 로그인", use_container_width=True):
-                st.session_state.show_admin_login = True
-                st.rerun()
-            if st.session_state.show_admin_login:
-                with st.form("admin_login"):
-                    password = st.text_input("관리자 패스워드", type="password")
-                    login_btn = st.form_submit_button("로그인")
-                    if login_btn:
-                        if password == ADMIN_PASSWORD:
-                            st.session_state.is_admin = True
-                            st.session_state.show_admin_login = False
-                            st.success("관리자로 로그인되었습니다!")
-                            st.rerun()
-                        else:
-                            st.error("잘못된 패스워드입니다.")
+            with st.form("admin_login"):
+                password = st.text_input("관리자 패스워드", type="password")
+                login_btn = st.form_submit_button("로그인")
+                if login_btn:
+                    if password == ADMIN_PASSWORD:
+                        st.session_state.is_admin = True
+                        st.success("관리자로 로그인되었습니다!")
+                        st.rerun()
                     else:
-                        st.success("🔐 관리자 모드")
-                        backup_files = ["bluefood_survey.xlsx", "bluefood_survey_backup.xlsx"]
-                        available_file = None
-                        for file in backup_files:
-                            if os.path.exists(file):
-                                available_file = file
-                                break
-            
-                        if available_file:
-                            with open(available_file, 'rb') as file:
-                                st.download_button(
-                                    label="📥 전체 설문 데이터 다운로드",
-                                    data=file.read(),
-                                    file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                    use_container_width=True
-                                )
-            
-                            try:
-                                df = pd.read_excel(available_file)
-                                st.markdown(f"**📊 총 응답 수: {len(df)}건**")
-                                if '설문일시' in df.columns:
-                                    st.markdown(f"**📅 최근 응답: {df['설문일시'].max()}**")
-            
-                                # ✅ 여기서 관리자 대시보드 호출
-                                show_admin_dashboard(df)
-            
-                            except Exception:
-                                st.markdown("**📊 데이터 로드 오류**")
-                        else:
-                            st.info("아직 설문 데이터가 없습니다.")
-
+                        st.error("잘못된 패스워드입니다.")
+    
+        # 2) 관리자 모드 → 폼 바깥에서 다운로드/대시보드 표시 (여기서는 download_button 사용 가능)
+        else:
+            st.success("🔐 관리자 모드")
+            backup_files = ["bluefood_survey.xlsx", "bluefood_survey_backup.xlsx"]
+            available_file = None
+            for file in backup_files:
+                if os.path.exists(file):
+                    available_file = file
+                    break
+    
+            if available_file:
+                # 다운로드 버튼 (폼 외부)
+                with open(available_file, 'rb') as file:
+                    st.download_button(
+                        label="📥 전체 설문 데이터 다운로드",
+                        data=file.read(),
+                        file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        use_container_width=True
+                    )
+    
+                # 데이터 읽기 및 관리자 대시보드
+                try:
+                    df = pd.read_excel(available_file)
+                    st.markdown(f"**📊 총 응답 수: {len(df)}건**")
+                    if '설문일시' in df.columns:
+                        st.markdown(f"**📅 최근 응답: {df['설문일시'].max()}**")
+    
+                    show_admin_dashboard(df)  # ✅ 폼 바깥에서 호출
+                except Exception:
+                    st.markdown("**📊 데이터 로드 오류**")
+            else:
+                st.info("아직 설문 데이터가 없습니다.")
+    
+            # 로그아웃 버튼(관리자 모드에서만 노출)
             if st.button("🚪 로그아웃", use_container_width=True):
                 st.session_state.is_admin = False
-                st.session_state.show_admin_login = False
                 st.rerun()
 
         # 설문 안내 (업데이트된 단계 설명)
