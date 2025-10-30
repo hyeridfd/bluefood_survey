@@ -1546,38 +1546,38 @@ def main():
                             st.rerun()
                         else:
                             st.error("잘못된 패스워드입니다.")
-               else:
-                    st.success("🔐 관리자 모드")
-                    backup_files = ["bluefood_survey.xlsx", "bluefood_survey_backup.xlsx"]
-                    available_file = None
-                    for file in backup_files:
-                        if os.path.exists(file):
-                            available_file = file
-                            break
-        
-                    if available_file:
-                        with open(available_file, 'rb') as file:
-                            st.download_button(
-                                label="📥 전체 설문 데이터 다운로드",
-                                data=file.read(),
-                                file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                use_container_width=True
-                            )
-        
-                        try:
-                            df = pd.read_excel(available_file)
-                            st.markdown(f"**📊 총 응답 수: {len(df)}건**")
-                            if '설문일시' in df.columns:
-                                st.markdown(f"**📅 최근 응답: {df['설문일시'].max()}**")
-        
-                            # ✅ 여기서 관리자 대시보드 호출
-                            show_admin_dashboard(df)
-        
-                        except Exception:
-                            st.markdown("**📊 데이터 로드 오류**")
-                    else:
-                        st.info("아직 설문 데이터가 없습니다.")
+            else:
+                st.success("🔐 관리자 모드")
+                backup_files = ["bluefood_survey.xlsx", "bluefood_survey_backup.xlsx"]
+                available_file = None
+                for file in backup_files:
+                    if os.path.exists(file):
+                        available_file = file
+                        break
+    
+                if available_file:
+                    with open(available_file, 'rb') as file:
+                        st.download_button(
+                            label="📥 전체 설문 데이터 다운로드",
+                            data=file.read(),
+                            file_name=f"bluefood_survey_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            use_container_width=True
+                        )
+    
+                    try:
+                        df = pd.read_excel(available_file)
+                        st.markdown(f"**📊 총 응답 수: {len(df)}건**")
+                        if '설문일시' in df.columns:
+                            st.markdown(f"**📅 최근 응답: {df['설문일시'].max()}**")
+    
+                        # ✅ 여기서 관리자 대시보드 호출
+                        show_admin_dashboard(df)
+    
+                    except Exception:
+                        st.markdown("**📊 데이터 로드 오류**")
+                else:
+                    st.info("아직 설문 데이터가 없습니다.")
 
             if st.button("🚪 로그아웃", use_container_width=True):
                 st.session_state.is_admin = False
